@@ -8,7 +8,7 @@ build/
 dist/
 debian/files
 debian/*.debhelper.log
-debian/*.debhelper                                                                                                   
+debian/*.debhelper
 debian/*.substvars
 debian/python-debian/
 debian/python3-debian/
