@@ -4,6 +4,8 @@ README.debtags
 .pybuild
 *.egg-info
 setup.py
+build/
+dist/
 debian/files
 debian/*.debhelper.log
 debian/*.debhelper                                                                                                   
