@@ -390,7 +390,7 @@ class PseudoEnum:
         self._name = name
         self._order = order
     def __repr__(self):
-        return '%s(%r)' % (self.__class__._name__, self._name)
+        return '%s(%r)' % (self.__class__.__name__, self._name)
     def __str__(self):
         return self._name
     # TODO: Once we support only Python >= 2.7, we can simplify this using
