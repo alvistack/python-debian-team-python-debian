@@ -442,9 +442,8 @@ class DebFile(ArFile):
         for fname in [CHANGELOG_DEBIAN % self.__pkgname,
                       CHANGELOG_NATIVE % self.__pkgname]:
             if self.data.has_file(fname):
-                gz = gzip.GzipFile(fileobj=self.data.get_file(fname))
-                raw_changelog = gz.read()
-                gz.close()
+                with gzip.GzipFile(fileobj=self.data.get_file(fname)) as gz:
+                    raw_changelog = gz.read()
                 return Changelog(raw_changelog)
         return None
 
