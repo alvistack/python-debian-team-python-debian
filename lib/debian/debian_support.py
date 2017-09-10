@@ -415,7 +415,7 @@ class Release(PseudoEnum): pass
 def list_releases():
     releases = {}
     rels = ("buzz",
-            "rez",
+            "rex",
             "bo",
             "hamm",
             "slink",
