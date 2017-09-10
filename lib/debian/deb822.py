@@ -1011,6 +1011,8 @@ class PkgRelation(object):
 
         def pp_atomic_dep(dep):
             s = dep['name']
+            if dep.get('archqual') is not None:
+                s += ':%s' % dep['archqual']
             if dep.get('version') is not None:
                 s += ' (%s %s)' % dep['version']
             if dep.get('arch') is not None:

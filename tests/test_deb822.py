@@ -1106,12 +1106,17 @@ class TestPkgRelations(unittest.TestCase):
         self.assertEqual(dep3, pkg3.relations['depends'])
         f.close()
 
-        bin_rels = ['file, libc6 (>= 2.7-1), libpaper1, psutils']
-        src_rels = ['apache2-src (>= 2.2.9), libaprutil1-dev, '
-                'libcap-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386], '
-                'autoconf <!cross>, '
-                'debhelper (>> 5.0.0) '
-                '<!stage1> <!cross !stage2>']
+    def test_pkgrelation_str(self):
+        bin_rels = [
+            'file, libc6 (>= 2.7-1), libpaper1, psutils, '
+            'perl:any, python:native'
+            ]
+        src_rels = [
+            'apache2-src (>= 2.2.9), libaprutil1-dev, '
+            'libcap-dev [!kfreebsd-i386 !kfreebsd-amd64 !hurd-i386], '
+            'autoconf <!cross>, '
+            'debhelper (>> 5.0.0) <!stage1> <!cross !stage2>'
+            ]
         for bin_rel in bin_rels:
             self.assertEqual(bin_rel,
                     deb822.PkgRelation.str(deb822.PkgRelation.parse_relations(
@@ -1209,6 +1214,19 @@ class TestPkgRelations(unittest.TestCase):
         self.assertEqual(term[0], False)
         self.assertEqual(term.profile, 'cross')
         self.assertEqual(term[1], 'cross')
+
+    def test_multiarch_parse(self):
+        """ test parsing of architecture qualifiers from multiarch
+
+        Also ensure that the archqual part makes a round-trip, see
+        https://bugs.debian.org/868249
+        """
+        r = "foo:native"
+        # relation 0, alternative 0, arch qualifier
+        rel = deb822.PkgRelation.parse_relations(r)
+        term = rel[0][0]['archqual']
+        self.assertEqual(term, "native")
+        self.assertEqual(deb822.PkgRelation.str(rel), r)
 
 
 @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
