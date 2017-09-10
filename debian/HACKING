@@ -1,0 +1,82 @@
+General principles
+==================
+
+python3-debian gets installed by the Debian Installer as part of the "standard"
+task (reportbug depends on python3-reportbug depends on python3-debian). It is
+also pulled in to many desktop installations through tools such as 'gdebi'.
+Given how widely deployed these packages are:
+
+ - Be very conservative in adding new dependencies. If a package is not
+   already a dependency is not already within the set of packages installed
+   by the standard task, the additional dependency should be discussed on
+   the maintainer list.
+
+ - Be very careful with code changes since you could reasonably break a lot of
+   boxes with a botched upload. There is a test suite (see below).
+
+ - There are lots of users of the python-debian API beyond the packages within
+   Debian, including parts of Debian's infrastructure and scripts developed by
+   users. There is no real way of finding those users and notifying them of
+   API changes. Backwards compatibility is very important.
+
+In general, code in python-debian should be reasonably generous in what it
+accepts and quite strictly correct in its output.
+
+Ideally, python-debian should be written to match what is defined in Debian
+Policy. Code for features that are not yet documented in Policy should be
+clearly marked as experimental; it is not unusual for the Policy process to
+result in changes to the draft specification that then requires API changes.
+
+Given Policy's role in documenting standard practice and not in developing new
+specifications, some behaviour is not specified by Policy but is instead
+encoded within other parts of the ecosystem such as dpkg, apt or dak. In such
+situations, python-debian should remain consistent with other implementations.
+
+
+Style guide
+===========
+
+ - Try to be whitespace clean and follow pep8 in new code.
+
+ - Whitespace-only diffs are annoying for everyone. Perhaps we should have a
+   giant clean-up flag day, but doing so invalidates every other patch or
+   branch that is out there and that seems hard to justify.
+
+
+Test suite
+==========
+
+Please make sure all tests in the test suite pass after any change is made.
+
+Adding a test that exposes a given bug and then fixing the bug (and hence the
+test suite) is the preferred method for bug fixing. Please reference the bug
+number and describe the problem and solution in the comments for the bug so
+that those who come after you can understand both 'what' and 'why'.
+
+
+Uploading
+=========
+
+When uploading the package, it should be uploaded both to Debian and also to
+PyPI. The following developers have access to the PyPI project to be able to
+upload it.
+
+    pkern
+    stuart
+
+The upload procedure is:
+
+$ rm setup.py
+$ ./debian/rules setup.py
+$ python3 setup.py sdist
+$ twine upload --sign dist/python-debian-x.y.z.tar.gz
+
+
+Test uploads to TestPyPI can be made and tested with:
+
+$ twine upload --sign --repository testpypi dist/python-debian-x.y.z.tar.gz
+$ virtualenv python-debian-test
+$ cd python-debian-test
+$ . bin/activate
+$ pip install --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple python-debian
