@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 import unittest
 import os
+import os.path
 import re
 import stat
 import sys
@@ -29,15 +30,24 @@ import uu
 
 import six
 
-sys.path.insert(0, '../lib/')
-
 from debian import arfile
 from debian import debfile
+
+
+def find_test_file(filename):
+    """ find a test file that is located within the test suite """
+    return os.path.join(os.path.dirname(__file__), filename)
+
 
 class TestArFile(unittest.TestCase):
 
     def setUp(self):
-        os.system("ar rU test.ar test_debfile.py test_changelog test_deb822.py >/dev/null 2>&1")
+        os.system(
+            "ar rU test.ar %s %s %s >/dev/null 2>&1" % (
+                find_test_file("test_debfile.py"),
+                find_test_file("test_changelog"),
+                find_test_file("test_deb822.py"))
+            )
         assert os.path.exists("test.ar")
         with os.popen("ar t test.ar") as ar:
             self.testmembers = [x.strip() for x in ar.readlines()]
@@ -58,7 +68,7 @@ class TestArFile(unittest.TestCase):
             assert m
             self.assertEqual(m.name, member)
             
-            mstat = os.stat(member)
+            mstat = os.stat(find_test_file(member))
 
             self.assertEqual(m.size, mstat[stat.ST_SIZE])
             self.assertEqual(m.owner, mstat[stat.ST_UID])
@@ -84,7 +94,7 @@ class TestArFile(unittest.TestCase):
     def test_file_read(self):
         """ test for faked read """
         for m in self.a.getmembers():
-            f = open(m.name, 'rb')
+            f = open(find_test_file(m.name), 'rb')
         
             for i in [10, 100, 10000]:
                 self.assertEqual(m.read(i), f.read(i))
@@ -96,7 +106,7 @@ class TestArFile(unittest.TestCase):
         """ test for faked readlines """
 
         for m in self.a.getmembers():
-            f = open(m.name, 'rb')
+            f = open(find_test_file(m.name), 'rb')
         
             self.assertEqual(m.readlines(), f.readlines())
             
@@ -106,14 +116,14 @@ class TestArFile(unittest.TestCase):
 class TestDebFile(unittest.TestCase):
 
     test_debs = [
-            'test.deb',
-            'test-broken.deb',
+            find_test_file('test.deb'),
+            find_test_file('test-broken.deb'),
         ]
     test_compressed_debs = [
-            'test-bz2.deb',
-            'test-xz.deb',
-            'test-uncompressed.deb',
-            'test-uncompressed-ctrl.deb',
+            find_test_file('test-bz2.deb'),
+            find_test_file('test-xz.deb'),
+            find_test_file('test-uncompressed.deb'),
+            find_test_file('test-uncompressed-ctrl.deb'),
         ]
 
     def setUp(self):
@@ -128,7 +138,7 @@ class TestDebFile(unittest.TestCase):
         for package in self.test_debs + self.test_compressed_debs:
             uudecode('%s.uu' % package, package)
 
-        self.debname = 'test.deb'
+        self.debname = find_test_file('test.deb')
         self.d = debfile.DebFile(self.debname)
 
     def tearDown(self):
@@ -138,7 +148,7 @@ class TestDebFile(unittest.TestCase):
 
     def test_missing_members(self):
         with self.assertRaises(debfile.DebError):
-            debfile.DebFile('test-broken.deb')
+            debfile.DebFile(find_test_file('test-broken.deb'))
 
     def test_data_compression(self):
         for package in self.test_compressed_debs:

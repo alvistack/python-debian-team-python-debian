@@ -22,6 +22,7 @@ from __future__ import absolute_import
 import email.utils
 import io
 import os
+import os.path
 import re
 import sys
 import tempfile
@@ -35,8 +36,6 @@ except ImportError:
 
 import apt_pkg
 import six
-
-sys.path.insert(0, '../lib')
 
 from debian import deb822
 
@@ -283,7 +282,13 @@ PARSED_PARAGRAPHS_WITH_COMMENTS = [
     ]),
 ]
 
-KEYRING = os.path.abspath('test-keyring.gpg')
+
+def find_test_file(filename):
+    """ find a test file that is located within the test suite """
+    return os.path.join(os.path.dirname(__file__), filename)
+
+
+KEYRING = os.path.abspath(find_test_file('test-keyring.gpg'))
 
 
 def open_utf8(filename, mode='r'):
@@ -436,7 +441,7 @@ class TestDeb822(unittest.TestCase):
 
     @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
     def test_gpg_info2(self):
-        with open('test_Dsc.badsig', mode='rb') as f:
+        with open(find_test_file('test_Dsc.badsig'), mode='rb') as f:
             dsc = deb822.Dsc(f)
             i = dsc.get_gpg_info(keyrings=[KEYRING])
             self.assertTrue(i.valid())
@@ -547,23 +552,29 @@ class TestDeb822(unittest.TestCase):
             self.assertEqual(s.getvalue(), packages_content)
 
     def test_iter_paragraphs_apt_shared_storage_packages(self):
-        self._test_iter_paragraphs("test_Packages", deb822.Packages,
+        self._test_iter_paragraphs(find_test_file("test_Packages"),
+                                   deb822.Packages,
                                    use_apt_pkg=True, shared_storage=True)
     def test_iter_paragraphs_apt_no_shared_storage_packages(self):
-        self._test_iter_paragraphs("test_Packages", deb822.Packages,
+        self._test_iter_paragraphs(find_test_file("test_Packages"),
+                                   deb822.Packages,
                                    use_apt_pkg=True, shared_storage=False)
     def test_iter_paragraphs_no_apt_no_shared_storage_packages(self):
-        self._test_iter_paragraphs("test_Packages", deb822.Packages,
+        self._test_iter_paragraphs(find_test_file("test_Packages"),
+                                   deb822.Packages,
                                    use_apt_pkg=False, shared_storage=False)
 
     def test_iter_paragraphs_apt_shared_storage_sources(self):
-        self._test_iter_paragraphs("test_Sources", deb822.Sources,
+        self._test_iter_paragraphs(find_test_file("test_Sources"),
+                                   deb822.Sources,
                                    use_apt_pkg=True, shared_storage=True)
     def test_iter_paragraphs_apt_no_shared_storage_sources(self):
-        self._test_iter_paragraphs("test_Sources", deb822.Sources,
+        self._test_iter_paragraphs(find_test_file("test_Sources"),
+                                   deb822.Sources,
                                    use_apt_pkg=True, shared_storage=False)
     def test_iter_paragraphs_no_apt_no_shared_storage_sources(self):
-        self._test_iter_paragraphs("test_Sources", deb822.Sources,
+        self._test_iter_paragraphs(find_test_file("test_Sources"),
+                                   deb822.Sources,
                                    use_apt_pkg=False, shared_storage=False)
 
     def test_parser_empty_input(self):
@@ -775,13 +786,13 @@ Description: python modules to work with Debian-related data formats
         objects = []
         objects.append(deb822.Deb822(UNPARSED_PACKAGE))
         objects.append(deb822.Deb822(CHANGES_FILE))
-        with open_utf8('test_Packages') as f:
+        with open_utf8(find_test_file('test_Packages')) as f:
             objects.extend(deb822.Deb822.iter_paragraphs(f))
-        with open_utf8('test_Packages') as f:
+        with open_utf8(find_test_file('test_Packages')) as f:
             objects.extend(deb822.Packages.iter_paragraphs(f))
-        with open_utf8('test_Sources') as f:
+        with open_utf8(find_test_file('test_Sources')) as f:
             objects.extend(deb822.Deb822.iter_paragraphs(f))
-        with open('test_Sources.iso8859-1', 'rb') as f:
+        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as f:
             objects.extend(deb822.Deb822.iter_paragraphs(
                 f, encoding="iso8859-1"))
         for d in objects:
@@ -794,7 +805,7 @@ Description: python modules to work with Debian-related data formats
         multi.append(deb822.Changes(CHANGES_FILE))
         multi.append(deb822.Changes(SIGNED_CHECKSUM_CHANGES_FILE
                                     % CHECKSUM_CHANGES_FILE))
-        with open_utf8('test_Sources') as f:
+        with open_utf8(find_test_file('test_Sources')) as f:
             multi.extend(deb822.Sources.iter_paragraphs(f))
         for d in multi:
             for key, value in d.items():
@@ -802,9 +813,9 @@ Description: python modules to work with Debian-related data formats
                     self.assertTrue(isinstance(value, six.text_type))
 
     def test_encoding_integrity(self):
-        with open_utf8('test_Sources') as f:
+        with open_utf8(find_test_file('test_Sources')) as f:
             utf8 = list(deb822.Deb822.iter_paragraphs(f))
-        with open('test_Sources.iso8859-1', 'rb') as f:
+        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as f:
             latin1 = list(deb822.Deb822.iter_paragraphs(
                 f, encoding='iso8859-1'))
 
@@ -815,9 +826,9 @@ Description: python modules to work with Debian-related data formats
 
         # XXX: The way multiline fields parsing works, we can't guarantee
         # that trailing whitespace is reproduced.
-        with open('test_Sources', 'rb') as f:
+        with open(find_test_file('test_Sources'), 'rb') as f:
             utf8_contents = b"\n".join([line.rstrip() for line in f] + [b''])
-        with open('test_Sources.iso8859-1', 'rb') as f:
+        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as f:
             latin1_contents = b"\n".join([line.rstrip() for line in f] + [b''])
 
         utf8_to_latin1 = BytesIO()
@@ -848,8 +859,8 @@ Description: python modules to work with Debian-related data formats
         filename = 'test_Sources.mixed_encoding'
         # TODO: With Python >= 2.7, this might be better written as:
         #   with open(filename, 'rb') as f1, open(filename, 'rb') as f2:
-        f1 = open(filename, 'rb')
-        f2 = open(filename, 'rb')
+        f1 = open(find_test_file(filename), 'rb')
+        f2 = open(find_test_file(filename), 'rb')
         for paragraphs in [deb822.Sources.iter_paragraphs(f1),
                            deb822.Sources.iter_paragraphs(f2,
                                                           use_apt_pkg=False)]:
@@ -942,7 +953,7 @@ Description: python modules to work with Debian-related data formats
         self._test_iter_paragraphs_comments(paragraphs)
 
     def test_release(self):
-        with open('test_Release') as f:
+        with open(find_test_file('test_Release')) as f:
             release = deb822.Release(f)
         self.assertEqual(release['Codename'], 'sid')
         self.assertEqual(len(release['SHA1']), 61)
@@ -952,18 +963,18 @@ Description: python modules to work with Debian-related data formats
 
     def test_changes_binary_mode(self):
         """Trivial parse test for a signed file in binary mode"""
-        with io.open('test_Changes', 'rb') as f:
+        with io.open(find_test_file('test_Changes'), 'rb') as f:
             changes = deb822.Changes(f)
         self.assertEqual('python-debian', changes['Source'])
 
     def test_changes_text_mode(self):
         """Trivial parse test for a signed file in text mode"""
-        with io.open('test_Changes', 'r', encoding='utf-8') as f:
+        with io.open(find_test_file('test_Changes'), 'r', encoding='utf-8') as f:
             changes = deb822.Changes(f)
         self.assertEqual('python-debian', changes['Source'])
 
     def test_removals(self):
-        with open('test_removals.822') as f:
+        with open(find_test_file('test_removals.822')) as f:
             removals = deb822.Removals.iter_paragraphs(f)
             r = next(removals)
             self.assertEqual(r['suite'], 'unstable')
@@ -1031,7 +1042,7 @@ class TestPkgRelations(unittest.TestCase):
         # make the syntax a bit more compact
         rel = TestPkgRelations.rel
 
-        f = open('test_Packages')
+        f = open(find_test_file('test_Packages'))
         pkgs = deb822.Packages.iter_paragraphs(f)
         pkg1 = next(pkgs)
         rel1 = {'breaks': [],
@@ -1132,7 +1143,7 @@ class TestPkgRelations(unittest.TestCase):
         # make the syntax a bit more compact
         rel = TestPkgRelations.rel
 
-        f = open_utf8('test_Sources')
+        f = open_utf8(find_test_file('test_Sources'))
         pkgs = deb822.Sources.iter_paragraphs(f)
         pkg1 = next(pkgs)
         rel1 = {'build-conflicts': [],

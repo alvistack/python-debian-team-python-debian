@@ -23,8 +23,6 @@ from __future__ import absolute_import
 import sys
 import unittest
 
-sys.path.insert(0, '../lib/')
-
 from debian import debian_support
 from debian.debian_support import *
 

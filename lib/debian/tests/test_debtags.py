@@ -18,16 +18,22 @@
 
 from __future__ import absolute_import
 
+import os.path
 import sys
 import unittest
 
-sys.path.insert(0, '../lib/')
 from debian import debtags
+
+
+def find_test_file(filename):
+    """ find a test file that is located within the test suite """
+    return os.path.join(os.path.dirname(__file__), filename)
+
 
 class TestDebtags(unittest.TestCase):
     def mkdb(self):
         db = debtags.DB()
-        with open("test_tagdb", "r") as f:
+        with open(find_test_file("test_tagdb"), "r") as f:
             db.read(f)
         return db
 

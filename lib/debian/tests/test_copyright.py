@@ -23,8 +23,6 @@ import re
 import sys
 import unittest
 
-sys.path.insert(0, '../lib/')
-
 from debian import copyright
 from debian import deb822
 
