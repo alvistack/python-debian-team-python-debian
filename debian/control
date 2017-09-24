@@ -24,7 +24,7 @@ Build-Depends:
  python3-chardet,
  python3-setuptools,
  python3-six (>> 1.4~)
-Standards-Version: 3.9.8
+Standards-Version: 4.1.0
 Vcs-Browser: https://anonscm.debian.org/git/pkg-python-debian/python-debian.git
 Vcs-Git: https://anonscm.debian.org/git/pkg-python-debian/python-debian.git
 X-Python-Version: >= 2.6
