@@ -53,6 +53,20 @@ test suite) is the preferred method for bug fixing. Please reference the bug
 number and describe the problem and solution in the comments for the bug so
 that those who come after you can understand both 'what' and 'why'.
 
+The tests use absolute imports and do not alter sys.path so that they can be
+used to test either the installed package or the current working tree. Tests
+can be run either from the top-level directory or from the lib/ directory:
+
+    Run all tests from the top most directory of the source package:
+
+        $ python3 -m unittest discover lib
+
+    Or from within the lib directory
+
+        $ python3 -m unittest discover
+
+        $ python3 -m unittest debian/tests/test_deb822.py
+
 
 Uploading
 =========
