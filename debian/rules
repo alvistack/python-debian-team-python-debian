@@ -12,7 +12,7 @@ export PYBUILD_NAME=debian
 %:
 	dh $@ --with python2,python3 --buildsystem pybuild
 
-%.py: %.py.in
+%.py: %.py.in debian/changelog
 	sed -e 's/__CHANGELOG_VERSION__/$(DEB_VERSION)/' < $< > $@
 
 override_dh_auto_clean: setup.py
