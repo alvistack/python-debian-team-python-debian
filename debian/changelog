@@ -1,3 +1,17 @@
+python-debian (0.1.31) unstable; urgency=medium
+
+  * Fix codename for 'rex' release, With thanks to Philipp Hahn
+    <hahn@univention.de> for the report and patch (Closes: #863724).
+  * Include archqual in the deb822.PkgRelation.str output, wih thanks to
+    Maximiliano Curia <maxy@debian.org> for the report and patch
+    (Closes: #868249).
+  * Use unittest rather than nose for test suite discovery (Closes: #851324).
+  * Update Standards-Version to 4.1.0 (no changes required).
+  * Use dpkg's pkg-info.mk to get package version in d/rules.
+  * Add debian/HACKING with some notes about the package.
+
+ -- Stuart Prescott <stuart@debian.org>  Sun, 24 Sep 2017 12:38:37 +1000
+
 python-debian (0.1.30) unstable; urgency=medium
 
   * Add missing chardet dependency in setup.py.in (Closes: #838695, #841071).
