@@ -4,16 +4,16 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+include /usr/share/dpkg/pkg-info.mk
+
 # tell pybuild which module to install into the packages
 export PYBUILD_NAME=debian
-
-VERSION := $(shell dpkg-parsechangelog | grep '^Version: ' | awk '{print $$2}')
 
 %:
 	dh $@ --with python2,python3 --buildsystem pybuild
 
 %.py: %.py.in
-	sed -e 's/__CHANGELOG_VERSION__/$(VERSION)/' < $< > $@
+	sed -e 's/__CHANGELOG_VERSION__/$(DEB_VERSION)/' < $< > $@
 
 override_dh_auto_clean: setup.py
 	dh_auto_clean
