@@ -3,7 +3,6 @@ Restrictions: allow-stderr needs-recommends
 Depends:
  binutils (>= 2.23),
  python3-all,
- python3-nose,
  python3-debian,
  debian-keyring,
  debian-archive-keyring
@@ -13,7 +12,6 @@ Restrictions: allow-stderr needs-recommends
 Depends:
  binutils (>= 2.23),
  python2.7,
- python-nose,
  python-debian,
  debian-keyring,
  debian-archive-keyring

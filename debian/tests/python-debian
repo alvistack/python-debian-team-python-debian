@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e -u -x
-cp -r tests/ "$ADTTMP"
+cp -r lib/debian/tests/ "$ADTTMP"
 cd "$ADTTMP/tests/"
 export PYTHONWARNINGS=d
 # test suite requires python2.7
-LC_ALL=C python2.7 /usr/bin/nosetests --verbose --exe
-LC_ALL=C.UTF-8 python2.7 /usr/bin/nosetests --verbose --exe
+LC_ALL=C python2.7 -m unittest discover --verbose
+LC_ALL=C.UTF-8 python2.7 -m unittest discover --verbose

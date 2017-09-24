@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e -u -x
-cp -r tests/ "$ADTTMP"
+cp -r lib/debian/tests/ "$ADTTMP"
 cd "$ADTTMP/tests/"
 export PYTHONWARNINGS=d
 for py in $(py3versions -i); do
   # text mode file opening is locale dependent so try both ASCII and UTF-8
-  LC_ALL=C $py /usr/bin/nosetests3 --verbose --exe
-  LC_ALL=C.UTF-8 $py /usr/bin/nosetests3 --verbose --exe
+  LC_ALL=C $py -m unittest discover --verbose
+  LC_ALL=C.UTF-8 $py -m unittest discover --verbose
 done
