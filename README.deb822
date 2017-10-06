@@ -68,10 +68,8 @@ For example:
             print src['Package'], src['Version']
 
 This method uses python-apt if available to parse the file, since it
-significantly boosts performance. The downside, though, is that yielded
-objects share storage, so they should never be kept across iterations.
-To prevent this behavior, pass a "shared_storage=False" keyword-argument
-to the iter_paragraphs() function.
+significantly boosts performance. If python-apt is not present and the
+file is a compressed file, it must first be decompressed manually.
 
 
 Sample usage (TODO: Improve)

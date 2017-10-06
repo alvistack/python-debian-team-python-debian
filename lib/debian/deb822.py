@@ -313,7 +313,9 @@ class Deb822(Deb822Dict):
 
         :param sequence: a string, or any any object that returns a line of
             input each time, normally a file.  Alternately, sequence can
-            be a dict that contains the initial key-value pairs.
+            be a dict that contains the initial key-value pairs. When
+            python-apt is present, sequence can also be a compressed object,
+            for example a file object associated to something.gz.
 
         :param fields: if given, it is interpreted as a list of fields that
             should be parsed (the rest will be discarded).
