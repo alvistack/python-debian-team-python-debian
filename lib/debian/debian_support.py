@@ -220,9 +220,9 @@ class AptPkgVersion(BaseVersion):
 class NativeVersion(BaseVersion):
     """Represents a Debian package version, with native Python comparison"""
 
-    re_all_digits_or_not = re.compile("\d+|\D+")
-    re_digits = re.compile("\d+")
-    re_digit = re.compile("\d")
+    re_all_digits_or_not = re.compile(r"\d+|\D+")
+    re_digits = re.compile(r"\d+")
+    re_digit = re.compile(r"\d")
     re_alpha = re.compile("[A-Za-z]")
 
     def _compare(self, other):
@@ -595,7 +595,7 @@ def update_file(remote, local, verbose=None):
     import urllib
     index_name = remote + '.diff/Index'
 
-    re_whitespace=re.compile('\s+')
+    re_whitespace=re.compile(r'\s+')
 
     try:
         index_url = urllib.urlopen(index_name)

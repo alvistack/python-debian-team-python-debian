@@ -145,7 +145,7 @@ class ChangeBlock(object):
         bugs = []
         for match in type_re.finditer(changes):
             closes_list = match.group(0)
-            for match in re.finditer("\d+", closes_list):
+            for match in re.finditer(r"\d+", closes_list):
                 bugs.append(int(match.group(0)))
         return bugs
 
@@ -202,42 +202,42 @@ class ChangeBlock(object):
             return unicode(self).encode(self._encoding)
 
 topline = re.compile(r'^(\w%(name_chars)s*) \(([^\(\) \t]+)\)'
-                     '((\s+%(name_chars)s+)+)\;'
+                     r'((\s+%(name_chars)s+)+)\;'
                      % {'name_chars': '[-+0-9a-z.]'},
                      re.IGNORECASE)
-blankline = re.compile('^\s*$')
-change = re.compile('^\s\s+.*$')
-endline = re.compile('^ -- (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}\s+\w+\s+'
-            '\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}\s*)$')
-endline_nodetails = re.compile('^ --(?: (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}'
-                '\s+\w+\s+\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}'
-                '))?\s*$')
-keyvalue= re.compile('^([-0-9a-z]+)=\s*(.*\S)$', re.IGNORECASE)
-value_re = re.compile('^([-0-9a-z]+)((\s+.*)?)$', re.IGNORECASE)
+blankline = re.compile(r'^\s*$')
+change = re.compile(r'^\s\s+.*$')
+endline = re.compile(r'^ -- (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}\s+\w+\s+'
+            r'\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}\s*)$')
+endline_nodetails = re.compile(r'^ --(?: (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}'
+                r'\s+\w+\s+\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}'
+                r'))?\s*$')
+keyvalue= re.compile(r'^([-0-9a-z]+)=\s*(.*\S)$', re.IGNORECASE)
+value_re = re.compile(r'^([-0-9a-z]+)((\s+.*)?)$', re.IGNORECASE)
 xbcs_re = re.compile('^X[BCS]+-', re.IGNORECASE)
-emacs_variables = re.compile('^(;;\s*)?Local variables:', re.IGNORECASE)
+emacs_variables = re.compile(r'^(;;\s*)?Local variables:', re.IGNORECASE)
 vim_variables = re.compile('^vim:', re.IGNORECASE)
-cvs_keyword = re.compile('^\$\w+:.*\$')
-comments = re.compile('^\# ')
-more_comments = re.compile('^/\*.*\*/')
-closes = re.compile('closes:\s*(?:bug)?\#?\s?\d+(?:,\s*(?:bug)?\#?\s?\d+)*',
+cvs_keyword = re.compile(r'^\$\w+:.*\$')
+comments = re.compile(r'^\# ')
+more_comments = re.compile(r'^/\*.*\*/')
+closes = re.compile(r'closes:\s*(?:bug)?\#?\s?\d+(?:,\s*(?:bug)?\#?\s?\d+)*',
                     re.IGNORECASE)
-closeslp = re.compile('lp:\s+\#\d+(?:,\s*\#\d+)*', re.IGNORECASE)
+closeslp = re.compile(r'lp:\s+\#\d+(?:,\s*\#\d+)*', re.IGNORECASE)
 
-old_format_re1 = re.compile('^(\w+\s+\w+\s+\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}'
-        '\s+[\w\s]*\d{4})\s+(.*)\s+(<|\()(.*)(\)|>)')
-old_format_re2 = re.compile('^(\w+\s+\w+\s+\d{1,2},?\s*\d{4})\s+(.*)'
-        '\s+(<|\()(.*)(\)|>)')
-old_format_re3 = re.compile('^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)\;?',
+old_format_re1 = re.compile(r'^(\w+\s+\w+\s+\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}'
+        r'\s+[\w\s]*\d{4})\s+(.*)\s+(<|\()(.*)(\)|>)')
+old_format_re2 = re.compile(r'^(\w+\s+\w+\s+\d{1,2},?\s*\d{4})\s+(.*)'
+        r'\s+(<|\()(.*)(\)|>)')
+old_format_re3 = re.compile(r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)\;?',
         re.IGNORECASE)
-old_format_re4 = re.compile('^([\w.+-]+)(-| )(\S+) Debian (\S+)',
+old_format_re4 = re.compile(r'^([\w.+-]+)(-| )(\S+) Debian (\S+)',
         re.IGNORECASE)
 old_format_re5 = re.compile('^Changes from version (.*) to (.*):',
         re.IGNORECASE)
-old_format_re6 = re.compile('^Changes for [\w.+-]+-[\w.+-]+:?\s*$',
+old_format_re6 = re.compile(r'^Changes for [\w.+-]+-[\w.+-]+:?\s*$',
         re.IGNORECASE)
-old_format_re7 = re.compile('^Old Changelog:\s*$', re.IGNORECASE)
-old_format_re8 = re.compile('^(?:\d+:)?\w[\w.+~-]*:?\s*$')
+old_format_re7 = re.compile(r'^Old Changelog:\s*$', re.IGNORECASE)
+old_format_re8 = re.compile(r'^(?:\d+:)?\w[\w.+~-]*:?\s*$')
 
 
 class Changelog(object):
