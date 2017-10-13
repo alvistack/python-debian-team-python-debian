@@ -69,7 +69,7 @@ For example:
 
 This method uses python-apt if available to parse the file, since it
 significantly boosts performance. The downside, though, is that yielded
-objects share storage, so they should never be kept accross iterations.
+objects share storage, so they should never be kept across iterations.
 To prevent this behavior, pass a "shared_storage=False" keyword-argument
 to the iter_paragraphs() function.
 

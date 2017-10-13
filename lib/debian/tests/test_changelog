@@ -37,7 +37,7 @@ gnutls13 (1.4.0-2) unstable; urgency=low
     - add patches/10_certtoolmanpage.diff  patches/12_lessdeps.diff
   * Fix libgnutls-dev's Suggests to point to existing package. (gnutls-doc)
   * Also ship css-, devhelp- and sgml files in gnutls-doc.
-  * patches/15_fixcompilewarning.diff correct order of funtion arguments.
+  * patches/15_fixcompilewarning.diff correct order of function arguments.
 
   [ James Westby ]
   * This release allows the port to be specified as the name of the service
@@ -72,7 +72,7 @@ gnutls13 (1.4.0-1) experimental; urgency=low
   * Build against external libtasn1-3. (closes: #363294)
   * Standards-Version: 3.7.2, no changes required.
   * debian/control and override file are in sync with respect to Priority and
-    Section, everthing except libgnutls13-dbg already was. (closes: #366956)
+    Section, everything except libgnutls13-dbg already was. (closes: #366956)
   * acknowledge my own NMU. (closes: #367065)
   * libgnutls13-dbg is nonempty (closes: #367056)
 

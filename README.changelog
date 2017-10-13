@@ -53,7 +53,7 @@ The Changelog class provides the following interesting attributes and methods:
      If you create an Changelog object without sepcifying a changelog file, you 
      can parse a changelog file with this method. If the changelog doesn't parse
      cleanly, a ChangelogParseError exception is thrown. The constructor will
-     parse the changelog on a best efford basis.
+     parse the changelog on a best effort basis.
  * add_change(change)
      Adds a change entry to the most recent version. The change entry should
      conform to the required format of the changelog (i.e. start with two 

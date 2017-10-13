@@ -2,7 +2,7 @@ python-debian (0.1.31) unstable; urgency=medium
 
   * Fix codename for 'rex' release, With thanks to Philipp Hahn
     <hahn@univention.de> for the report and patch (Closes: #863724).
-  * Include archqual in the deb822.PkgRelation.str output, wih thanks to
+  * Include archqual in the deb822.PkgRelation.str output, with thanks to
     Maximiliano Curia <maxy@debian.org> for the report and patch
     (Closes: #868249).
   * Use unittest rather than nose for test suite discovery (Closes: #851324).
