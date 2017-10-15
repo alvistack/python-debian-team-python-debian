@@ -326,7 +326,7 @@ class PackageFile:
     Objects of this class can be used to read Debian's Source and
     Packages files."""
 
-    re_field = re.compile(r'^([A-Za-z][A-Za-z0-9-]+):(?:\s*(.*?))?\s*$')
+    re_field = re.compile(r'^([A-Za-z][A-Za-z0-9-_]+):(?:\s*(.*?))?\s*$')
     re_continuation = re.compile(r'^\s+(?:\.|(\S.*?)\s*)$')
 
     def __init__(self, name, file_obj=None):
