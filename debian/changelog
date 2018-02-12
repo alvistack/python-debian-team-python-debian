@@ -1,3 +1,16 @@
+python-debian (0.1.32) UNRELEASED; urgency=medium
+
+  * Fix regexps that are invalid escape sequences with Python 3.6, with thanks
+    to Ville Skyttä <ville.skytta@iki.fi> for the patch (Closes: #878434).
+  * Fix spelling errors, with thanks to Ville Skyttä <ville.skytta@iki.fi>
+    for the patch (Closes: #878435).
+  * Add additional documentation about how python-apt is used, with thanks to
+    Matthieu Caneill <matt@brokenwa.re> for the patch (Closes: #862058).
+  * Extend Deb822 parser to allow underscores in the field name, with thanks
+    to Gerhard Poul <gerhard.poul@gmail.com> for the patch.
+
+ -- Stuart Prescott <stuart@debian.org>  Mon, 16 Oct 2017 01:02:35 +1100
+
 python-debian (0.1.31) unstable; urgency=medium
 
   * Fix codename for 'rex' release, With thanks to Philipp Hahn
