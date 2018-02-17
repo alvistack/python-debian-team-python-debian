@@ -12,7 +12,7 @@ Uploaders:
  Stuart Prescott <stuart@debian.org>
 Build-Depends:
  binutils (>= 2.23),
- debhelper (>= 9),
+ debhelper (>= 11~),
  dh-python,
  python-all (>= 2.6.6-3~),
  python-apt (>> 1.1~),
