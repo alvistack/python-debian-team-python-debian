@@ -21,7 +21,7 @@ from setuptools import setup
 setup(name='python-debian',
       version='__CHANGELOG_VERSION__',
       description='Debian package related modules',
-      url='http://packages.debian.org/sid/python-debian',
+      url='https://salsa.debian.org/python-debian-team/python-debian',
       package_dir={'': 'lib'},
       packages=['debian', 'debian_bundle'],
       py_modules=['deb822'],
