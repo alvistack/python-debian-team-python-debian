@@ -1,4 +1,4 @@
-python-debian (0.1.32) UNRELEASED; urgency=medium
+python-debian (0.1.32) unstable; urgency=medium
 
   * Fix regexps that are invalid escape sequences with Python 3.6, with thanks
     to Ville Skyttä <ville.skytta@iki.fi> for the patch (Closes: #878434).
@@ -8,8 +8,11 @@ python-debian (0.1.32) UNRELEASED; urgency=medium
     Matthieu Caneill <matt@brokenwa.re> for the patch (Closes: #862058).
   * Extend Deb822 parser to allow underscores in the field name, with thanks
     to Gerhard Poul <gerhard.poul@gmail.com> for the patch.
+  * Update Vcs fields to point to salsa.debian.org, with thanks to John Wright
+    for doing the migration.
+  * Update Standards-Version to 4.1.3 (no changes required).
 
- -- Stuart Prescott <stuart@debian.org>  Mon, 16 Oct 2017 01:02:35 +1100
+ -- Stuart Prescott <stuart@debian.org>  Sat, 17 Feb 2018 16:37:18 +1100
 
 python-debian (0.1.31) unstable; urgency=medium
 
