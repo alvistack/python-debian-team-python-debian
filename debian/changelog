@@ -1,3 +1,10 @@
+python-debian (0.1.33) UNRELEASED; urgency=medium
+
+  * Switch to salsa.debian.org URLs for homepage, source location etc.
+  * Bump to debhelper compat 11 (no changes required).
+
+ -- Stuart Prescott <stuart@debian.org>  Sat, 17 Feb 2018 17:12:17 +1100
+
 python-debian (0.1.32) unstable; urgency=medium
 
   * Fix regexps that are invalid escape sequences with Python 3.6, with thanks
