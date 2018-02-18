@@ -36,12 +36,10 @@ from debian import deb822
 
 
 _CURRENT_FORMAT = (
-    'http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/')
+    'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/')
 
 _KNOWN_FORMATS = frozenset([
     _CURRENT_FORMAT,
-    # TODO(jsw): Transparently rewrite https:// as http://, at least for this?
-    'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/',
 ])
 
 
@@ -559,6 +557,13 @@ class Header(deb822.RestrictedWrapper):
             del data['Format-Specification']
 
         super(Header, self).__init__(data)
+
+        # Upgrade http to https if that is valid
+        if self.format.startswith('http:'):
+            fmt = "https:%s" % self.format[5:]
+            if fmt in _KNOWN_FORMATS:
+                warnings.warn('upgrading format from http to https')
+                self.format = fmt
 
         fmt = self.format
         if fmt is None:

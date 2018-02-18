@@ -21,14 +21,18 @@ from __future__ import unicode_literals
 
 import re
 import sys
-import unittest
+try:
+    import unittest2 as unittest
+except:
+    import unittest
+import warnings
 
 from debian import copyright
 from debian import deb822
 
 
 SIMPLE = """\
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: X Solitaire
 Source: ftp://ftp.example.com/pub/games
 
@@ -85,7 +89,7 @@ License version 2 can be found in the file
 `/usr/share/common-licenses/GPL-2'."""
 
 MULTI_LICENSE = """\
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Project Y
 
 Files: *
@@ -113,7 +117,7 @@ License: 123
  [123 TEXT]
 """
 
-FORMAT = 'http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'
+FORMAT = 'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'
 
 
 class LineBasedTest(unittest.TestCase):
@@ -669,6 +673,13 @@ class HeaderTest(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             h.format = None
         self.assertEqual(('value must not be None',), cm.exception.args)
+
+    def test_format_https_upgrade(self):
+        data = deb822.Deb822()
+        data['Format'] = "http%s" % FORMAT[5:]
+        with self.assertWarns(Warning):
+            h = copyright.Header(data=data)
+        self.assertEqual(FORMAT, h.format)
 
     def test_upstream_name_single_line(self):
         h = copyright.Header()
