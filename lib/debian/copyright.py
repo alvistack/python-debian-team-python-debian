@@ -51,6 +51,16 @@ class NotMachineReadableError(Error):
     """Raised when the input is not a machine-readable debian/copyright file."""
 
 
+class MachineReadableFormatError(ValueError):
+    """Raised when the input is not valid."""
+
+
+def _complain(msg, strict):
+    if strict:
+        raise MachineReadableFormatError(msg)
+    warnings.warn(msg)
+
+
 class Copyright(object):
     """Represents a debian/copyright file.
 
@@ -88,7 +98,7 @@ class Copyright(object):
     associated method docstrings.
     """
 
-    def __init__(self, sequence=None, encoding='utf-8'):
+    def __init__(self, sequence=None, encoding='utf-8', strict=True):
         """Initializer.
 
         :param sequence: Sequence of lines, e.g. a list of strings or a
@@ -97,10 +107,12 @@ class Copyright(object):
         :param encoding: Encoding to use, in case input is raw byte strings.
             It is recommended to use unicode objects everywhere instead, e.g.
             by opening files in text mode.
+        :param strict: Raise if format errors are detected in the data.
 
         Raises:
             NotMachineReadableError if 'sequence' does not contain a
                 machine-readable debian/copyright file.
+            MachineReadableFormatError if 'sequence' is not a valid file.
         """
         super(Copyright, self).__init__()
 
@@ -115,12 +127,12 @@ class Copyright(object):
             for i in range(1, len(paragraphs)):
                 p = paragraphs[i]
                 if 'Files' in p:
-                    p = FilesParagraph(p)
+                    p = FilesParagraph(p, strict)
                 elif 'License' in p:
-                    p = LicenseParagraph(p)
+                    p = LicenseParagraph(p, strict)
                 else:
-                    warnings.warn('Non-header paragraph has neither "Files"'
-                                  ' nor "License" fields')
+                    _complain('Non-header paragraph has neither "Files" nor '
+                              '"License" fields', strict)
                 self.__paragraphs.append(p)
         else:
             self.__header = Header()
@@ -219,9 +231,9 @@ class Copyright(object):
 
 
 def _single_line(s):
-    """Returns s if it is a single line; otherwise raises ValueError."""
+    """Returns s if it is a single line; otherwise raises MachineReadableFormatError."""
     if '\n' in s:
-        raise ValueError('must be single line')
+        raise MachineReadableFormatError('must be single line')
     return s
 
 
@@ -250,9 +262,10 @@ class _LineBased(object):
         def process_and_validate(s):
             s = s.strip()
             if not s:
-                raise ValueError('values must not be empty')
+                raise MachineReadableFormatError('values must not be empty')
             if '\n' in s:
-                raise ValueError('values must not contain newlines')
+                raise MachineReadableFormatError(
+                    'values must not contain newlines')
             return s
 
         if len(l) == 1:
@@ -284,10 +297,11 @@ class _SpaceSeparated(object):
         tmp = []
         for s in l:
             if cls._has_space.search(s):
-                raise ValueError('values must not contain whitespace')
+                raise MachineReadableFormatError(
+                    'values must not contain whitespace')
             s = s.strip()
             if not s:
-                raise ValueError('values must not be empty')
+                raise MachineReadableFormatError('values must not be empty')
             tmp.append(s)
         return ' '.join(tmp)
 
@@ -343,7 +357,8 @@ def parse_multiline_as_lines(s):
         if line.startswith(' '):
             line = line[1:]
         else:
-            raise ValueError('continued line must begin with " "')
+            raise MachineReadableFormatError(
+                'continued line must begin with " "')
         if line == '.':
             line = ''
         lines[i] = line
@@ -391,7 +406,7 @@ def globs_to_re(globs):
 
     Empty globs match nothing.
 
-    Raises ValueError if any of the globs is illegal.
+    Raises MachineReadableFormatError if any of the globs is illegal.
     """
     buf = io.StringIO()
     for i, glob in enumerate(globs):
@@ -411,11 +426,13 @@ def globs_to_re(globs):
                     c = glob[i]
                     i += 1
                 else:
-                    raise ValueError('single backslash not allowed at end')
+                    raise MachineReadableFormatError(
+                        'single backslash not allowed at end')
                 if c in r'\?*':
                     buf.write(re.escape(c))
                 else:
-                    raise ValueError(r'invalid escape sequence: \%s' % c)
+                    raise MachineReadableFormatError(
+                        r'invalid escape sequence: \%s' % c)
             else:
                 buf.write(re.escape(c))
 
@@ -432,22 +449,19 @@ class FilesParagraph(deb822.RestrictedWrapper):
     particular set of files in the package.
     """
 
-    def __init__(self, data, _internal_validate=True):
+    def __init__(self, data, _internal_validate=True, strict=True):
         super(FilesParagraph, self).__init__(data)
 
         if _internal_validate:
             if 'Files' not in data:
-                raise ValueError('"Files" field required')
-            # For the other "required" fields, we just warn for now.  Perhaps
-            # these should be upgraded to exceptions (potentially protected by
-            # a "strict" param).
+                raise MachineReadableFormatError('"Files" field required')
             if 'Copyright' not in data:
-                warnings.warn('Files paragraph missing Copyright field')
+                _complain('Files paragraph missing Copyright field', strict)
             if 'License' not in data:
-                warnings.warn('Files paragraph missing License field')
+                _complain('Files paragraph missing License field', strict)
 
             if not self.files:
-                warnings.warn('Files paragraph has empty Files field')
+                _complain('Files paragraph has empty Files field', strict)
 
         self.__cached_files_pat = (None, None)
 
@@ -507,9 +521,10 @@ class LicenseParagraph(deb822.RestrictedWrapper):
         super(LicenseParagraph, self).__init__(data)
         if _internal_validate:
             if 'License' not in data:
-                raise ValueError('"License" field required')
+                raise MachineReadableFormatError('"License" field required')
             if 'Files' in data:
-                raise ValueError('input appears to be a Files paragraph')
+                raise MachineReadableFormatError(
+                    'input appears to be a Files paragraph')
 
     @classmethod
     def create(cls, license):

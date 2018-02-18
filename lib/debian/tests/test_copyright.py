@@ -323,6 +323,19 @@ class CopyrightTest(unittest.TestCase):
              copyright.License('Foo', '[FOO TEXT]')],
             list(p.license for p in c.all_license_paragraphs()))
 
+    def test_error_on_invalid(self):
+        lic = sequence=SIMPLE.splitlines()
+        with self.assertRaises(copyright.MachineReadableFormatError) as cm:
+            # missing License field from 1st Files stanza
+            c = copyright.Copyright(sequence=lic[0:6])
+
+        with self.assertRaises(copyright.MachineReadableFormatError) as cm:
+            # missing Files field from 1st Files stanza
+            c = copyright.Copyright(sequence=(lic[0:4] + lic[5:6]))
+
+        with self.assertRaises(copyright.MachineReadableFormatError) as cm:
+            # missing Copyright field from 1st Files stanza
+            c = copyright.Copyright(sequence=(lic[0:5] + lic[6:6]))
 
 
 class MultlineTest(unittest.TestCase):
