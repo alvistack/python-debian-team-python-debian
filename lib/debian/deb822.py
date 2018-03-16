@@ -23,6 +23,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+"""This module provides a dict-like interface to various rfc822-like
+Debian data formats, like Packages/Sources, .changes/.dsc, pdiff Index
+files, etc.
+"""
+
 from __future__ import absolute_import, print_function
 
 from debian.deprecation import function_deprecated_by
