@@ -577,12 +577,18 @@ class Header(deb822.RestrictedWrapper):
 
         super(Header, self).__init__(data)
 
+        fmt = self.format
+        # Add a terminal slash onto the end if missing
+        if not fmt.endswith('/'):
+            fmt += "/"
+
         # Upgrade http to https if that is valid
-        if self.format.startswith('http:'):
-            fmt = "https:%s" % self.format[5:]
-            if fmt in _KNOWN_FORMATS:
-                warnings.warn('upgrading format from http to https')
-                self.format = fmt
+        if fmt.startswith('http:'):
+            fmt = "https:%s" % fmt[5:]
+
+        if fmt in _KNOWN_FORMATS:
+            warnings.warn('Fixing Format URL')
+            self.format = fmt
 
         fmt = self.format
         if fmt is None:
