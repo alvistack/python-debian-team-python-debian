@@ -21,7 +21,7 @@
 The specification for the format (also known as DEP5) is available here:
 https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
-Start from the Coyright docstring for usage information.
+Start from the Copyright docstring for usage information.
 """
 
 from __future__ import unicode_literals
