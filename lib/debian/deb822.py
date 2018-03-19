@@ -1,8 +1,12 @@
-# vim: fileencoding=utf-8
-#
-# A python interface for various rfc822-like formatted files used by Debian
-# (.changes, .dsc, Packages, Sources, etc)
-#
+# -*- coding: utf-8 -*- vim: fileencoding=utf-8 :
+
+""" Dictionary-like interfaces to rfc822-like files
+
+This module provides a `dict`-like interface to various rfc822-like
+Debian data formats, like Packages/Sources, .changes/.dsc, pdiff Index
+files, etc.
+"""
+
 # Copyright (C) 2005-2006  dann frazier <dannf@dannf.org>
 # Copyright (C) 2006-2010  John Wright <john@johnwright.org>
 # Copyright (C) 2006       Adeodato Simó <dato@net.com.org.es>
@@ -23,10 +27,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-"""This module provides a dict-like interface to various rfc822-like
-Debian data formats, like Packages/Sources, .changes/.dsc, pdiff Index
-files, etc.
-"""
 
 from __future__ import absolute_import, print_function
 
@@ -1042,7 +1042,7 @@ class _lowercase_dict(dict):
 class _PkgRelationMixin(object):
     """Package relationship mixin
 
-    Inheriting from this mixin you can extend a Deb882 object with attributes
+    Inheriting from this mixin you can extend a :class:`Deb822` object with attributes
     letting you access inter-package relationship in a structured way, rather
     than as strings. For example, while you can usually use pkg['depends'] to
     obtain the Depends string of package pkg, mixing in with this class you
@@ -1091,51 +1091,68 @@ class _PkgRelationMixin(object):
         of dictionaries (see below for some examples).
 
         The encoding of package relationships is as follows:
+
         - the top-level lists corresponds to the comma-separated list of
-          Deb822, their components form a conjunction, i.e. they have to be
+          :class:`Deb822`, their components form a conjunction, i.e. they have to be
           AND-ed together
-        - the inner lists corresponds to the pipe-separated list of Deb822,
+        - the inner lists corresponds to the pipe-separated list of :class:`Deb822`,
           their components form a disjunction, i.e. they have to be OR-ed
           together
         - member of the inner lists are dictionaries with the following keys:
-          - name:       package (or virtual package) name
-          - version:    A pair <operator, version> if the relationship is
-                        versioned, None otherwise. operator is one of "<<",
-                        "<=", "=", ">=", ">>"; version is the given version as
-                        a string.
-          - arch:       A list of pairs <enabled, arch> if the
-                        relationship is architecture specific, None otherwise.
-                        Enabled is a boolean (false if the architecture is
-                        negated with "!", true otherwise), arch the
-                        Debian architecture name as a string.
-          - restrictions: A list of lists of tuples <enabled, profile>
-                        if there is a restriction formula defined, None
-                        otherwise. Each list of tuples represents a restriction
-                        list while each tuple represents an individual term
-                        within the restriction list. Enabled is a boolean
-                        (false if the restriction is negated with "!", true
-                        otherwise). The profile is the name of the build
-                        restriction.
-                        https://wiki.debian.org/BuildProfileSpec
+
+          ``name``
+            package (or virtual package) name
+          ``version``
+            A pair <`operator`, `version`> if the relationship is
+            versioned, None otherwise. operator is one of ``<<``,
+            ``<=``, ``=``, ``>=``, ``>>``; version is the given version as
+            a string.
+          ``arch``
+            A list of pairs <`enabled`, `arch`> if the
+            relationship is architecture specific, None otherwise.
+            Enabled is a boolean (``False`` if the architecture is
+            negated with ``!``, ``True`` otherwise), arch the
+            Debian architecture name as a string.
+          ``restrictions``
+            A list of lists of tuples <`enabled`, `profile`>
+            if there is a restriction formula defined, ``None``
+            otherwise. Each list of tuples represents a restriction
+            list while each tuple represents an individual term
+            within the restriction list. Enabled is a boolean
+            (``False`` if the restriction is negated with ``!``,
+            ``True`` otherwise). The profile is the name of the
+            build restriction.
+            https://wiki.debian.org/BuildProfileSpec
 
           The arch and restrictions tuples are available as named tuples so
-          elements are available as term[0] or alternatively as
-          term.enabled (and so forth).
+          elements are available as `term[0]` or alternatively as
+          `term.enabled` (and so forth).
 
         Examples:
 
-          "emacs | emacsen, make, debianutils (>= 1.7)"     becomes
-          [ [ {'name': 'emacs'}, {'name': 'emacsen'} ],
+        ``"emacs | emacsen, make, debianutils (>= 1.7)"``
+        becomes::
+
+          [
+            [ {'name': 'emacs'}, {'name': 'emacsen'} ],
             [ {'name': 'make'} ],
-            [ {'name': 'debianutils', 'version': ('>=', '1.7')} ] ]
+            [ {'name': 'debianutils', 'version': ('>=', '1.7')} ]
+          ]
 
-          "tcl8.4-dev, procps [!hurd-i386]"                 becomes
-          [ [ {'name': 'tcl8.4-dev'} ],
-            [ {'name': 'procps', 'arch': (false, 'hurd-i386')} ] ]
+        ``"tcl8.4-dev, procps [!hurd-i386]"``
+        becomes::
 
-          "texlive <!cross>"                                becomes
-          [ [ {'name': 'texlive',
-                    'restriction': [[(false, 'cross')]]} ] ]
+          [
+            [ {'name': 'tcl8.4-dev'} ],
+            [ {'name': 'procps', 'arch': (false, 'hurd-i386')} ]
+          ]
+
+        ``"texlive <!cross>"``
+        becomes::
+
+          [
+            [ {'name': 'texlive', 'restriction': [[(false, 'cross')]]} ]
+          ]
         """
         if not self.__parsed_relations:
             lazy_rels = filter(lambda n: self.__relations[n] is None,
@@ -1151,8 +1168,9 @@ class _multivalued(Deb822):
 
     To use, create a subclass with a _multivalued_fields attribute.  It should
     be a dictionary with *lower-case* keys, with lists of human-readable
-    identifiers of the fields as the values.  Please see Dsc, Changes, and
-    PdiffIndex as examples.
+    identifiers of the fields as the values.
+    Please see :class:`Dsc`, :class:`Changes`, and :class:`PdiffIndex`
+    as examples.
     """
 
     def __init__(self, *args, **kwargs):
@@ -1450,11 +1468,11 @@ class Packages(Deb822, _PkgRelationMixin):
 class _ClassInitMeta(type):
     """Metaclass for classes that can be initialized at creation time.
 
-    Implement the method
+    Implement the method::
 
       @classmethod
       def _class_init(cls, new_attrs):
-        pass
+          pass
 
     on a class, and apply this metaclass to it.  The _class_init method will be
     called right after the class is created.  The 'new_attrs' param is a dict
@@ -1505,7 +1523,7 @@ class RestrictedWrapper(object):
     RestrictedProperty should cover most use-cases.  The dump method from
     Deb822 is directly proxied.
 
-    Typical usage:
+    Typical usage::
 
         class Foo(object):
             def __init__(self, ...):
@@ -1678,7 +1696,8 @@ class Removals(Deb822):
     def sources(self):
         """ list of source packages that were removed
 
-        A list of dicts is returned, each dict has the form:
+        A list of dicts is returned, each dict has the form::
+
             {
                 'source': 'some-package-name',
                 'version': '1.2.3-1'
@@ -1706,7 +1725,8 @@ class Removals(Deb822):
     def binaries(self):
         """ list of binary packages that were removed
 
-        A list of dicts is returned, each dict has the form:
+        A list of dicts is returned, each dict has the form::
+
             {
                 'package': 'some-package-name',
                 'version': '1.2.3-1',

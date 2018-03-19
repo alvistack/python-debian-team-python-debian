@@ -1,5 +1,5 @@
+""" Facilities to work with debtags - tags for Debian packages """
 
-# debtags.py -- Access and manipulate Debtags information
 # Copyright (C) 2006-2007  Enrico Zini <enrico@enricozini.org>
 #
 # This program is free software: you can redistribute it and/or modify

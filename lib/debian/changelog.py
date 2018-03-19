@@ -1,4 +1,5 @@
-# changelog.py -- Python module for Debian changelogs
+""" Facilities for reading and writing Debian changelogs """
+
 # Copyright (C) 2006-7 James Westby <jw+debian@jameswestby.net>
 # Copyright (C) 2008 Canonical Ltd.
 #
@@ -20,8 +21,6 @@
 # Copyright 1996 Ian Jackson
 # Copyright 2005 Frank Lichtenheld <frank@lichtenheld.de>
 # and licensed under the same license as above.
-
-"""This module implements facilities to deal with Debian changelogs."""
 
 from __future__ import absolute_import
 

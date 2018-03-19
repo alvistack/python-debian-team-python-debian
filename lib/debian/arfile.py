@@ -1,4 +1,10 @@
-# ArFile: a Python representation of ar (as in "man 1 ar") archives.
+""" Representation of ar archives for use with Debian binary packages
+
+These classes are primarily intended to be used with the
+:class:`debian.debfile.DebFile` class for working with Debian binary
+packages.
+"""
+
 # Copyright (C) 2007    Stefano Zacchiroli  <zack@debian.org>
 # Copyright (C) 2007    Filippo Giunchedi   <filippo@debian.org>
 #
@@ -26,6 +32,7 @@ FILE_HEADER_LENGTH = 60
 FILE_MAGIC = b"`\n"
 
 class ArError(Exception):
+    """ Common base for all exceptions raised within the arfile module """
     pass
 
 class ArFile(object):

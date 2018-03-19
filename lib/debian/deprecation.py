@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*- vim: fileencoding=utf-8 :
-#
-# debian/deprecation.py
-# Utility module to deprecate features
-#
+
+""" Utility module to deprecate features """
+
 # Copyright © Ben Finney <ben+debian@benfinney.id.au>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,7 +18,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-""" Utility module to deprecate features """
 
 import warnings
 

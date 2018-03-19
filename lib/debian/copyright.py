@@ -1,5 +1,11 @@
-# vim: fileencoding=utf-8
-#
+"""Utilities for parsing and creating machine-readable debian/copyright files.
+
+The specification for the format (also known as DEP5) is available here:
+https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Start from the Copyright docstring for usage information.
+"""
+
 # Copyright (C) 2014       Google, Inc.
 #
 # This program is free software; you can redistribute it and/or
@@ -15,14 +21,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
-"""Utilities for parsing and creating machine-readable debian/copyright files.
-
-The specification for the format (also known as DEP5) is available here:
-https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-
-Start from the Copyright docstring for usage information.
-"""
 
 from __future__ import unicode_literals
 
@@ -74,7 +72,7 @@ class Copyright(object):
     for finding the Files paragraph (if any) that matches a particular
     filename.
 
-    Typical usage:
+    Typical usage::
 
         with io.open('debian/copyright', 'rt', encoding='utf-8') as f:
             c = copyright.Copyright(f)
@@ -103,7 +101,7 @@ class Copyright(object):
     """
 
     def __init__(self, sequence=None, encoding='utf-8', strict=True):
-        """Initializer.
+        """ Create a new copyright file in the current format.
 
         :param sequence: Sequence of lines, e.g. a list of strings or a
             file-like object.  If not specified, a blank Copyright object is
@@ -114,7 +112,7 @@ class Copyright(object):
         :param strict: Raise if format errors are detected in the data.
 
         Raises:
-            NotMachineReadableError if 'sequence' does not contain a
+            :class:`NotMachineReadableError` if 'sequence' does not contain a
                 machine-readable debian/copyright file.
             MachineReadableFormatError if 'sequence' is not a valid file.
         """
@@ -340,6 +338,7 @@ def parse_multiline(s):
 
     Technically it can't be a perfect inverse, since format_multline must
     replace all-whitespace lines with ' .'.  Specifically, this function:
+
       - Does nothing to the first line
       - Removes first character (which must be ' ') from each proceeding line.
       - Replaces any line that is '.' with an empty line.

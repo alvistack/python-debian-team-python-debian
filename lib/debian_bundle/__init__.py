@@ -1,3 +1,5 @@
+""" Deprecated interface to `debian.debian_bundle` """
+
 import os
 import warnings
 

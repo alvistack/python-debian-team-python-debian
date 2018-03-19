@@ -1,4 +1,5 @@
-# debian_support.py -- Python module for Debian metadata
+""" Facilities to deal with Debian-specific metadata """
+
 # Copyright (C) 2005 Florian Weimer <fw@deneb.enyo.de>
 # Copyright (C) 2010 John Wright <jsw@debian.org>
 # 
@@ -15,8 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-
-"""This module implements facilities to deal with Debian-specific metadata."""
 
 from __future__ import absolute_import, print_function
 
