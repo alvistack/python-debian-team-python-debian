@@ -84,7 +84,6 @@ upload it.
 
 The upload procedure is:
 
-$ rm setup.py
 $ ./debian/rules dist
 $ twine upload --sign dist/python?debian-x.y.z.*
 

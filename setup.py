@@ -17,9 +17,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from setuptools import setup
+import sys
+
+sys.path.insert(0, 'lib')
+import debian
 
 setup(name='python-debian',
-      version='__CHANGELOG_VERSION__',
+      version=debian.__version__,
       description='Debian package related modules',
       url='https://salsa.debian.org/python-debian-team/python-debian',
       package_dir={'': 'lib'},

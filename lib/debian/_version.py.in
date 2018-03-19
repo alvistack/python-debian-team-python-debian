@@ -1,0 +1,3 @@
+""" Version of the package """
+
+__version__ = '__CHANGELOG_VERSION__'

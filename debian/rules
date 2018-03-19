@@ -15,10 +15,11 @@ export PYBUILD_NAME=debian
 %.py: %.py.in debian/changelog
 	sed -e 's/__CHANGELOG_VERSION__/$(DEB_VERSION)/' < $< > $@
 
-override_dh_auto_clean: setup.py
+override_dh_auto_clean: lib/debian/_version.py
 	dh_auto_clean
+	rm lib/debian/_version.py
 
-override_dh_auto_build: setup.py
+override_dh_auto_build: lib/debian/_version.py
 	dh_auto_build
 	lib/debian/doc-debtags > README.debtags
 
@@ -44,7 +45,7 @@ override_dh_installexamples:
 	# but so far, he has no better place for it
 	dh_installexamples -X wxssearch
 
-dist: setup.py
+dist: lib/debian/_version.py
 	rm -f dist/python?debian-$(DEB_VERSION)*
 	python3 setup.py sdist bdist_wheel bdist_egg
 	python2 setup.py bdist_wheel bdist_egg
