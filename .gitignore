@@ -12,3 +12,4 @@ debian/*.substvars
 debian/python-debian/
 debian/python3-debian/
 lib/debian/_version.py
+docs/api

@@ -18,6 +18,7 @@ export PYBUILD_NAME=debian
 override_dh_auto_clean: lib/debian/_version.py
 	dh_auto_clean
 	rm lib/debian/_version.py
+	rm -rf docs/api
 
 override_dh_auto_build: lib/debian/_version.py
 	dh_auto_build
@@ -51,4 +52,13 @@ dist: lib/debian/_version.py
 	python2 setup.py bdist_wheel bdist_egg
 	echo "You can now: twine upload --sign dist/python?debian-$(DEB_VERSION)*"
 
-.PHONY: dist
+apidoc: lib/debian/__init__.py
+	rm -f docs/api/*
+	cd lib && sphinx-apidoc -e --private -H python-debian \
+	  -o ../docs/api/ . \
+	  deb822.py debian/tests/ debian_bundle/
+
+doc: apidoc lib/debian/__init__.py
+	make -C docs/ SPHINXOPTS="-a -v -n" html
+
+.PHONY: dist doc apidoc
