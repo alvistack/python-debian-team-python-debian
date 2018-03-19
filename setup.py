@@ -32,4 +32,5 @@ setup(name='python-debian',
       maintainer='Debian python-debian Maintainers',
       maintainer_email='pkg-python-debian-maint@lists.alioth.debian.org',
       install_requires=['six', 'chardet'],
+      test_suite='debian.tests',
      )
