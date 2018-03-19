@@ -1,0 +1,15 @@
+image: debian:stretch-backports
+
+pages:
+  script:
+  - apt-get update && apt-get install -y make python3-sphinx
+  - rm -f docs/api/*
+  - cd lib && sphinx-apidoc -e --private -H python-debian -o ../docs/api/ . deb822.py debian/tests/ debian_bundle/ && cd ..
+  - make -C docs/ SPHINXOPTS="-a -v -n" html
+  - mv build/sphinx/html/ public/
+  artifacts:
+    paths:
+    - public
+  only:
+  - tmp/docs
+
