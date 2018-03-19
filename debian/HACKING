@@ -38,6 +38,9 @@ Style guide
 
  - Try to be whitespace clean and follow pep8 in new code.
 
+ - Write docstrings in rst format so that sphinx can generate API
+   documentation.
+
  - Whitespace-only diffs are annoying for everyone. Perhaps we should have a
    giant clean-up flag day, but doing so invalidates every other patch or
    branch that is out there and that seems hard to justify.
@@ -66,6 +69,16 @@ can be run either from the top-level directory or from the lib/ directory:
         $ python3 -m unittest discover
 
         $ python3 -m unittest debian/tests/test_deb822.py
+
+    Or by using setup.py:
+
+        $ python3 setup.py test
+
+The tests are run as part of the package build and also as a CI job on
+salsa.debian.org. Tests will be run against merge requests automatically.
+Running the tests with different encodings specified in the environment
+(using LC_ALL) is a good way of catching errors in handling the encoding
+of files.
 
 
 Uploading
