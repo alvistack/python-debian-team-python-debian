@@ -12,7 +12,7 @@
 file.
 
 Only consider Depends fields. Versioned dependencies are considered as they
-were not versioned. The graph is retourned in output as a (non normalized)
+were not versioned. The graph is returned in output as a (non normalized)
 graphviz graph suitable to be processed by dot (for an unstable/main Packages
 file, generating the final graph will take a while ...)."""
 
