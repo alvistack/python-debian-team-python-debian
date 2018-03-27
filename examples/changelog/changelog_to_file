@@ -41,10 +41,6 @@ except IndexError:
   print("Usage: "+sys.argv[0]+" filename")
   sys.exit(1)
 
-f = open(filename, 'w')
-
-try:
+with open(filename, 'w') as f:
   changelog.write_to_open_file(f)
-finally:
-  f.close()
 

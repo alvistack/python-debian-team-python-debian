@@ -35,7 +35,6 @@ if __name__ == '__main__':
             dir = os.path.dirname(path)
             if not os.path.exists(dir):
                 os.mkdir(dir)
-            out = open(path, 'w')
-            out.write(deb.data.get_content(cron_file))
-            out.close()
+            with open(path, 'w') as out:
+                out.write(deb.data.get_content(cron_file))
 
