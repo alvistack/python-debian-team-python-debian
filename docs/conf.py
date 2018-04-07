@@ -34,6 +34,7 @@ import debian
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
+    'sphinx.ext.autosectionlabel',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -365,6 +366,7 @@ nitpick_ignore = [
     ('py:class', 'Exception'),
     ('py:class', 'exceptions.Exception'),
     ('py:class', 'exceptions.StandardError'),
+    ('py:class', 'exceptions.ValueError'),
 ]
 
 def skip_members(app, what, name, obj, skip, options):
