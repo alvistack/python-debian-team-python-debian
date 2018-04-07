@@ -74,14 +74,16 @@ class ChangelogParseError(_base_exception_class):
     is_user_error = True
 
     def __init__(self, line):
-        self._line=line
+        self._line = line
 
     def __str__(self):
         return "Could not parse changelog: "+self._line
 
+
 class ChangelogCreateError(_base_exception_class):
     """Indicates that changelog could not be created, as all the information
     required was not given"""
+
 
 class VersionError(_base_exception_class):
     """Indicates that the version does not conform to the required format"""
@@ -89,10 +91,11 @@ class VersionError(_base_exception_class):
     is_user_error = True
 
     def __init__(self, version):
-        self._version=version
+        self._version = version
 
     def __str__(self):
         return "Could not parse version: "+self._version
+
 
 # TODO(jsw): Remove this in favor of using debian_support.Version directly.  I
 # don't think we gain anything by using this empty subclass.
@@ -100,12 +103,13 @@ class Version(debian_support.Version):
     """Represents a version of a Debian package."""
     # debian_support.Version now has all the functionality we need
 
+
 class ChangeBlock(object):
     """Holds all the information about one block from the changelog."""
 
     def __init__(self, package=None, version=None, distributions=None,
-                urgency=None, urgency_comment=None, changes=None,
-                author=None, date=None, other_pairs=None, encoding='utf-8'):
+                 urgency=None, urgency_comment=None, changes=None,
+                 author=None, date=None, other_pairs=None, encoding='utf-8'):
         self._raw_version = None
         self._set_version(version)
         self.package = package
@@ -227,18 +231,21 @@ class ChangeBlock(object):
         def __str__(self):
             return unicode(self).encode(self._encoding)
 
-topline = re.compile(r'^(\w%(name_chars)s*) \(([^\(\) \t]+)\)'
-                     r'((\s+%(name_chars)s+)+)\;'
-                     % {'name_chars': '[-+0-9a-z.]'},
-                     re.IGNORECASE)
+topline = re.compile(
+    r'^(\w%(name_chars)s*) \(([^\(\) \t]+)\)'
+    r'((\s+%(name_chars)s+)+)\;'
+    % {'name_chars': '[-+0-9a-z.]'},
+    re.IGNORECASE)
 blankline = re.compile(r'^\s*$')
 change = re.compile(r'^\s\s+.*$')
-endline = re.compile(r'^ -- (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}\s+\w+\s+'
-            r'\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}\s*)$')
-endline_nodetails = re.compile(r'^ --(?: (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}'
-                r'\s+\w+\s+\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}'
-                r'))?\s*$')
-keyvalue= re.compile(r'^([-0-9a-z]+)=\s*(.*\S)$', re.IGNORECASE)
+endline = re.compile(
+    r'^ -- (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}\s+\w+\s+'
+    r'\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}\s*)$')
+endline_nodetails = re.compile(
+    r'^ --(?: (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}'
+    r'\s+\w+\s+\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}'
+    r'))?\s*$')
+keyvalue = re.compile(r'^([-0-9a-z]+)=\s*(.*\S)$', re.IGNORECASE)
 value_re = re.compile(r'^([-0-9a-z]+)((\s+.*)?)$', re.IGNORECASE)
 xbcs_re = re.compile('^X[BCS]+-', re.IGNORECASE)
 emacs_variables = re.compile(r'^(;;\s*)?Local variables:', re.IGNORECASE)
@@ -246,22 +253,29 @@ vim_variables = re.compile('^vim:', re.IGNORECASE)
 cvs_keyword = re.compile(r'^\$\w+:.*\$')
 comments = re.compile(r'^\# ')
 more_comments = re.compile(r'^/\*.*\*/')
-closes = re.compile(r'closes:\s*(?:bug)?\#?\s?\d+(?:,\s*(?:bug)?\#?\s?\d+)*',
-                    re.IGNORECASE)
+closes = re.compile(
+    r'closes:\s*(?:bug)?\#?\s?\d+(?:,\s*(?:bug)?\#?\s?\d+)*',
+    re.IGNORECASE)
 closeslp = re.compile(r'lp:\s+\#\d+(?:,\s*\#\d+)*', re.IGNORECASE)
 
-old_format_re1 = re.compile(r'^(\w+\s+\w+\s+\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}'
-        r'\s+[\w\s]*\d{4})\s+(.*)\s+(<|\()(.*)(\)|>)')
-old_format_re2 = re.compile(r'^(\w+\s+\w+\s+\d{1,2},?\s*\d{4})\s+(.*)'
-        r'\s+(<|\()(.*)(\)|>)')
-old_format_re3 = re.compile(r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)\;?',
-        re.IGNORECASE)
-old_format_re4 = re.compile(r'^([\w.+-]+)(-| )(\S+) Debian (\S+)',
-        re.IGNORECASE)
-old_format_re5 = re.compile('^Changes from version (.*) to (.*):',
-        re.IGNORECASE)
-old_format_re6 = re.compile(r'^Changes for [\w.+-]+-[\w.+-]+:?\s*$',
-        re.IGNORECASE)
+old_format_re1 = re.compile(
+    r'^(\w+\s+\w+\s+\d{1,2} \d{1,2}:\d{1,2}:\d{1,2}'
+    r'\s+[\w\s]*\d{4})\s+(.*)\s+(<|\()(.*)(\)|>)')
+old_format_re2 = re.compile(
+    r'^(\w+\s+\w+\s+\d{1,2},?\s*\d{4})\s+(.*)'
+    r'\s+(<|\()(.*)(\)|>)')
+old_format_re3 = re.compile(
+    r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)\;?',
+    re.IGNORECASE)
+old_format_re4 = re.compile(
+    r'^([\w.+-]+)(-| )(\S+) Debian (\S+)',
+    re.IGNORECASE)
+old_format_re5 = re.compile(
+    '^Changes from version (.*) to (.*):',
+    re.IGNORECASE)
+old_format_re6 = re.compile(
+    r'^Changes for [\w.+-]+-[\w.+-]+:?\s*$',
+    re.IGNORECASE)
 old_format_re7 = re.compile(r'^Old Changelog:\s*$', re.IGNORECASE)
 old_format_re8 = re.compile(r'^(?:\d+:)?\w[\w.+~-]*:?\s*$')
 
@@ -327,9 +341,10 @@ class Changelog(object):
         self._blocks = []
         self.initial_blank_lines = []
         if file is not None:
-            self.parse_changelog(file, max_blocks=max_blocks,
-                    allow_empty_author=allow_empty_author,
-                    strict=strict)
+            self.parse_changelog(
+                file, max_blocks=max_blocks,
+                allow_empty_author=allow_empty_author,
+                strict=strict)
 
     def _parse_error(self, message, strict):
         if strict:
@@ -338,7 +353,7 @@ class Changelog(object):
             warnings.warn(message)
 
     def parse_changelog(self, file, max_blocks=None,
-            allow_empty_author=False, strict=True, encoding=None):
+                        allow_empty_author=False, strict=True, encoding=None):
         """ Read and parse a changelog file
 
         If you create an Changelog object without sepcifying a changelog
@@ -364,7 +379,7 @@ class Changelog(object):
 
         current_block = ChangeBlock(encoding=encoding)
         changes = []
-        
+
         state = first_heading
         old_state = None
         if isinstance(file, bytes):
@@ -401,20 +416,23 @@ class Changelog(object):
                         pair = pair.strip()
                         kv_match = keyvalue.match(pair)
                         if kv_match is None:
-                            self._parse_error("Invalid key-value "
-                                        "pair after ';': %s" % pair, strict)
+                            self._parse_error(
+                                "Invalid key-value pair after ';': %s" % pair,
+                                strict)
                             continue
                         key = kv_match.group(1)
                         value = kv_match.group(2)
                         if key.lower() in all_keys:
-                            self._parse_error("Repeated key-value: "
-                                    "%s" % key.lower(), strict)
+                            self._parse_error(
+                                "Repeated key-value: "
+                                "%s" % key.lower(), strict)
                         all_keys[key.lower()] = value
                         if key.lower() == "urgency":
                             val_match = value_re.match(value)
                             if val_match is None:
-                                self._parse_error("Badly formatted "
-                                        "urgency value: %s" % value, strict)
+                                self._parse_error(
+                                    "Badly formatted urgency value: %s" %
+                                    value, strict)
                             else:
                                 current_block.urgency = val_match.group(1)
                                 comment = val_match.group(2)
@@ -449,26 +467,27 @@ class Changelog(object):
                             self._blocks[-1].add_trailing_line(line)
                         continue
                     if ((old_format_re1.match(line) is not None
-                        or old_format_re2.match(line) is not None
-                        or old_format_re3.match(line) is not None
-                        or old_format_re4.match(line) is not None
-                        or old_format_re5.match(line) is not None
-                        or old_format_re6.match(line) is not None
-                        or old_format_re7.match(line) is not None
-                        or old_format_re8.match(line) is not None)
-                        and state != first_heading):
-                            self._blocks[-1].add_trailing_line(line)
-                            old_state = state
-                            state = slurp_to_end
-                            continue
-                    self._parse_error("Unexpected line while looking "
-                            "for %s: %s" % (state, line), strict)
+                         or old_format_re2.match(line) is not None
+                         or old_format_re3.match(line) is not None
+                         or old_format_re4.match(line) is not None
+                         or old_format_re5.match(line) is not None
+                         or old_format_re6.match(line) is not None
+                         or old_format_re7.match(line) is not None
+                         or old_format_re8.match(line) is not None)
+                            and state != first_heading):
+                        self._blocks[-1].add_trailing_line(line)
+                        old_state = state
+                        state = slurp_to_end
+                        continue
+                    self._parse_error(
+                        "Unexpected line while looking for %s: %s" %
+                        (state, line), strict)
                     if state == first_heading:
                         self.initial_blank_lines.append(line)
                     else:
                         self._blocks[-1].add_trailing_line(line)
             elif (state == start_of_change_data
-                    or state == more_changes_or_trailer):
+                  or state == more_changes_or_trailer):
                 change_match = change.match(line)
                 end_match = endline.match(line)
                 end_no_details_match = endline_nodetails.match(line)
@@ -478,8 +497,8 @@ class Changelog(object):
                     state = more_changes_or_trailer
                 elif end_match is not None:
                     if end_match.group(3) != '  ':
-                        self._parse_error("Badly formatted trailer "
-                                "line: %s" % line, strict)
+                        self._parse_error(
+                            "Badly formatted trailer line: %s" % line, strict)
                         current_block._trailer_separator = end_match.group(3)
                     current_block.author = "%s <%s>" \
                         % (end_match.group(1), end_match.group(2))
@@ -491,8 +510,8 @@ class Changelog(object):
                     state = next_heading_or_eof
                 elif end_no_details_match is not None:
                     if not allow_empty_author:
-                        self._parse_error("Badly formatted trailer "
-                                "line: %s" % line, strict)
+                        self._parse_error(
+                            "Badly formatted trailer line: %s" % line, strict)
                         continue
                     current_block._changes = changes
                     self._blocks.append(current_block)
@@ -509,8 +528,9 @@ class Changelog(object):
                             or more_comments_match is not None):
                         changes.append(line)
                         continue
-                    self._parse_error("Unexpected line while looking "
-                            "for %s: %s" % (state, line), strict)
+                    self._parse_error(
+                        "Unexpected line while looking for %s: %s" %
+                        (state, line), strict)
                     changes.append(line)
             elif state == slurp_to_end:
                 if old_state == next_heading_or_eof:
@@ -518,12 +538,13 @@ class Changelog(object):
                 else:
                     changes.append(line)
             else:
-                 assert False, "Unknown state: %s" % state
-                
+                assert False, "Unknown state: %s" % state
+
         if ((state != next_heading_or_eof and state != slurp_to_end)
-            or (state == slurp_to_end and old_state != next_heading_or_eof)):
-            self._parse_error("Found eof where expected %s" % state,
-                    strict)
+                or (state == slurp_to_end
+                    and old_state != next_heading_or_eof)):
+            self._parse_error(
+                "Found eof where expected %s" % state, strict)
             current_block._changes = changes
             current_block._no_trailer = True
             self._blocks.append(current_block)
@@ -571,7 +592,7 @@ class Changelog(object):
     def get_package(self):
         """Returns the name of the package in the last entry."""
         return self._blocks[0].package
-  
+
     def set_package(self, package):
         """ set the name of the package in the last entry. """
         self._blocks[0].package = package
@@ -673,7 +694,7 @@ be uploaded."""
         doc="""\
         The author of the most recent change.
         This should be a properly formatted name/email pair."""
-     )
+    )
 
     def set_date(self, date):
         """ set the date of the top changelog entry
