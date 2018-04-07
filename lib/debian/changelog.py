@@ -1,4 +1,31 @@
-""" Facilities for reading and writing Debian changelogs """
+""" Facilities for reading and writing Debian changelogs
+
+The aim of this module is to provide programmatic access to Debian changelogs
+to query and manipulate them. The format for the changelog is defined in
+`changelog(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-changelog.5.html>`_
+
+N.B. The API is not stable yet, and so you can expect it to change.
+
+Overview
+--------
+
+Create a changelog object using the constuctor. Pass it the contents of the
+file if there are some entries, or None to create an empty changelog.
+See `/usr/share/doc/python-debian/examples/changelog/` for
+`examples <https://salsa.debian.org/python-debian-team/python-debian/tree/master/examples/changelog>`_
+of usage.
+
+If you have the full contents of a changelog, but are only interested in the
+most recent versions you can pass the ``max_blocks`` keyword parameter to the
+constuctor to limit the number of blocks of the changelog that will be parsed.
+If you are only interested in the most recent version of the package then pass
+``max_blocks=1``.
+
+The :class:`Changelog` class is the key class within this module.
+
+Classes
+-------
+"""
 
 # Copyright (C) 2006-7 James Westby <jw+debian@jameswestby.net>
 # Copyright (C) 2008 Canonical Ltd.
@@ -240,7 +267,44 @@ old_format_re8 = re.compile(r'^(?:\d+:)?\w[\w.+~-]*:?\s*$')
 
 
 class Changelog(object):
-    """Represents a debian/changelog file."""
+    """Represents a debian/changelog file.
+
+    To get the properly formatted changelog back out of the object
+    merely call `str()` on it. The returned string should be a properly
+    formatted changelog.
+
+    There are a number of errors that may be thrown by the module:
+
+    - :class:`ChangelogParseError`:
+      Indicates that the changelog could not be parsed, i.e. there is a line
+      that does not conform to the requirements, or a line was found out of
+      its normal position. May be thrown when using the method
+      `parse_changelog`.
+      The constructor will not throw this exception.
+    - :class:`ChangelogCreateError`:
+      Some information required to create the changelog was not available.
+      This can be thrown when `str()` is used on the object, and will occur
+      if a required value is `None`.
+    - :class:`VersionError`:
+      The string used to create a Version object cannot be parsed as it
+      doesn't conform to the specification of a version number. Can be
+      thrown when creating a Changelog object from an existing changelog,
+      or instantiating a Version object directly to assign to the version
+      attribute of a Changelog object.
+
+    If you have a changelog that may have no author information yet as
+    it is still a work in progress, i.e. the author line is just::
+
+        --
+
+    rather than::
+
+        -- Author <author@debian.org>  Thu, 12 Dec 2006 12:23:34 +0000
+
+    then you can pass ``allow_empty_author=True`` to the Changelog
+    constructor. If you do this then the ``author`` and ``date``
+    attributes may be ``None``.
+    """
 
     # TODO(jsw): Avoid masking the 'file' built-in.
     def __init__(self, file=None, max_blocks=None,
@@ -275,6 +339,14 @@ class Changelog(object):
 
     def parse_changelog(self, file, max_blocks=None,
             allow_empty_author=False, strict=True, encoding=None):
+        """ Read and parse a changelog file
+
+        If you create an Changelog object without sepcifying a changelog
+        file, you can parse a changelog file with this method. If the
+        changelog doesn't parse cleanly, a :class:`ChangelogParseError`
+        exception is thrown. The constructor will parse the changelog on
+        a best effort basis.
+        """
         first_heading = "first heading"
         next_heading_or_eof = "next heading of EOF"
         start_of_change_data = "start of change data"
@@ -467,32 +539,60 @@ class Changelog(object):
         """
         self._blocks[0].version = Version(version)
 
-    version = property(get_version, set_version,
-                 doc="Version object for last changelog block""")
+    version = property(
+        get_version, set_version,
+        doc="""Version object for latest changelog block.
+            (Property that can both get and set the version.)"""
+    )
 
     ### For convenience, let's expose some of the version properties
-    full_version = property(lambda self: self.version.full_version)
-    epoch = property(lambda self: self.version.epoch)
-    debian_version = property(lambda self: self.version.debian_revision)
-    debian_revision = property(lambda self: self.version.debian_revision)
-    upstream_version = property(lambda self: self.version.upstream_version)
+    full_version = property(
+        lambda self: self.version.full_version,
+        doc="The full version number of the last version"
+    )
+    epoch = property(
+        lambda self: self.version.epoch,
+        doc="The epoch number of the last revision, or `None` "
+        "if no epoch was used."
+    )
+    debian_version = property(
+        lambda self: self.version.debian_revision,
+        doc="The debian part of the version number of the last version."
+    )
+    debian_revision = property(
+        lambda self: self.version.debian_revision,
+        doc="The debian part of the version number of the last version."
+    )
+    upstream_version = property(
+        lambda self: self.version.upstream_version,
+        doc="The upstream part of the version number of the last version."
+    )
 
     def get_package(self):
-        """Returns the name of the package in the last version."""
+        """Returns the name of the package in the last entry."""
         return self._blocks[0].package
   
     def set_package(self, package):
+        """ set the name of the package in the last entry. """
         self._blocks[0].package = package
 
-    package = property(get_package, set_package,
-                     doc="Name of the package in the last version")
+    package = property(
+        get_package, set_package,
+        doc="Name of the package in the last version"
+    )
 
     def get_versions(self):
         """Returns a list of version objects that the package went through."""
         return [block.version for block in self._blocks]
 
-    versions = property(get_versions,
-                      doc="List of version objects the package went through")
+    versions = property(
+        get_versions,
+        doc="""\
+A list of :class:`debian.debian_support.Version` objects that the package
+went through. These version objects provide all version attributes such as
+`epoch`, `debian_revision`, `upstream_version`.
+These attributes cannot be assigned to."""
+    )
 
     def _raw_versions(self):
         return [block._raw_version for block in self._blocks]
@@ -534,31 +634,81 @@ class Changelog(object):
 
     def set_distributions(self, distributions):
         self._blocks[0].distributions = distributions
-    distributions = property(lambda self: self._blocks[0].distributions,
-                           set_distributions)
+
+    distributions = property(
+        lambda self: self._blocks[0].distributions, set_distributions,
+        doc="""\
+A string indicating the distributions that the package will be uploaded to
+in the most recent version."""
+    )
 
     def set_urgency(self, urgency):
         self._blocks[0].urgency = urgency
-    urgency = property(lambda self: self._blocks[0].urgency, set_urgency)
+
+    urgency = property(
+        lambda self: self._blocks[0].urgency, set_urgency,
+        doc="""\
+A string indicating the urgency with which the most recent version will
+be uploaded."""
+    )
 
     def add_change(self, change):
+        """ and a new dot point to a changelog entry
+
+        Adds a change entry to the most recent version. The change entry
+        should conform to the required format of the changelog (i.e. start
+        with two spaces). No line wrapping or anything will be performed,
+        so it is advisable to do this yourself if it is a long entry. The
+        change will be appended to the current changes, no support is
+        provided for per-maintainer changes.
+        """
         self._blocks[0].add_change(change)
 
     def set_author(self, author):
+        """ set the author of the top changelog entry """
         self._blocks[0].author = author
-    author = property(lambda self: self._blocks[0].author, set_author)
+
+    author = property(
+        lambda self: self._blocks[0].author, set_author,
+        doc="""\
+        The author of the most recent change.
+        This should be a properly formatted name/email pair."""
+     )
 
     def set_date(self, date):
+        """ set the date of the top changelog entry
+
+        :param date: str
+            a properly formatted date string (`date -R` format; see Policy)
+        """
         self._blocks[0].date = date
-    date = property(lambda self: self._blocks[0].date, set_date)
+
+    date = property(
+        lambda self: self._blocks[0].date, set_date,
+        doc="""\
+        The date associated with the current entry.
+        Should be a properly formatted string with the date and timezone."""
+    )
 
     def new_block(self, **kwargs):
+        """ Add a new changelog block to the changelog
+
+        Start a new version of the package. The arguments (all optional)
+        specify the values that can be provided to the set_* methods. If
+        they are omitted the associated attributes must be assigned to
+        before the changelog is created.
+        """
         kwargs.setdefault('encoding', self._encoding)
         block = ChangeBlock(**kwargs)
         block.add_trailing_line('')
         self._blocks.insert(0, block)
 
     def write_to_open_file(self, file):
+        """ Write the changelog entry to a filehandle
+
+        Write the changelog out to the filehandle passed. The file argument
+        must be an open file object.
+        """
         file.write(self.__str__())
 
 
