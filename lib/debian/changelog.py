@@ -157,8 +157,8 @@ class ChangeBlock(object):
         if self._changes is None:
             self._changes = [change]
         else:
-            #Bit of trickery to keep the formatting nicer with a blank
-            #line at the end if there is one
+            # Bit of trickery to keep the formatting nicer with a blank
+            # line at the end if there is one
             changes = self._changes
             changes.reverse()
             added = False
@@ -218,7 +218,7 @@ class ChangeBlock(object):
             if self.date is None:
                 raise ChangelogCreateError("Date not specified")
             block += " -- " + self.author + self._trailer_separator \
-                      + self.date + "\n"
+                + self.date + "\n"
         for line in self._trailing:
             block += line + "\n"
         return block
@@ -569,7 +569,7 @@ class Changelog(object):
             (Property that can both get and set the version.)"""
     )
 
-    ### For convenience, let's expose some of the version properties
+    # For convenience, let's expose some of the version properties
     full_version = property(
         lambda self: self.version.full_version,
         doc="The full version number of the last version"
