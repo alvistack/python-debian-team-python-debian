@@ -134,6 +134,7 @@ class Copyright(object):
                 if 'Files' in p:
                     p = FilesParagraph(p, strict)
                 elif 'License' in p:
+                    # pylint: disable=redefined-variable-type
                     p = LicenseParagraph(p, strict)
                 else:
                     _complain('Non-header paragraph has neither "Files" nor '

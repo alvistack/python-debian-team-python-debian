@@ -288,6 +288,7 @@ class ArMember(object):
             return buf
 
     def readlines(self, sizehint=0):
+        # pylint: disable=unused-argument
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
             self.__fp.seek(self.__offset)
@@ -333,6 +334,7 @@ class ArMember(object):
             return cur - self.__offset
 
     def seekable(self):
+        # pylint: disable=no-self-use
         return True
 
     def close(self):

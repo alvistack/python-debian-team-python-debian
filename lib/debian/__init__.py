@@ -1,6 +1,7 @@
 """ Tools for working with Debian-related file formats """
 
 try:
+    # pylint: disable=no-member
     import debian._version
     __version__ = debian._version.__version__
 
@@ -16,7 +17,7 @@ except ImportError:
             c = debian.changelog.Changelog(fh)
             version = str(c.get_version())
             mark = "~" if c.distributions == 'UNRELEASED' else "+"
-    except:
+    except:    # pylint: disable=bare-except
         # Fake a version string in desperation
         version = '0.0.0'
         mark = '-'

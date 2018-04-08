@@ -128,12 +128,14 @@ def relevance_index_function(full, sub):
     ## full collection, to downplay the importance of rare tags
     #return float(sub.card(tag) * full.card(tag)) / float(full.card(tag) * full.tag_count())
     # Simplified version:
-    #return float(sub.card(tag)) / float(full.tag_count())
+    # return float(sub.card(tag)) / float(full.tag_count())
 
     # Weighted by the square root of the relevance, to downplay the very
     # common tags a bit
-    #return lambda tag: float(sub.card(tag)) / float(full.card(tag)) * math.sqrt(full.card(tag) / float(full.tag_count()))
-    #return lambda tag: float(sub.card(tag)) / float(full.card(tag)) * math.sqrt(full.card(tag) / float(full.package_count()))
+    # return lambda tag: float(sub.card(tag)) / float(full.card(tag)) *
+    # math.sqrt(full.card(tag) / float(full.tag_count()))
+    # return lambda tag: float(sub.card(tag)) / float(full.card(tag)) *
+    # math.sqrt(full.card(tag) / float(full.package_count()))
     # One useless factor removed, and simplified further, thanks to Benjamin Mesing
     return lambda tag: float(sub.card(tag)**2) / float(full.card(tag))
 
@@ -142,11 +144,12 @@ def relevance_index_function(full, sub):
     # as well.  In the case of 'image editor', for example, there will be
     # lots of editors not for images in the outside group.
     # It is very, very good for nonambiguous keywords like 'image'.
-    #return lambda tag: 2 * sub.card(tag) - full.card(tag)
+    # return lambda tag: 2 * sub.card(tag) - full.card(tag)
     # Same but it tries to downplay the 'how many are out' value in the
     # case of popular tags, to mitigate the 'there will always be popular
     # tags left out' cases.  Does not seem to be much of an improvement.
-    #return lambda tag: sub.card(tag) - float(full.card(tag) - sub.card(tag))/(math.sin(float(full.card(tag))*3.1415/full.package_count())/4 + 0.75)
+    # return lambda tag: sub.card(tag) - float(full.card(tag) - sub.card(tag))/
+    # (math.sin(float(full.card(tag))*3.1415/full.package_count())/4 + 0.75)
 
 
 relevanceIndexFunction = function_deprecated_by(relevance_index_function)

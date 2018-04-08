@@ -52,7 +52,9 @@ If you are only interested in the most recent version of the package then pass
 
 
 See `/usr/share/doc/python-debian/examples/changelog/` or the
-`git repository <https://salsa.debian.org/python-debian-team/python-debian/tree/master/examples/changelog>`_
+`git repository
+<https://salsa.debian.org/python-debian-team/python-debian/tree/master/
+examples/changelog>`_
 for examples of usage.
 
 
@@ -299,6 +301,8 @@ class ChangeBlock(object):
         __unicode__ = _format
 
         def __str__(self):
+            # pylint: disable=undefined-variable
+            # (pylint3 doesn't cope with the use of `unicode`)
             return unicode(self).encode(self._encoding)
 
 
@@ -707,6 +711,8 @@ These attributes cannot be assigned to."""
         __unicode__ = _format
 
         def __str__(self):
+            # pylint: disable=undefined-variable
+            # (pylint3 doesn't cope with the use of `unicode`)
             return unicode(self).encode(self._encoding)
 
     def __iter__(self):

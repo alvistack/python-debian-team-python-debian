@@ -248,7 +248,7 @@ class DebControl(DebPart):
         if encoding is None:
             newline = b'\r\n'
         else:
-            newline = '\r\n'
+            newline = '\r\n'    # pylint: disable=redefined-variable-type
         for line in md5_file.readlines():
             # we need to support spaces in filenames, .split() is not enough
             md5, fname = line.rstrip(newline).split(None, 1)
