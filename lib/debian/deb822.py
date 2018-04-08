@@ -495,26 +495,26 @@ class Deb822Dict(collections.MutableMapping):
 
 
 class Deb822(Deb822Dict):
+    """ Generic Deb822 data
+
+    :param sequence: a string, or any any object that returns a line of
+        input each time, normally a file.  Alternately, sequence can
+        be a dict that contains the initial key-value pairs. When
+        python-apt is present, sequence can also be a compressed object,
+        for example a file object associated to something.gz.
+
+    :param fields: if given, it is interpreted as a list of fields that
+        should be parsed (the rest will be discarded).
+
+    :param _parsed: internal parameter.
+
+    :param encoding: When parsing strings, interpret them in this encoding.
+        (All values are given back as unicode objects, so an encoding is
+        necessary in order to properly interpret the strings.)
+    """
 
     def __init__(self, sequence=None, fields=None, _parsed=None,
                  encoding="utf-8"):
-        """Create a new Deb822 instance.
-
-        :param sequence: a string, or any any object that returns a line of
-            input each time, normally a file.  Alternately, sequence can
-            be a dict that contains the initial key-value pairs. When
-            python-apt is present, sequence can also be a compressed object,
-            for example a file object associated to something.gz.
-
-        :param fields: if given, it is interpreted as a list of fields that
-            should be parsed (the rest will be discarded).
-
-        :param _parsed: internal parameter.
-
-        :param encoding: When parsing strings, interpret them in this encoding.
-            (All values are given back as unicode objects, so an encoding is
-            necessary in order to properly interpret the strings.)
-        """
 
         if hasattr(sequence, 'items'):
             _dict = sequence
