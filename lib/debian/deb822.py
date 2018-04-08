@@ -957,7 +957,7 @@ class GpgInfo(dict):
 
     This class is really a dictionary containing parsed output from gnupg plus
     some methods to make sense of the data.
-    Keys are keywords and values are arguments suitably splitted.
+    Keys are keywords and values are arguments suitably split.
     See /usr/share/doc/gnupg/DETAILS.gz"""
 
     # keys with format "key keyid uid"
