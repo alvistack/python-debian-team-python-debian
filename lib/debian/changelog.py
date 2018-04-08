@@ -234,13 +234,14 @@ class ChangeBlock(object):
         def __str__(self):
             return unicode(self).encode(self._encoding)
 
+
 topline = re.compile(
     r'^(\w%(name_chars)s*) \(([^\(\) \t]+)\)'
     r'((\s+%(name_chars)s+)+)\;'
     % {'name_chars': '[-+0-9a-z.]'},
     re.IGNORECASE)
 blankline = re.compile(r'^\s*$')
-change = re.compile(r'^\s\s+.*$')
+changere = re.compile(r'^\s\s+.*$')
 endline = re.compile(
     r'^ -- (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}\s+\w+\s+'
     r'\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}\s*)$')
@@ -491,7 +492,7 @@ class Changelog(object):
                         self._blocks[-1].add_trailing_line(line)
             elif (state == start_of_change_data
                   or state == more_changes_or_trailer):
-                change_match = change.match(line)
+                change_match = changere.match(line)
                 end_match = endline.match(line)
                 end_no_details_match = endline_nodetails.match(line)
                 blank_match = blankline.match(line)
