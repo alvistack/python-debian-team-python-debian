@@ -27,6 +27,7 @@ import six
 
 from debian.deprecation import function_deprecated_by
 
+
 def parse_tags(input_data):
     lre = re.compile(r"^(.+?)(?::?\s*|:\s+(.+?)\s*)$")
     for line in input_data:
@@ -40,7 +41,9 @@ def parse_tags(input_data):
             tags = set()
         yield pkgs, tags
 
+
 parseTags = function_deprecated_by(parse_tags)
+
 
 def read_tag_database(input_data):
     "Read the tag database, returning a pkg->tags dictionary"
@@ -51,7 +54,9 @@ def read_tag_database(input_data):
             db[p] = tags.copy()
     return db
 
+
 readTagDatabase = function_deprecated_by(read_tag_database)
+
 
 def read_tag_database_reversed(input_data):
     "Read the tag database, returning a tag->pkgs dictionary"
@@ -65,7 +70,9 @@ def read_tag_database_reversed(input_data):
                 db[tag] = pkgs.copy()
     return db
 
+
 readTagDatabaseReversed = function_deprecated_by(read_tag_database_reversed)
+
 
 def read_tag_database_both_ways(input_data, tag_filter=None):
     "Read the tag database, returning a pkg->tags and a tag->pkgs dictionary"
@@ -86,7 +93,9 @@ def read_tag_database_both_ways(input_data, tag_filter=None):
                 dbr[tag] = pkgs.copy()
     return db, dbr
 
+
 readTagDatabaseBothWays = function_deprecated_by(read_tag_database_both_ways)
+
 
 def reverse(db):
     "Reverse a tag database, from package -> tags to tag->packages"
@@ -139,7 +148,9 @@ def relevance_index_function(full, sub):
     # tags left out' cases.  Does not seem to be much of an improvement.
     #return lambda tag: sub.card(tag) - float(full.card(tag) - sub.card(tag))/(math.sin(float(full.card(tag))*3.1415/full.package_count())/4 + 0.75)
 
+
 relevanceIndexFunction = function_deprecated_by(relevance_index_function)
+
 
 class DB:
     """
