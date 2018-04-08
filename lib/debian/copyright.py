@@ -480,6 +480,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
         :param copyright_info: The copyright for the files (free-form text).
         :param license_info: The Licence for the files.
         """
+        # pylint: disable=redefined-builtin
         p = cls(deb822.Deb822(), _internal_validate=False)
         p.files = files
         p.copyright = copyright
@@ -536,6 +537,7 @@ class LicenseParagraph(deb822.RestrictedWrapper):
     @classmethod
     def create(cls, license):
         """Returns a LicenseParagraph with the given license."""
+        # pylint: disable=redefined-builtin
         if not isinstance(license, License):
             raise TypeError('license must be a License instance')
         paragraph = cls(deb822.Deb822(), _internal_validate=False)
