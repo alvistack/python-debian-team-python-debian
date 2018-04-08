@@ -49,7 +49,7 @@ def read_tag_database(input):
         # Create the tag set using the native set
         for p in pkgs:
             db[p] = tags.copy()
-    return db;
+    return db
 
 readTagDatabase = function_deprecated_by(read_tag_database)
 
@@ -63,17 +63,17 @@ def read_tag_database_reversed(input):
                 db[tag] |= pkgs
             else:
                 db[tag] = pkgs.copy()
-    return db;
+    return db
 
 readTagDatabaseReversed = function_deprecated_by(read_tag_database_reversed)
 
-def read_tag_database_both_ways(input, tag_filter = None):
+def read_tag_database_both_ways(input, tag_filter=None):
     "Read the tag database, returning a pkg->tags and a tag->pkgs dictionary"
     db = {}
     dbr = {}
     for pkgs, tags in parse_tags(input):
         # Create the tag set using the native set
-        if tag_filter == None:
+        if tag_filter is None:
             tags = set(tags)
         else:
             tags = set(filter(tag_filter, tags))
@@ -84,7 +84,7 @@ def read_tag_database_both_ways(input, tag_filter = None):
                 dbr[tag] |= pkgs
             else:
                 dbr[tag] = pkgs.copy()
-    return db, dbr;
+    return db, dbr
 
 readTagDatabaseBothWays = function_deprecated_by(read_tag_database_both_ways)
 
@@ -237,7 +237,8 @@ class DB:
         res = DB()
         db = {}
         for pkg in package_iter:
-            if pkg in self.db: db[pkg] = self.db[pkg]
+            if pkg in self.db:
+                db[pkg] = self.db[pkg]
         res.db = db
         res.rdb = reverse(db)
         return res
@@ -383,7 +384,7 @@ class DB:
         """Return the set of tags that have all the packages in pkgs"""
         res = None
         for p in pkgs:
-            if res == None:
+            if res is None:
                 res = set(self.tags_of_package(p))
             else:
                 res &= self.tags_of_package(p)
@@ -395,7 +396,7 @@ class DB:
         """Return the set of packages that have all the tags in tags"""
         res = None
         for t in tags:
-            if res == None:
+            if res is None:
                 res = set(self.packages_of_tag(t))
             else:
                 res &= self.packages_of_tag(t)
@@ -482,7 +483,8 @@ class DB:
         for i in range(len(tags)):
             pkgs = self.packages_of_tags(tags[:i+1])
             card = len(pkgs)
-            if card == 0: break;
+            if card == 0:
+                break
             score = score_fun(card)
             if score < min_score:
                 min_score = score
@@ -507,7 +509,8 @@ class DB:
             with_ = self.filter_packages_tags(lambda pt: pivot in pt[1])
             without = self.filter_packages_tags(lambda pt: pivot not in pt[1])
             for tag in with_.iter_tags():
-                if tag == pivot: continue
+                if tag == pivot:
+                    continue
                 has = float(with_.card(tag)) / float(with_.package_count())
                 hasnt = float(without.card(tag)) / float(without.package_count())
                 yield pivot, tag, has - hasnt
