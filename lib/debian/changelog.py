@@ -5,7 +5,9 @@ to query and manipulate them. The format for the changelog is defined in
 `deb-changelog(5)
 <https://manpages.debian.org/stretch/dpkg-dev/deb-changelog.5.html>`_
 
-N.B. The API is not stable yet, and so you can expect it to change.
+Stability: The API is not marked as stable but hasn't changed incompatibly
+since 2007. Potential users of these classes are asked to work with the
+`python-debian` maintainers to improve, extend and stabilise this API.
 
 Overview
 --------
@@ -20,7 +22,25 @@ If you have the full contents of a changelog, but are only interested in the
 most recent versions you can pass the ``max_blocks`` keyword parameter to the
 constuctor to limit the number of blocks of the changelog that will be parsed.
 If you are only interested in the most recent version of the package then pass
-``max_blocks=1``.
+``max_blocks=1``::
+
+    >>> import gzip
+    >>> from debian.changelog import Changelog
+    >>> with gzip.open('/usr/share/doc/dpkg/changelog.Debian.gz') as fh:
+    ...     ch = Changelog(fh, max_blocks=1)
+    >>> print('''
+    ...     Package: %s
+    ...     Version: %s
+    ...     Urgency: %s''' % (ch.package, ch.version, ch.urgency))
+        Package: dpkg
+        Version: 1.18.24
+        Urgency: medium
+
+
+See `/usr/share/doc/python-debian/examples/changelog/` or the
+`git repository <https://salsa.debian.org/python-debian-team/python-debian/tree/master/examples/changelog>`_
+for examples of usage.
+
 
 The :class:`Changelog` class is the key class within this module.
 
@@ -109,7 +129,29 @@ class Version(debian_support.Version):
 
 
 class ChangeBlock(object):
-    """Holds all the information about one block from the changelog."""
+    """Holds all the information about one block from the changelog.
+
+    See `deb-changelog(5)
+    <https://manpages.debian.org/stretch/dpkg-dev/deb-changelog.5.html>`_
+    for more details about the format of the changelog block and the
+    necessary data.
+
+    :param package: str, name of the package
+    :param version: str or Version, version of the package
+    :param distributions: str, distributions to which the package is
+        released
+    :param urgency: str, urgency of the upload
+    :param urgency_comment: str, comment about the urgency setting
+    :param changes: list of str, individual changelog entries for this
+        block
+    :param author: str, name and email address of the changelog author
+    :param date: str, date of the changelog in RFC822 (`date -R`) format
+    :param other_pairs: dict, key=value pairs from the header of the
+        changelog, other than the urgency value that is specified
+        separately
+    :param encoding: specify the encoding to be used; note that Debian
+        Policy mandates the use of UTF-8.
+    """
 
     def __init__(self, package=None, version=None, distributions=None,
                  urgency=None, urgency_comment=None, changes=None,
@@ -136,9 +178,13 @@ class ChangeBlock(object):
     def _get_version(self):
         return Version(self._raw_version)
 
-    version = property(_get_version, _set_version)
+    version = property(
+        _get_version, _set_version,
+        doc="The package version that this block pertains to"
+        )
 
     def other_keys_normalised(self):
+        """ Obtain a dict from the block header (other than urgency) """
         norm_dict = {}
         for (key, value) in self.other_pairs.items():
             key = key[0].upper() + key[1:].lower()
@@ -149,12 +195,15 @@ class ChangeBlock(object):
         return norm_dict
 
     def changes(self):
+        """ Get the changelog entries for this block as a list of str """
         return self._changes
 
     def add_trailing_line(self, line):
+        """ Add a sign-off (trailer) line to the block """
         self._trailing.append(line)
 
     def add_change(self, change):
+        """ Append a change entry to the block """
         if self._changes is None:
             self._changes = [change]
         else:
@@ -185,10 +234,12 @@ class ChangeBlock(object):
 
     @property
     def bugs_closed(self):
+        """ List of (Debian) bugs closed by the block """
         return self._get_bugs_closed_generic(closes)
 
     @property
     def lp_bugs_closed(self):
+        """ List of Launchpad bugs closed by the block """
         return self._get_bugs_closed_generic(closeslp)
 
     def _format(self):
@@ -292,6 +343,21 @@ class Changelog(object):
     merely call `str()` on it. The returned string should be a properly
     formatted changelog.
 
+    :param file: str or file-like.
+        The contents of the changelog, either as a ``str``, ``unicode`` object,
+        or an iterator of lines such as a filehandle, (each line is either a
+        ``str`` or ``unicode``)
+    :param max_blocks: int, optional (Default: ``None``, no limit)
+        The maximum number of blocks to parse from the input.
+    :param allow_empty_author: bool, optional (Default: `False`),
+        Whether to allow an empty author in the trailer line of a change
+        block.
+    :param strict: bool, optional (Default: ``False``, use a warning)
+        Whether to raise an exception if there are errors.
+    :param encoding: str,
+        If the input is a str or iterator of str, the encoding to use when
+        interpreting the input.
+
     There are a number of errors that may be thrown by the module:
 
     - :class:`ChangelogParseError`:
@@ -323,25 +389,12 @@ class Changelog(object):
     then you can pass ``allow_empty_author=True`` to the Changelog
     constructor. If you do this then the ``author`` and ``date``
     attributes may be ``None``.
+
     """
 
     # TODO(jsw): Avoid masking the 'file' built-in.
     def __init__(self, file=None, max_blocks=None,
                  allow_empty_author=False, strict=False, encoding='utf-8'):
-        """Initializer.
-
-        Args:
-          file: The contents of the changelog, either as a str, unicode object,
-              or an iterator of lines (each of which is either a str or unicode)
-          max_blocks: The maximum number of blocks to parse from the input.
-              (Default: no limit)
-          allow_empty_author: Whether to allow an empty author in the trailer
-              line of a change block.  (Default: False)
-          strict: Whether to raise an exception if there are errors.  (Default:
-              use a warning)
-          encoding: If the input is a str or iterator of str, the encoding to
-              use when interpreting the input.
-        """
         self._encoding = encoding
         self._blocks = []
         self.initial_blank_lines = []
@@ -713,16 +766,19 @@ be uploaded."""
         lambda self: self._blocks[0].date, set_date,
         doc="""\
         The date associated with the current entry.
-        Should be a properly formatted string with the date and timezone."""
+        Should be a properly formatted string with the date and timezone.
+        See the :func:`format_date()` function."""
     )
 
     def new_block(self, **kwargs):
         """ Add a new changelog block to the changelog
 
-        Start a new version of the package. The arguments (all optional)
-        specify the values that can be provided to the set_* methods. If
-        they are omitted the associated attributes must be assigned to
-        before the changelog is created.
+        Start a new :class:`ChangeBlock` entry representing a new version
+        of the package. The arguments (all optional) are passed directly
+        to the :class:`ChangeBlock` constructor; they specify the values
+        that can be provided to the `set_*` methods of this class. If
+        they are omitted the associated attributes *must* be assigned to
+        before the changelog is formatted as a str or written to a file.
         """
         kwargs.setdefault('encoding', self._encoding)
         block = ChangeBlock(**kwargs)
