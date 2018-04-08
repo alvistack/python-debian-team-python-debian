@@ -219,17 +219,6 @@ Deb822 Classes
 
 from __future__ import absolute_import, print_function
 
-from debian.deprecation import function_deprecated_by
-
-try:
-    import apt_pkg
-    # This module uses apt_pkg only for its TagFile interface.
-    apt_pkg.TagFile     # pylint: disable=pointless-statement
-    _have_apt_pkg = True
-except (ImportError, AttributeError):
-    _have_apt_pkg = False
-
-import chardet
 import collections
 import datetime
 import email.utils
@@ -240,7 +229,19 @@ import warnings
 
 from io import BytesIO, StringIO
 
+import chardet
 import six
+
+from debian.deprecation import function_deprecated_by
+
+try:
+    import apt_pkg
+    # This module uses apt_pkg only for its TagFile interface.
+    apt_pkg.TagFile     # pylint: disable=pointless-statement
+    _have_apt_pkg = True
+except (ImportError, AttributeError):
+    _have_apt_pkg = False
+
 
 if sys.version >= '3':
     import io
