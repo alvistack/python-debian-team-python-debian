@@ -200,7 +200,7 @@ class DB:
         """
         fcoll = DB()
         tofacet = re.compile(r"^([^:]+).+")
-        for pkg, tags in self.iter_packagesTags():
+        for pkg, tags in self.iter_packages_tags():
             ftags = set([tofacet.sub(r"\1", t) for t in tags])
             fcoll.insert(pkg, ftags)
         return fcoll
