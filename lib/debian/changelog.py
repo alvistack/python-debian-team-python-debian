@@ -728,13 +728,13 @@ be uploaded."""
         block.add_trailing_line('')
         self._blocks.insert(0, block)
 
-    def write_to_open_file(self, file):
+    def write_to_open_file(self, filehandle):
         """ Write the changelog entry to a filehandle
 
         Write the changelog out to the filehandle passed. The file argument
         must be an open file object.
         """
-        file.write(self.__str__())
+        filehandle.write(self.__str__())
 
 
 def get_maintainer():
