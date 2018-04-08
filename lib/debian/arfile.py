@@ -31,16 +31,18 @@ GLOBAL_HEADER_LENGTH = len(GLOBAL_HEADER)
 FILE_HEADER_LENGTH = 60
 FILE_MAGIC = b"`\n"
 
+
 class ArError(Exception):
     """ Common base for all exceptions raised within the arfile module """
     pass
 
+
 class ArFile(object):
     """ Representation of an ar archive, see man 1 ar.
-    
+
     The interface of this class tries to mimick that of the TarFile module in
     the standard library.
-    
+
     ArFile objects have the following (read-only) properties:
         - members       same as getmembers()
     """
@@ -56,7 +58,7 @@ class ArFile(object):
         scheme is 'surrogateescape' (>= 3.2) or 'strict' (< 3.2).
         """
 
-        self.__members = [] 
+        self.__members = []
         self.__members_dict = {}
         self.__fname = filename
         self.__fileobj = fileobj
@@ -69,7 +71,7 @@ class ArFile(object):
             else:
                 errors = 'strict'
         self.__errors = errors
-        
+
         if mode == "r":
             self.__index_archive()
         pass    # TODO write support
@@ -93,11 +95,11 @@ class ArFile(object):
                 break
             self.__members.append(newmember)
             self.__members_dict[newmember.name] = newmember
-            if newmember.size % 2 == 0: # even, no padding
-                fp.seek(newmember.size, 1) # skip to next header
+            if newmember.size % 2 == 0:   # even, no padding
+                fp.seek(newmember.size, 1)   # skip to next header
             else:
-                fp.seek(newmember.size + 1 , 1) # skip to next header
-        
+                fp.seek(newmember.size + 1, 1)   # skip to next header
+
         if self.__fname:
             fp.close()
 
@@ -174,7 +176,7 @@ class ArMember(object):
 
     Implements most of a file object interface: read, readline, next,
     readlines, seek, tell, close.
-    
+
     ArMember objects have the following (read-only) properties:
         - name      member name in an ar archive
         - mtime     modification time
@@ -192,7 +194,7 @@ class ArMember(object):
         self.__fmode = None     # permissions
         self.__size = None      # member size in bytes
         self.__fname = None     # file name associated with this member
-        self.__fp = None        # file pointer 
+        self.__fp = None        # file pointer
         self.__offset = None    # start-of-data offset
         self.__end = None       # end-of-data offset
 
@@ -221,15 +223,15 @@ class ArMember(object):
                 else:
                     errors = 'strict'
 
-        # http://en.wikipedia.org/wiki/Ar_(Unix)    
-        #from   to     Name                      Format
-        #0      15     File name                 ASCII
-        #16     27     File modification date    Decimal
-        #28     33     Owner ID                  Decimal
-        #34     39     Group ID                  Decimal
-        #40     47     File mode                 Octal
-        #48     57     File size in bytes        Decimal
-        #58     59     File magic                \140\012
+        # http://en.wikipedia.org/wiki/Ar_(Unix)
+        # from   to     Name                      Format
+        # 0      15     File name                 ASCII
+        # 16     27     File modification date    Decimal
+        # 28     33     Owner ID                  Decimal
+        # 34     39     Group ID                  Decimal
+        # 40     47     File mode                 Octal
+        # 48     57     File size in bytes        Decimal
+        # 58     59     File magic                \140\012
 
         # XXX struct.unpack can be used as well here
         f = ArMember()
@@ -239,17 +241,17 @@ class ArMember(object):
         f.__mtime = int(buf[16:28])
         f.__owner = int(buf[28:34])
         f.__group = int(buf[34:40])
-        f.__fmode  = buf[40:48]  # XXX octal value
-        f.__size  = int(buf[48:58])
+        f.__fmode = buf[40:48]  # XXX octal value
+        f.__size = int(buf[48:58])
 
         f.__fname = fname
-        f.__offset = fp.tell() # start-of-data
+        f.__offset = fp.tell()   # start-of-data
         f.__end = f.__offset + f.__size
 
         return f
 
     from_file = staticmethod(from_file)
-    
+
     # file interface
 
     # XXX this is not a sequence like file objects
@@ -260,7 +262,7 @@ class ArMember(object):
 
         cur = self.__fp.tell()
 
-        if size > 0 and size <= self.__end - cur: # there's room
+        if size > 0 and size <= self.__end - cur:   # there's room
             return self.__fp.read(size)
 
         if cur >= self.__end or cur < self.__offset:
@@ -273,7 +275,7 @@ class ArMember(object):
             self.__fp = open(self.__fname, "rb")
             self.__fp.seek(self.__offset)
 
-        if size is not None: 
+        if size is not None:
             buf = self.__fp.readline(size)
             if self.__fp.tell() > self.__end:
                 return b''
@@ -290,12 +292,12 @@ class ArMember(object):
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
             self.__fp.seek(self.__offset)
-        
+
         buf = None
         lines = []
-        while True: 
+        while True:
             buf = self.readline()
-            if not buf: 
+            if not buf:
                 break
             lines.append(buf)
 
@@ -311,7 +313,7 @@ class ArMember(object):
 
         if whence < 2 and offset + self.__fp.tell() < self.__offset:
             raise IOError("Can't seek at %d" % offset)
-        
+
         if whence == 1:
             self.__fp.seek(offset, 1)
         elif whence == 0:
@@ -325,7 +327,7 @@ class ArMember(object):
             self.__fp.seek(self.__offset)
 
         cur = self.__fp.tell()
-        
+
         if cur < self.__offset:
             return 0
         else:
@@ -337,10 +339,10 @@ class ArMember(object):
     def close(self):
         if self.__fp is not None:
             self.__fp.close()
-   
+
     def next(self):
         return self.readline()
-    
+
     def __iter__(self):
         def nextline():
             line = self.readline()
@@ -356,6 +358,7 @@ class ArMember(object):
     fmode = property(lambda self: self.__fmode)
     size = property(lambda self: self.__size)
     fname = property(lambda self: self.__fname)
+
 
 if __name__ == '__main__':
     # test
