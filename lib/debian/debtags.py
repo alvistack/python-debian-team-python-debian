@@ -27,9 +27,9 @@ import six
 
 from debian.deprecation import function_deprecated_by
 
-def parse_tags(input):
+def parse_tags(input_data):
     lre = re.compile(r"^(.+?)(?::?\s*|:\s+(.+?)\s*)$")
-    for line in input:
+    for line in input_data:
         # Is there a way to remove the last character of a line that does not
         # make a copy of the entire line?
         m = lre.match(line)
@@ -42,10 +42,10 @@ def parse_tags(input):
 
 parseTags = function_deprecated_by(parse_tags)
 
-def read_tag_database(input):
+def read_tag_database(input_data):
     "Read the tag database, returning a pkg->tags dictionary"
     db = {}
-    for pkgs, tags in parse_tags(input):
+    for pkgs, tags in parse_tags(input_data):
         # Create the tag set using the native set
         for p in pkgs:
             db[p] = tags.copy()
@@ -53,10 +53,10 @@ def read_tag_database(input):
 
 readTagDatabase = function_deprecated_by(read_tag_database)
 
-def read_tag_database_reversed(input):
+def read_tag_database_reversed(input_data):
     "Read the tag database, returning a tag->pkgs dictionary"
     db = {}
-    for pkgs, tags in parse_tags(input):
+    for pkgs, tags in parse_tags(input_data):
         # Create the tag set using the native set
         for tag in tags:
             if tag in db:
@@ -67,11 +67,11 @@ def read_tag_database_reversed(input):
 
 readTagDatabaseReversed = function_deprecated_by(read_tag_database_reversed)
 
-def read_tag_database_both_ways(input, tag_filter=None):
+def read_tag_database_both_ways(input_data, tag_filter=None):
     "Read the tag database, returning a pkg->tags and a tag->pkgs dictionary"
     db = {}
     dbr = {}
-    for pkgs, tags in parse_tags(input):
+    for pkgs, tags in parse_tags(input_data):
         # Create the tag set using the native set
         if tag_filter is None:
             tags = set(tags)
@@ -150,7 +150,7 @@ class DB:
         self.db = {}
         self.rdb = {}
 
-    def read(self, input, tag_filter=None):
+    def read(self, input_data, tag_filter=None):
         """
         Read the database from a file.
 
@@ -158,7 +158,7 @@ class DB:
             # Read the system Debtags database
             db.read(open("/var/lib/debtags/package-tags", "r"))
         """
-        self.db, self.rdb = read_tag_database_both_ways(input, tag_filter)
+        self.db, self.rdb = read_tag_database_both_ways(input_data, tag_filter)
 
     def qwrite(self, file):
         "Quickly write the data to a pickled file"
@@ -276,7 +276,7 @@ class DB:
 
     filterPackages = function_deprecated_by(filter_packages)
 
-    def filter_packages_copy(self, filter):
+    def filter_packages_copy(self, filter_data):
         """
         Return a collection with only those packages that match a
         filter, with a copy of the tagsets of this one.  The filter
@@ -284,7 +284,7 @@ class DB:
         """
         res = DB()
         db = {}
-        for pkg in filter(filter, six.iterkeys(self.db)):
+        for pkg in filter(filter_data, six.iterkeys(self.db)):
             db[pkg] = self.db[pkg].copy()
         res.db = db
         res.rdb = reverse(db)
