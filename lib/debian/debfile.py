@@ -50,7 +50,7 @@ class DebError(ArError):
 
 class DebPart(object):
     """'Part' of a .deb binary package.
-    
+
     A .deb package is considered as made of 2 parts: a 'data' part
     (corresponding to the possibly compressed 'data.tar' archive embedded
     in a .deb) and a 'control' part (the 'control.tar.gz' archive). Each of
@@ -89,17 +89,18 @@ class DebPart(object):
                         import signal
                         import io
 
-                        proc = subprocess.Popen(['unxz', '--stdout'],
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                universal_newlines=False,
-                                preexec_fn=lambda:
+                        proc = subprocess.Popen(
+                            ['unxz', '--stdout'],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            universal_newlines=False,
+                            preexec_fn=lambda:
                                 signal.signal(signal.SIGPIPE, signal.SIG_DFL))
                     except (OSError, ValueError) as e:
                         raise DebError("%s" % e)
 
                     data = proc.communicate(self.__member.read())[0]
                     if proc.returncode != 0:
-                        raise DebError("command has failed with code '%s'" % \
+                        raise DebError("command has failed with code '%s'" %
                                        proc.returncode)
 
                     buffer = io.BytesIO(data)
@@ -136,8 +137,8 @@ class DebPart(object):
 
         fname = DebPart.__normalize_member(fname)
         names = self.tgz().getnames()
-        return (('./' + fname in names) \
-                or (fname in names)) # XXX python << 2.5 TarFile compatibility
+        return (('./' + fname in names)
+                or (fname in names))  # XXX python << 2.5 TarFile compatibility
 
     def get_file(self, fname, encoding=None, errors=None):
         """Return a file object corresponding to a given file name.
@@ -221,7 +222,7 @@ class DebControl(DebPart):
     def debcontrol(self):
         """ Return the debian/control as a Deb822 (a Debian-specific dict-like
         class) object.
-        
+
         For a string representation of debian/control try
         .get_content('control') """
 
@@ -239,8 +240,8 @@ class DebControl(DebPart):
         otherwise binary. The returned values are always Unicode."""
 
         if not self.has_file(MD5_FILE):
-            raise DebError("'%s' file not found, can't list MD5 sums" %
-                    MD5_FILE)
+            raise DebError(
+                "'%s' file not found, can't list MD5 sums" % MD5_FILE)
 
         md5_file = self.get_file(MD5_FILE, encoding=encoding, errors=errors)
         sums = {}
@@ -279,29 +280,32 @@ class DebFile(ArFile):
         actual_names = set(self.getnames())
 
         def compressed_part_name(basename):
-            candidates = [ '%s.%s' % (basename, ext) for ext in PART_EXTS ]
+            candidates = ['%s.%s' % (basename, ext) for ext in PART_EXTS]
             # also permit uncompressed data.tar and control.tar
             if basename == DATA_PART or basename == CTRL_PART:
                 candidates.append(basename)
             parts = actual_names.intersection(set(candidates))
             if not parts:
-                raise DebError("missing required part in given .deb" \
-                        " (expected one of: %s)" % candidates)
+                raise DebError(
+                    "missing required part in given .deb"
+                    " (expected one of: %s)" % candidates)
             elif len(parts) > 1:
-                raise DebError("too many parts in given .deb" \
-                        " (was looking for only one of: %s)" % candidates)
+                raise DebError(
+                    "too many parts in given .deb"
+                    " (was looking for only one of: %s)" % candidates)
             else:   # singleton list
                 return list(parts)[0]
 
-        if not INFO_PART in actual_names:
-            raise DebError("missing required part in given .deb" \
-                    " (expected: '%s')" % INFO_PART)
+        if INFO_PART not in actual_names:
+            raise DebError(
+                "missing required part in given .deb"
+                " (expected: '%s')" % INFO_PART)
 
         self.__parts = {}
         self.__parts[CTRL_PART] = DebControl(self.getmember(
-                compressed_part_name(CTRL_PART)))
+            compressed_part_name(CTRL_PART)))
         self.__parts[DATA_PART] = DebData(self.getmember(
-                compressed_part_name(DATA_PART)))
+            compressed_part_name(DATA_PART)))
         self.__pkgname = None   # updated lazily by __updatePkgName
 
         f = self.getmember(INFO_PART)
@@ -336,8 +340,8 @@ class DebFile(ArFile):
         if self.__pkgname is None:
             self.__updatePkgName()
 
-        for fname in [ CHANGELOG_DEBIAN % self.__pkgname,
-                CHANGELOG_NATIVE % self.__pkgname ]:
+        for fname in [CHANGELOG_DEBIAN % self.__pkgname,
+                      CHANGELOG_NATIVE % self.__pkgname]:
             if self.data.has_file(fname):
                 gz = gzip.GzipFile(fileobj=self.data.get_file(fname))
                 raw_changelog = gz.read()
@@ -351,8 +355,6 @@ class DebFile(ArFile):
 
 
 if __name__ == '__main__':
-    import sys
     deb = DebFile(filename=sys.argv[1])
     tgz = deb.control.tgz()
     print(tgz.getmember('control'))
-
