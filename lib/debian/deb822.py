@@ -312,9 +312,11 @@ class OrderedSet(object):
     to look up if a key is in a set than in a list.
     """
 
-    def __init__(self, iterable=[]):
+    def __init__(self, iterable=None):
         self.__set = set()
         self.__order = []
+        if iterable is None:
+            iterable = []
         for item in iterable:
             self.add(item)
 
@@ -756,7 +758,8 @@ class Deb822(Deb822Dict):
 
     ###
 
-    def is_single_line(self, s):
+    @staticmethod
+    def is_single_line(s):
         if s.count("\n"):
             return False
         else:
@@ -764,8 +767,9 @@ class Deb822(Deb822Dict):
 
     isSingleLine = function_deprecated_by(is_single_line)
 
-    def is_multi_line(self, s):
-        return not self.is_single_line(s)
+    @staticmethod
+    def is_multi_line(s):
+        return not Deb822.is_single_line(s)
 
     isMultiLine = function_deprecated_by(is_multi_line)
 
@@ -839,6 +843,7 @@ class Deb822(Deb822Dict):
 
     mergeFields = function_deprecated_by(merge_fields)
 
+    @staticmethod
     def split_gpg_and_payload(sequence):
         """Return a (gpg_pre, payload, gpg_post) tuple
 
@@ -910,12 +915,9 @@ class Deb822(Deb822Dict):
         else:
             raise EOFError('only blank lines found in input')
 
-    split_gpg_and_payload = staticmethod(split_gpg_and_payload)
-
+    @classmethod
     def gpg_stripped_paragraph(cls, sequence):
         return cls.split_gpg_and_payload(sequence)[1]
-
-    gpg_stripped_paragraph = classmethod(gpg_stripped_paragraph)
 
     def get_gpg_info(self, keyrings=None):
         """Return a GpgInfo object with GPG signature information
@@ -940,7 +942,8 @@ class Deb822(Deb822Dict):
 
         return self.gpg_info
 
-    def validate_input(self, key, value):
+    @staticmethod
+    def validate_input(key, value):
         """Raise ValueError if value is not a valid value for key
 
         Subclasses that do interesting things for different keys may wish to
@@ -977,6 +980,11 @@ class GpgInfo(dict):
 
     # keys with format "key keyid uid"
     uidkeys = ('GOODSIG', 'EXPSIG', 'EXPKEYSIG', 'REVKEYSIG', 'BADSIG')
+
+    def __init__(self, *args, **kwargs):
+        super(GpgInfo, self).__init__(*args, **kwargs)
+        self.out = None
+        self.err = None
 
     def valid(self):
         """Is the signature valid?"""
@@ -1397,6 +1405,7 @@ class _multivalued(Deb822):
     Please see :class:`Dsc`, :class:`Changes`, and :class:`PdiffIndex`
     as examples.
     """
+    _multivalued_fields = {}
 
     def __init__(self, *args, **kwargs):
         Deb822.__init__(self, *args, **kwargs)
@@ -1425,7 +1434,7 @@ class _multivalued(Deb822):
             # unparseable data.
             pass
         else:
-            Deb822.validate_input(self, key, value)
+            Deb822.validate_input(key, value)
 
     def get_as_string(self, key):
         keyl = key.lower()
@@ -1571,7 +1580,7 @@ class Changes(_gpg_multivalued):
         s = self['files'][0]['section']
 
         try:
-            section, subsection = s.split('/')
+            section, _ = s.split('/')
         except ValueError:
             # main is implicit
             section = 'main'
@@ -1906,6 +1915,11 @@ class Removals(Deb822):
         r'\[(?P<archs>.+)\]'
     )
 
+    def __init__(self, *args, **kwargs):
+        super(Removals, self).__init__(*args, **kwargs)
+        self._sources = None
+        self._binaries = None
+
     @property
     def date(self):
         """ a datetime object for the removal action """
@@ -1962,7 +1976,7 @@ class Removals(Deb822):
         Note: There may be no source packages removed at all if the removal is
         only of a binary package. An empty list is returned in that case.
         """
-        if hasattr(self, '_sources'):
+        if self._sources is not None:
             return self._sources
 
         s = []
@@ -1990,7 +2004,7 @@ class Removals(Deb822):
                 'architectures': set(['i386', 'amd64'])
             }
         """
-        if hasattr(self, '_binaries'):
+        if self._binaries is not None:
             return self._binaries
 
         b = []

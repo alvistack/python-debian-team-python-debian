@@ -27,8 +27,11 @@ def function_deprecated_by(func):
         Returns a new function that warns it is deprecated by function
         ``func``, then acts as a pass-through wrapper for ``func``.
 
-        """
-    func_name = func.__name__
+    """
+    try:
+        func_name = func.__name__
+    except AttributeError:
+        func_name = func.__func__.__name__
     warn_msg = "Use %(func_name)s instead" % vars()
     def deprecated_func(*args, **kwargs):
         warnings.warn(warn_msg, DeprecationWarning, stacklevel=2)
