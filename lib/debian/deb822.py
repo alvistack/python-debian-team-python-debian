@@ -27,10 +27,12 @@ detected, verified and the payload then offered to the parser.
 
 Relevant documentation on the Deb822 file formats available here.
 
-- `deb-control(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-control.5.html>`_,
+- `deb-control(5)
+  <https://manpages.debian.org/stretch/dpkg-dev/deb-control.5.html>`_,
   the `control` file in the binary package (generated from
   `debian/control` in the source package)
-- `deb-changes(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-changes.5.html>`_,
+- `deb-changes(5)
+  <https://manpages.debian.org/stretch/dpkg-dev/deb-changes.5.html>`_,
   `changes` files that developers upload to add new packages to the
   archive.
 - `dsc(5) <https://manpages.debian.org/stretch/dpkg-dev/dsc.5.html>`_,
@@ -122,7 +124,9 @@ Example::
     Codename: sid
     Date: Sat, 07 Apr 2018 14:41:12 UTC
     >>> print(list(rel.keys()))
-    ['Origin', 'Label', 'Suite', 'Codename', 'Changelogs', 'Date', 'Valid-Until', 'Acquire-By-Hash', 'Architectures', 'Components', 'Description', 'MD5Sum', 'SHA256']
+    ['Origin', 'Label', 'Suite', 'Codename', 'Changelogs', 'Date',
+    'Valid-Until', 'Acquire-By-Hash', 'Architectures', 'Components',
+    'Description', 'MD5Sum', 'SHA256']
 
 
 In the above, the `MD5Sum` and `SHA256` fields are just a very long string. If
@@ -150,8 +154,9 @@ For example::
     ...     for src in Sources.iter_paragraphs(f):
     ...         print(src['Package'], src['Version'])
 
-The `iter_paragraphs` methods can use python-apt if available to parse the data,
-since it significantly boosts performance. If python-apt is not present and the
+The `iter_paragraphs` methods can use python-apt if available to parse
+the data, since it significantly boosts performance.
+If python-apt is not present and the
 file is a compressed file, it must first be decompressed manually. Note that
 python-apt should not be used on `debian/control` files since python-apt is
 designed to be strict and fast while the syntax of `debian/control` is a
@@ -239,6 +244,7 @@ import six
 
 if sys.version >= '3':
     import io
+
     def _is_real_file(f):
         if not isinstance(f, io.IOBase):
             return False
@@ -336,13 +342,13 @@ class OrderedSet(object):
         # of keys.  Lookup in a set is O(1) instead of O(n) for a list.
         return item in self.__set
 
-    ### list-like methods
+    # ### list-like methods
     append = add
 
     def extend(self, iterable):
         for item in iterable:
             self.add(item)
-    ###
+    # ###
 
 
 class Deb822Dict(collections.MutableMapping):
@@ -382,15 +388,16 @@ class Deb822Dict(collections.MutableMapping):
             except ValueError:
                 this = len(self.__keys)
                 len_ = len(items[this])
-                raise ValueError('dictionary update sequence element #%d has '
+                raise ValueError(
+                    'dictionary update sequence element #%d has '
                     'length %d; 2 is required' % (this, len_))
-        
+
         if _parsed is not None:
             self.__parsed = _parsed
             if _fields is None:
-                self.__keys.extend([ _strI(k) for k in self.__parsed ])
+                self.__keys.extend([_strI(k) for k in self.__parsed])
             else:
-                self.__keys.extend([ _strI(f) for f in _fields if f in self.__parsed ])
+                self.__keys.extend([_strI(f) for f in _fields if f in self.__parsed])
 
     def _detect_encoding(self, value):
         """If value is not already Unicode, decode it intelligently."""
@@ -416,7 +423,7 @@ class Deb822Dict(collections.MutableMapping):
         else:
             return value
 
-    ### BEGIN collections.MutableMapping methods
+    # ### BEGIN collections.MutableMapping methods
 
     def __iter__(self):
         for key in self.__keys:
@@ -429,7 +436,7 @@ class Deb822Dict(collections.MutableMapping):
         key = _strI(key)
         self.__keys.add(key)
         self.__dict[key] = value
-        
+
     def __getitem__(self, key):
         key = _strI(key)
         try:
@@ -464,7 +471,7 @@ class Deb822Dict(collections.MutableMapping):
     if sys.version < '3':
         has_key = __contains__
 
-    ### END collections.MutableMapping methods
+    # ### END collections.MutableMapping methods
 
     def __repr__(self):
         return '{%s}' % ', '.join(['%r: %r' % (k, v) for k, v in self.items()])
@@ -621,7 +628,8 @@ class Deb822(Deb822Dict):
         multi = re.compile(key_part + r"$")
         multidata = re.compile(r"^\s(?P<data>.+?)\s*$")
 
-        wanted_field = lambda f: fields is None or f in fields
+        def wanted_field(f):
+            return fields is None or f in fields
 
         if isinstance(sequence, (six.string_types, bytes)):
             sequence = sequence.splitlines()
@@ -661,7 +669,7 @@ class Deb822(Deb822Dict):
 
             m = multidata.match(line)
             if m:
-                content += '\n' + line # XXX not m.group('data')?
+                content += '\n' + line   # XXX not m.group('data')?
                 continue
 
         if curkey:
@@ -765,10 +773,10 @@ class Deb822(Deb822Dict):
             return s2
 
         if self.is_single_line(s1) and self.is_single_line(s2):
-            ## some fields are delimited by a single space, others
-            ## a comma followed by a space.  this heuristic assumes
-            ## that there are multiple items in one of the string fields
-            ## so that we can pick up on the delimiter being used
+            # some fields are delimited by a single space, others
+            # a comma followed by a space.  this heuristic assumes
+            # that there are multiple items in one of the string fields
+            # so that we can pick up on the delimiter being used
             delim = ' '
             if (s1 + s2).count(', '):
                 delim = ', '
@@ -778,7 +786,7 @@ class Deb822(Deb822Dict):
             prev = merged = L[0]
 
             for item in L[1:]:
-                ## skip duplicate entries
+                # skip duplicate entries
                 if item == prev:
                     continue
                 merged = merged + delim + item
@@ -796,17 +804,17 @@ class Deb822(Deb822Dict):
     _mergeFields = function_deprecated_by(_merge_fields)
 
     def merge_fields(self, key, d1, d2=None):
-        ## this method can work in two ways - abstract that away
-        if d2 == None:
+        # this method can work in two ways - abstract that away
+        if d2 is None:
             x1 = self
             x2 = d1
         else:
             x1 = d1
             x2 = d2
 
-        ## we only have to do work if both objects contain our key
-        ## otherwise, we just take the one that does, or raise an
-        ## exception if neither does
+        # we only have to do work if both objects contain our key
+        # otherwise, we just take the one that does, or raise an
+        # exception if neither does
         if key in x1 and key in x2:
             merged = self._mergeFields(x1[key], x2[key])
         elif key in x1:
@@ -816,11 +824,11 @@ class Deb822(Deb822Dict):
         else:
             raise KeyError
 
-        ## back to the two different ways - if this method was called
-        ## upon an object, update that object in place.
-        ## return nothing in this case, to make the author notice a
-        ## problem if she assumes the object itself will not be modified
-        if d2 == None:
+        # back to the two different ways - if this method was called
+        # upon an object, update that object in place.
+        # return nothing in this case, to make the author notice a
+        # problem if she assumes the object itself will not be modified
+        if d2 is None:
             self[key] = merged
             return None
 
@@ -839,7 +847,8 @@ class Deb822(Deb822Dict):
         lines = []
         gpg_post_lines = []
         state = b'SAFE'
-        gpgre = re.compile(br'^-----(?P<action>BEGIN|END) PGP (?P<what>[^-]+)-----[\r\t ]*$')
+        gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
+                           br'PGP (?P<what>[^-]+)-----[\r\t ]*$')
         # Include whitespace-only lines in blank lines to split paragraphs.
         # (see #715558)
         blank_line = re.compile(br'^\s*$')
@@ -966,7 +975,7 @@ class GpgInfo(dict):
     def valid(self):
         """Is the signature valid?"""
         return 'GOODSIG' in self or 'VALIDSIG' in self
-    
+
 # XXX implement as a property?
 # XXX handle utf-8 %-encoding
     def uid(self):
@@ -975,10 +984,14 @@ class GpgInfo(dict):
 
     @classmethod
     def from_output(cls, out, err=None):
-        """Create a new GpgInfo object from gpg(v) --status-fd output (out) and
+        """ Create a GpgInfo object based on the gpg or gpgv output
+
+        Create a new GpgInfo object from gpg(v) --status-fd output (out) and
         optionally collect stderr as well (err).
-        
-        Both out and err can be lines in newline-terminated sequence or regular strings."""
+
+        Both out and err can be lines in newline-terminated sequence or
+        regular strings.
+        """
 
         n = cls()
 
@@ -989,23 +1002,23 @@ class GpgInfo(dict):
 
         n.out = out
         n.err = err
-        
+
         header = '[GNUPG:] '
-        for l in out:
-            if not l.startswith(header):
+        for line in out:
+            if not line.startswith(header):
                 continue
 
-            l = l[len(header):]
-            l = l.strip('\n')
+            line = line[len(header):]
+            line = line.strip('\n')
 
             # str.partition() would be better, 2.5 only though
-            s = l.find(' ')
-            key = l[:s]
+            s = line.find(' ')
+            key = line[:s]
             if key in cls.uidkeys:
                 # value is "keyid UID", don't split UID
-                value = l[s+1:].split(' ', 1)
+                value = line[s+1:].split(' ', 1)
             else:
-                value = l[s+1:].split(' ')
+                value = line[s+1:].split(' ')
 
             # Skip headers in the gpgv output that are not interesting
             # note NEWSI is actually NEWSIG but the above parsing loses the 'G'
@@ -1015,7 +1028,7 @@ class GpgInfo(dict):
                 continue
 
             n[key] = value
-        return n 
+        return n
 
     @classmethod
     def from_sequence(cls, sequence, keyrings=None, executable=None):
@@ -1035,11 +1048,11 @@ class GpgInfo(dict):
 
         # XXX check for gpg as well and use --verify accordingly?
         args = list(executable)
-        #args.extend(["--status-fd", "1", "--no-default-keyring"])
+        # args.extend(["--status-fd", "1", "--no-default-keyring"])
         args.extend(["--status-fd", "1"])
         for k in keyrings:
             args.extend(["--keyring", k])
-        
+
         if "--keyring" not in args:
             raise IOError("cannot access any of the given keyrings")
 
@@ -1097,25 +1110,25 @@ class PkgRelation(object):
     # just parse as much as we need to split the various parts composing a
     # dependency, checking their correctness wrt policy is out of scope
     __dep_RE = re.compile(
-            r'^\s*(?P<name>[a-zA-Z0-9.+\-]{2,})'
-            r'(:(?P<archqual>([a-zA-Z0-9][a-zA-Z0-9-]*)))?'
-            r'(\s*\(\s*(?P<relop>[>=<]+)\s*'
-            r'(?P<version>[0-9a-zA-Z:\-+~.]+)\s*\))?'
-            r'(\s*\[(?P<archs>[\s!\w\-]+)\])?\s*'
-            r'((?P<restrictions><.+>))?\s*'
-            r'$')
+        r'^\s*(?P<name>[a-zA-Z0-9.+\-]{2,})'
+        r'(:(?P<archqual>([a-zA-Z0-9][a-zA-Z0-9-]*)))?'
+        r'(\s*\(\s*(?P<relop>[>=<]+)\s*'
+        r'(?P<version>[0-9a-zA-Z:\-+~.]+)\s*\))?'
+        r'(\s*\[(?P<archs>[\s!\w\-]+)\])?\s*'
+        r'((?P<restrictions><.+>))?\s*'
+        r'$')
     __comma_sep_RE = re.compile(r'\s*,\s*')
     __pipe_sep_RE = re.compile(r'\s*\|\s*')
     __blank_sep_RE = re.compile(r'\s+')
     __restriction_sep_RE = re.compile(r'>\s*<')
     __restriction_RE = re.compile(
-            r'(?P<enabled>\!)?'
-            r'(?P<profile>[^\s]+)')
+        r'(?P<enabled>\!)?'
+        r'(?P<profile>[^\s]+)')
 
     ArchRestriction = collections.namedtuple('ArchRestriction',
-            ['enabled', 'arch'])
+                                             ['enabled', 'arch'])
     BuildRestriction = collections.namedtuple('BuildRestriction',
-            ['enabled', 'profile'])
+                                              ['enabled', 'profile'])
 
     @classmethod
     def parse_relations(cls, raw):
@@ -1140,72 +1153,80 @@ class PkgRelation(object):
                 (enabled, label)
 
             where
-                enabled: boolean: whether the restriction is positive or negative
+                enabled: bool: whether the restriction is positive or negative
                 profile: the profile name of the term e.g. 'stage1'
             """
             restrictions = []
-            for rgrp in cls.__restriction_sep_RE.split(raw.lower().strip('<> ')):
+            groups = cls.__restriction_sep_RE.split(raw.lower().strip('<> '))
+            for rgrp in groups:
                 group = []
                 for restriction in cls.__blank_sep_RE.split(rgrp):
                     match = cls.__restriction_RE.match(restriction)
                     if match:
                         parts = match.groupdict()
-                        group.append(cls.BuildRestriction(
-                                        parts['enabled'] != '!',
-                                        parts['profile'],
-                                    ))
+                        group.append(
+                            cls.BuildRestriction(
+                                parts['enabled'] != '!',
+                                parts['profile'],
+                            ))
                 restrictions.append(group)
             return restrictions
-
 
         def parse_rel(raw):
             match = cls.__dep_RE.match(raw)
             if match:
                 parts = match.groupdict()
                 d = {
-                        'name': parts['name'],
-                        'archqual': parts['archqual'],
-                        'version': None,
-                        'arch': None,
-                        'restrictions': None,
-                    }
+                    'name': parts['name'],
+                    'archqual': parts['archqual'],
+                    'version': None,
+                    'arch': None,
+                    'restrictions': None,
+                }
                 if parts['relop'] or parts['version']:
                     d['version'] = (parts['relop'], parts['version'])
                 if parts['archs']:
                     d['arch'] = parse_archs(parts['archs'])
                 if parts['restrictions']:
-                    d['restrictions'] = parse_restrictions(parts['restrictions'])
+                    d['restrictions'] = parse_restrictions(
+                        parts['restrictions'])
                 return d
             else:
-                warnings.warn('cannot parse package' \
-                      ' relationship "%s", returning it raw' % raw)
-                return { 'name': raw, 'version': None, 'arch': None }
+                warnings.warn(
+                    'cannot parse package'
+                    ' relationship "%s", returning it raw' % raw)
+                return {
+                    'name': raw,
+                    'version': None,
+                    'arch': None
+                }
 
-        tl_deps = cls.__comma_sep_RE.split(raw.strip()) # top-level deps
+        tl_deps = cls.__comma_sep_RE.split(raw.strip())   # top-level deps
         cnf = map(cls.__pipe_sep_RE.split, tl_deps)
         return [[parse_rel(or_dep) for or_dep in or_deps] for or_deps in cnf]
 
     @staticmethod
     def str(rels):
         """Format to string structured inter-package relationships
-        
+
         Perform the inverse operation of parse_relations, returning a string
         suitable to be written in a package stanza.
         """
         def pp_arch(arch_spec):
             return '%s%s' % (
-                    '' if arch_spec.enabled else '!',
-                    arch_spec.arch,
-                )
+                '' if arch_spec.enabled else '!',
+                arch_spec.arch,
+            )
 
         def pp_restrictions(restrictions):
             s = []
             for term in restrictions:
-                s.append('%s%s' % (
-                            '' if term.enabled else '!',
-                            term.profile
-                        )
+                s.append(
+                    '%s%s' % (
+                        '' if term.enabled else '!',
+                        term.profile
                     )
+                )
             return '<%s>' % ' '.join(s)
 
         def pp_atomic_dep(dep):
@@ -1217,11 +1238,12 @@ class PkgRelation(object):
             if dep.get('arch') is not None:
                 s += ' [%s]' % ' '.join(map(pp_arch, dep['arch']))
             if dep.get('restrictions') is not None:
-                s += ' %s' % ' '.join(map(pp_restrictions, dep['restrictions']))
+                s += ' %s' % ' '.join(map(pp_restrictions,
+                                          dep['restrictions']))
             return s
 
-        pp_or_dep = lambda deps: ' | '.join(map(pp_atomic_dep, deps))
-        return ', '.join(map(pp_or_dep, rels))
+        return ', '.join(
+            map(lambda deps: ' | '.join(map(pp_atomic_dep, deps)), rels))
 
 
 class _lowercase_dict(dict):
@@ -1234,9 +1256,10 @@ class _lowercase_dict(dict):
 class _PkgRelationMixin(object):
     """Package relationship mixin
 
-    Inheriting from this mixin you can extend a :class:`Deb822` object with attributes
-    letting you access inter-package relationship in a structured way, rather
-    than as strings. For example, while you can usually use pkg['depends'] to
+    Inheriting from this mixin you can extend a :class:`Deb822` object with
+    attributes letting you access inter-package relationship in a structured
+    way, rather than as strings.
+    For example, while you can usually use ``pkg['depends']`` to
     obtain the Depends string of package pkg, mixing in with this class you
     gain pkg.depends to access Depends as a Pkgrel instance
 
@@ -1264,8 +1287,8 @@ class _PkgRelationMixin(object):
             keyname = name.lower()
             if name in self:
                 self.__relations[keyname] = None   # lazy value
-                    # all lazy values will be expanded before setting
-                    # __parsed_relations to True
+                # all lazy values will be expanded before setting
+                # __parsed_relations to True
             else:
                 self.__relations[keyname] = []
 
@@ -1285,9 +1308,10 @@ class _PkgRelationMixin(object):
         The encoding of package relationships is as follows:
 
         - the top-level lists corresponds to the comma-separated list of
-          :class:`Deb822`, their components form a conjunction, i.e. they have to be
-          AND-ed together
-        - the inner lists corresponds to the pipe-separated list of :class:`Deb822`,
+          :class:`Deb822`, their components form a conjunction, i.e. they
+          have to be AND-ed together
+        - the inner lists corresponds to the pipe-separated list of
+          :class:`Deb822`,
           their components form a disjunction, i.e. they have to be OR-ed
           together
         - member of the inner lists are dictionaries with the following keys:
@@ -1348,7 +1372,7 @@ class _PkgRelationMixin(object):
         """
         if not self.__parsed_relations:
             lazy_rels = filter(lambda n: self.__relations[n] is None,
-                    self.__relations.keys())
+                               self.__relations.keys())
             for n in lazy_rels:
                 self.__relations[n] = PkgRelation.parse_relations(self[n])
             self.__parsed_relations = True
@@ -1398,9 +1422,9 @@ class _multivalued(Deb822):
         keyl = key.lower()
         if keyl in self._multivalued_fields:
             fd = StringIO()
-            if hasattr(self[key], 'keys'): # single-line
-                array = [ self[key] ]
-            else: # multi-line
+            if hasattr(self[key], 'keys'):   # single-line
+                array = [self[key]]
+            else:   # multi-line
                 fd.write(six.u("\n"))
                 array = self[key]
 
@@ -1507,7 +1531,7 @@ class Dsc(_gpg_multivalued):
     of :class:`_gpg_multivalued` and the parsing of :class:`Deb822`.
     """
     _multivalued_fields = {
-        "files": [ "md5sum", "size", "name" ],
+        "files": ["md5sum", "size", "name"],
         "checksums-sha1": ["sha1", "size", "name"],
         "checksums-sha256": ["sha256", "size", "name"],
         "checksums-sha512": ["sha512", "size", "name"],
@@ -1521,7 +1545,7 @@ class Changes(_gpg_multivalued):
     of :class:`_gpg_multivalued` and the parsing of :class:`Deb822`.
     """
     _multivalued_fields = {
-        "files": [ "md5sum", "size", "section", "priority", "name" ],
+        "files": ["md5sum", "size", "section", "priority", "name"],
         "checksums-sha1": ["sha1", "size", "name"],
         "checksums-sha256": ["sha256", "size", "name"],
         "checksums-sha512": ["sha512", "size", "name"],
@@ -1529,12 +1553,12 @@ class Changes(_gpg_multivalued):
 
     def get_pool_path(self):
         """Return the path in the pool where the files would be installed"""
-    
+
         # This is based on the section listed for the first file.  While
         # it is possible, I think, for a package to provide files in multiple
         # sections, I haven't seen it in practice.  In any case, this should
         # probably detect such a situation and complain, or return a list...
-        
+
         s = self['files'][0]['section']
 
         try:
@@ -1558,9 +1582,9 @@ class PdiffIndex(_multivalued):
     of :class:`_gpg_multivalued` and the parsing of :class:`Deb822`.
     """
     _multivalued_fields = {
-        "sha1-current": [ "SHA1", "size" ],
-        "sha1-history": [ "SHA1", "size", "date" ],
-        "sha1-patches": [ "SHA1", "size", "date" ],
+        "sha1-current": ["SHA1", "size"],
+        "sha1-history": ["SHA1", "size", "date"],
+        "sha1-patches": ["SHA1", "size", "date"],
     }
 
     @property
@@ -1593,13 +1617,14 @@ class Release(_multivalued):
     # constructed from actual 822 text.
 
     _multivalued_fields = {
-        "md5sum": [ "md5sum", "size", "name" ],
-        "sha1": [ "sha1", "size", "name" ],
-        "sha256": [ "sha256", "size", "name" ],
-        "sha512": [ "sha512", "size", "name" ],
+        "md5sum": ["md5sum", "size", "name"],
+        "sha1": ["sha1", "size", "name"],
+        "sha256": ["sha256", "size", "name"],
+        "sha512": ["sha512", "size", "name"],
     }
 
     __size_field_behavior = "apt-ftparchive"
+
     def set_size_field_behavior(self, value):
         if value not in ["apt-ftparchive", "dak"]:
             raise ValueError("size_field_behavior must be either "
@@ -1631,8 +1656,11 @@ class Sources(Dsc, _PkgRelationMixin):
     This class is a thin wrapper around the parsing of :class:`Deb822`,
     using the field parsing of :class:`_PkgRelationMixin`.
     """
-    _relationship_fields = [ 'build-depends', 'build-depends-indep',
-            'build-conflicts', 'build-conflicts-indep', 'binary' ]
+    _relationship_fields = [
+        'build-depends', 'build-depends-indep',
+        'build-conflicts', 'build-conflicts-indep',
+        'binary',
+    ]
 
     def __init__(self, *args, **kwargs):
         Dsc.__init__(self, *args, **kwargs)
@@ -1648,8 +1676,8 @@ class Sources(Dsc, _PkgRelationMixin):
 
         See the :func:`~Deb822.iter_paragraphs` function for details.
         """
-        return super(Sources, cls).iter_paragraphs(sequence, fields,
-                                    use_apt_pkg, shared_storage, encoding)
+        return super(Sources, cls).iter_paragraphs(
+            sequence, fields, use_apt_pkg, shared_storage, encoding)
 
 
 class Packages(Deb822, _PkgRelationMixin):
@@ -1658,9 +1686,11 @@ class Packages(Deb822, _PkgRelationMixin):
     This class is a thin wrapper around the parsing of :class:`Deb822`,
     using the field parsing of :class:`_PkgRelationMixin`.
     """
-    _relationship_fields = [ 'depends', 'pre-depends', 'recommends',
-            'suggests', 'breaks', 'conflicts', 'provides', 'replaces',
-            'enhances' ]
+    _relationship_fields = [
+        'depends', 'pre-depends', 'recommends', 'suggests',
+        'breaks', 'conflicts', 'provides', 'replaces',
+        'enhances',
+    ]
 
     def __init__(self, *args, **kwargs):
         Deb822.__init__(self, *args, **kwargs)
@@ -1676,8 +1706,8 @@ class Packages(Deb822, _PkgRelationMixin):
 
         See the :func:`~Deb822.iter_paragraphs` function for details.
         """
-        return super(Packages, cls).iter_paragraphs(sequence, fields,
-                                    use_apt_pkg, shared_storage, encoding)
+        return super(Packages, cls).iter_paragraphs(
+            sequence, fields, use_apt_pkg, shared_storage, encoding)
 
 
 class _ClassInitMeta(type):
@@ -1716,8 +1746,8 @@ class RestrictedField(collections.namedtuple(
         object.
 
         :param field_name: The name of the deb822 field.
-        :param from_str: The function to apply for getters (default is to return
-            the string directly).
+        :param from_str: The function to apply for getters (default is to
+            return the string directly).
         :param to_str: The function to apply for setters (default is to use the
             value directly).  If allow_none is True, this function may return
             None, in which case the underlying key is deleted.
@@ -1851,19 +1881,21 @@ class Removals(Deb822):
     Note: this API is experimental and backwards-incompatible changes might be
     required in the future. Please use it and help us improve it!
     """
-    __sources_line_re = re.compile(r'\s*'
-                            r'(?P<package>.+?)'
-                            r'_'
-                            r'(?P<version>[^\s]+)'
-                            r'\s*'
-                        )
-    __binaries_line_re = re.compile(r'\s*'
-                            r'(?P<package>.+?)'
-                            r'_'
-                            r'(?P<version>[^\s]+)'
-                            r'\s+'
-                            r'\[(?P<archs>.+)\]'
-                        )
+    __sources_line_re = re.compile(
+        r'\s*'
+        r'(?P<package>.+?)'
+        r'_'
+        r'(?P<version>[^\s]+)'
+        r'\s*'
+    )
+    __binaries_line_re = re.compile(
+        r'\s*'
+        r'(?P<package>.+?)'
+        r'_'
+        r'(?P<version>[^\s]+)'
+        r'\s+'
+        r'\[(?P<archs>.+)\]'
+    )
 
     @property
     def date(self):
@@ -1929,7 +1961,8 @@ class Removals(Deb822):
             for line in self['sources'].splitlines():
                 matches = self.__sources_line_re.match(line)
                 if matches:
-                    s.append({
+                    s.append(
+                        {
                             'source': matches.group('package'),
                             'version': matches.group('version'),
                         })
@@ -1957,11 +1990,11 @@ class Removals(Deb822):
                 matches = self.__binaries_line_re.match(line)
                 if matches:
                     b.append({
-                            'package': matches.group('package'),
-                            'version': matches.group('version'),
-                            'architectures':
-                                    set(matches.group('archs').split(', ')),
-                        })
+                        'package': matches.group('package'),
+                        'version': matches.group('version'),
+                        'architectures':
+                            set(matches.group('archs').split(', ')),
+                    })
         self._binaries = b
         return b
 
