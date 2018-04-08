@@ -949,6 +949,7 @@ class Deb822(Deb822Dict):
         Subclasses that do interesting things for different keys may wish to
         override this method.
         """
+        # FIXME: key is not validated, contrary to docstring
 
         # The value cannot end in a newline (if it did, dumping the object
         # would result in multiple stanzas)
