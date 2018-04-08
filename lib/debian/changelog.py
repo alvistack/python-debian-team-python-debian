@@ -758,14 +758,14 @@ def get_maintainer():
     if 'DEBEMAIL' in env:
         match_obj = regex.match(env['DEBEMAIL'])
         if match_obj:
-            if not 'DEBFULLNAME' in env:
+            if 'DEBFULLNAME' not in env:
                 env['DEBFULLNAME'] = match_obj.group(1)
             env['DEBEMAIL'] = match_obj.group(2)
     if 'DEBEMAIL' not in env or 'DEBFULLNAME' not in env:
         if 'EMAIL' in env:
             match_obj = regex.match(env['EMAIL'])
             if match_obj:
-                if not 'DEBFULLNAME' in env:
+                if 'DEBFULLNAME' not in env:
                     env['DEBFULLNAME'] = match_obj.group(1)
                 env['EMAIL'] = match_obj.group(2)
 
