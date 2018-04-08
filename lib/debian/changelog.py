@@ -139,7 +139,7 @@ class ChangeBlock(object):
 
     def other_keys_normalised(self):
         norm_dict = {}
-        for (key, value) in other_pairs.items():
+        for (key, value) in self.other_pairs.items():
             key = key[0].upper() + key[1:].lower()
             m = xbcs_re.match(key)
             if m is None:
