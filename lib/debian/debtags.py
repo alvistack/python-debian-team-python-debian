@@ -311,7 +311,7 @@ class DB:
         """
         res = DB()
         db = {}
-        for pkg, tags in filter(package_tag_filter, six.iteritems(self.db)):
+        for pkg, _ in filter(package_tag_filter, six.iteritems(self.db)):
             db[pkg] = self.db[pkg]
         res.db = db
         res.rdb = reverse(db)
@@ -327,7 +327,7 @@ class DB:
         """
         res = DB()
         db = {}
-        for pkg, tags in filter(package_tag_filter, six.iteritems(self.db)):
+        for pkg, _ in filter(package_tag_filter, six.iteritems(self.db)):
             db[pkg] = self.db[pkg].copy()
         res.db = db
         res.rdb = reverse(db)
@@ -488,7 +488,6 @@ class DB:
         def score_fun(x):
             return float((x-15)*(x-15))/x
 
-        hits = []
         tagset = set()
         min_score = 3
         for i in range(len(tags)):
