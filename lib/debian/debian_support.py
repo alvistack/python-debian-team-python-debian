@@ -352,7 +352,7 @@ class PackageFile:
         self.lineno = 0
 
     def __iter__(self):
-        line = self.file.readline()
+        line = self.file.readline().decode()
         self.lineno += 1
         pkg = []
         while line:
@@ -361,7 +361,7 @@ class PackageFile:
                     self.raise_syntax_error('expected package record')
                 yield pkg
                 pkg = []
-                line = self.file.readline()
+                line = self.file.readline().decode()
                 self.lineno += 1
                 continue
 
@@ -372,7 +372,7 @@ class PackageFile:
             contents = contents or ''
 
             while True:
-                line = self.file.readline()
+                line = self.file.readline().decode()
                 self.lineno += 1
                 match = self.re_continuation.match(line)
                 if match:
@@ -586,12 +586,13 @@ def download_gunzip_lines(remote):
 
     import gzip
     import tempfile
-    import urllib
+    # pylint: disable=import-error
+    from six.moves.urllib.request import urlretrieve
 
     (handle, fname) = tempfile.mkstemp()
     try:
         os.close(handle)
-        (filename, _) = urllib.urlretrieve(remote, fname)  # FIXME py3
+        (filename, _) = urlretrieve(remote, fname)
         gfile = gzip.GzipFile(filename)
         lines = gfile.readlines()
         gfile.close()
@@ -637,13 +638,15 @@ def update_file(remote, local, verbose=None):
     patches_to_apply = []
     patch_hashes = {}
 
-    import urllib
+    # pylint: disable=import-error
+    from six.moves.urllib.request import urlopen
+
     index_name = remote + '.diff/Index'
 
     re_whitespace = re.compile(r'\s+')
 
     try:
-        index_url = urllib.urlopen(index_name)     # FIXME py3
+        index_url = urlopen(index_name)
         index_fields = list(PackageFile(index_name, index_url))
     except ParseError:
         # FIXME: urllib does not raise a proper exception, so we parse
@@ -696,11 +699,13 @@ def update_file(remote, local, verbose=None):
         return download_file(remote, local)
 
     for patch_name in patches_to_apply:
-        print("update_file: downloading patch %r" % patch_name)
+        if verbose:
+            print("update_file: downloading patch %r" % patch_name)
         patch_contents = download_gunzip_lines(
             remote + '.diff/' + patch_name + '.gz')
         if read_lines_sha1(patch_contents) != patch_hashes[patch_name]:
             raise ValueError("patch %r was garbled" % patch_name)
+        patch_contents = [p.decode('UTF-8') for p in patch_contents]
         patch_lines(lines, patches_from_ed_script(patch_contents))
 
     new_hash = read_lines_sha1(lines)

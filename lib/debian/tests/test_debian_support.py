@@ -20,11 +20,22 @@
 
 from __future__ import absolute_import
 
+import gzip
+import os
+import os.path
 import sys
+import tempfile
+
 import unittest
 
 from debian import debian_support
 from debian.debian_support import *
+
+
+
+def find_test_file(filename):
+    """ find a test file that is located within the test suite """
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
 
 
 class VersionTests(unittest.TestCase):
@@ -198,6 +209,41 @@ class HelperRoutineTests(unittest.TestCase):
                  '0\n', '.\n']
         patch_lines(file_a, patches_from_ed_script(patch))
         self.assertEqual(''.join(file_b), ''.join(file_a))
+
+
+class PdiffTests(unittest.TestCase):
+    """ Tests for functions dealing with pdiffs """
+
+    def test_download_gunzip_lines(self):
+        filename = find_test_file('test_Packages.diff/test_Packages.1.gz')
+        lines = download_gunzip_lines("file://" + filename)
+        self.assertTrue(len(lines))
+
+    def test_update_file(self):
+        # The original file
+        original = find_test_file('test_Packages')
+        # The 'remote' location from which the update will be made
+        remote = find_test_file('test_Packages')
+        # A correctly updated file for comparison
+        updated = find_test_file('test_Packages_pdiff_updated')
+
+        try:
+            # Make a copy of the original file so it can be updated
+            fd, copy = tempfile.mkstemp()
+            fp = os.fdopen(fd, 'wb')
+            with open(original, 'rb') as fh:
+                fp.write(fh.read())
+            fp.close()
+
+            # run the update
+            update_file("file://" + remote, copy, verbose=False)
+
+            # check that the updated copy is the same as the known-good file
+            with open(copy) as oh, open(updated) as uh:
+                self.assertEqual(oh.read(), uh.read())
+
+        finally:
+            os.remove(copy)
 
 
 if __name__ == "__main__":
