@@ -20,8 +20,8 @@
 from __future__ import absolute_import, print_function
 
 import os
+import os.path
 import re
-import types
 
 from debian.deprecation import function_deprecated_by
 
@@ -64,10 +64,11 @@ class ParseError(Exception):
     """
 
     def __init__(self, filename, lineno, msg):
-        assert type(lineno) == types.IntType
+        assert isinstance(int, lineno)
         self.filename = filename
         self.lineno = lineno
         self.msg = msg
+        super(ParseError, self).__init__(self)
 
     def __str__(self):
         return self.msg
@@ -118,9 +119,10 @@ class BaseVersion(object):
             raise ValueError("Invalid version string %r" % version)
         # If there no epoch ("1:..."), then the upstream version can not
         # contain a :.
-        if (m.group("epoch") is None and ":" in m.group("upstream_version")):
+        if m.group("epoch") is None and ":" in m.group("upstream_version"):
             raise ValueError("Invalid version string %r" % version)
 
+        # pylint: disable=attribute-defined-outside-init
         self.__full_version = version
         self.__epoch = m.group("epoch")
         self.__upstream_version = m.group("upstream_version")
@@ -295,8 +297,8 @@ class NativeVersion(BaseVersion):
             if lb:
                 b = lb.pop(0)
             if cls.re_digits.match(a) and cls.re_digits.match(b):
-                a = int(a)
-                b = int(b)
+                a = int(a)   # pylint: disable=redefined-variable-type
+                b = int(b)   # pylint: disable=redefined-variable-type
                 if a < b:
                     return -1
                 elif a > b:
@@ -452,16 +454,20 @@ def list_releases():
             "buster",
             "bullseye",
             "sid")
-    for r in range(len(rels)):
-        releases[rels[r]] = Release(rels[r], r)
+    for idx, rel in enumerate(rels):
+        releases[rel] = Release(rel, idx)
     Release.releases = releases
     return releases
 
 
 listReleases = function_deprecated_by(list_releases)
 
+_release_list = list_releases()
 
-def intern_release(name, releases=list_releases()):
+
+def intern_release(name, releases=None):
+    if releases is None:
+        releases = _release_list
     return releases.get(name)
 
 
@@ -485,8 +491,10 @@ def read_lines_sha1(lines):
 readLinesSHA1 = function_deprecated_by(read_lines_sha1)
 
 
-def patches_from_ed_script(source,
-                        re_cmd=re.compile(r'^(\d+)(?:,(\d+))?([acd])$')):
+_patch_re = re.compile(r'^(\d+)(?:,(\d+))?([acd])$')
+
+
+def patches_from_ed_script(source, re_cmd=None):
     """Converts source to a stream of patches.
 
     Patches are triples of line indexes:
@@ -500,6 +508,8 @@ def patches_from_ed_script(source,
     """
 
     i = iter(source)
+    if re_cmd is None:
+        re_cmd = _patch_re
 
     for line in i:
         match = re_cmd.match(line)
@@ -550,9 +560,6 @@ patchLines = function_deprecated_by(patch_lines)
 
 
 def replace_file(lines, local):
-
-    import os.path
-
     local_new = local + '.new'
     new_file = open(local_new, 'w+')
 
