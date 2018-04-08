@@ -4,6 +4,9 @@ The specification for the format (also known as DEP5) is available here:
 https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Start from the Copyright docstring for usage information.
+
+Copyright Classes
+-----------------
 """
 
 # Copyright (C) 2014       Google, Inc.

@@ -10,7 +10,7 @@ since 2007. Potential users of these classes are asked to work with the
 `python-debian` maintainers to improve, extend and stabilise this API.
 
 Overview
---------
+========
 
 Create a changelog object using the constuctor. Pass it the contents of the
 file if there are some entries, or ``None`` to create an empty changelog::
@@ -58,8 +58,8 @@ for examples of usage.
 
 The :class:`Changelog` class is the key class within this module.
 
-Classes
--------
+Changelog Classes
+-----------------
 """
 
 # Copyright (C) 2006-7 James Westby <jw+debian@jameswestby.net>
