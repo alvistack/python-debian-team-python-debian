@@ -2,7 +2,8 @@
 
 The aim of this module is to provide programmatic access to Debian changelogs
 to query and manipulate them. The format for the changelog is defined in
-`changelog(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-changelog.5.html>`_
+`deb-changelog(5)
+<https://manpages.debian.org/stretch/dpkg-dev/deb-changelog.5.html>`_
 
 N.B. The API is not stable yet, and so you can expect it to change.
 
