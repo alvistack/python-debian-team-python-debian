@@ -691,6 +691,14 @@ class Deb822(Deb822Dict):
     def dump(self, fd=None, encoding=None, text_mode=False):
         """Dump the the contents in the original format
 
+        :param fd: file-like object to which the data should be written
+            (see notes below)
+        :param encoding: str, optional (Defaults to object default).
+            Encoding to use when writing out the data.
+        :param text_mode: bool, optional (Defaults to ``False``).
+            Encoding should be undertaken by this function rather than by the
+            caller.
+
         If fd is None, returns a unicode object.  Otherwise, fd is assumed to
         be a file-like object, and this method will write the data to it
         instead of returning a unicode object.
@@ -1493,6 +1501,11 @@ class _gpg_multivalued(_multivalued):
 
 
 class Dsc(_gpg_multivalued):
+    """ Representation of a .dsc (Debian Source Control) file
+
+    This class is a thin wrapper around the transparent GPG handling
+    of :class:`_gpg_multivalued` and the parsing of :class:`Deb822`.
+    """
     _multivalued_fields = {
         "files": [ "md5sum", "size", "name" ],
         "checksums-sha1": ["sha1", "size", "name"],
@@ -1502,6 +1515,11 @@ class Dsc(_gpg_multivalued):
 
 
 class Changes(_gpg_multivalued):
+    """ Representation of a .changes (archive changes) file
+
+    This class is a thin wrapper around the transparent GPG handling
+    of :class:`_gpg_multivalued` and the parsing of :class:`Deb822`.
+    """
     _multivalued_fields = {
         "files": [ "md5sum", "size", "section", "priority", "name" ],
         "checksums-sha1": ["sha1", "size", "name"],
@@ -1534,6 +1552,11 @@ class Changes(_gpg_multivalued):
 
 
 class PdiffIndex(_multivalued):
+    """ Representation of a foo.diff/Index file from a Debian mirror
+
+    This class is a thin wrapper around the transparent GPG handling
+    of :class:`_gpg_multivalued` and the parsing of :class:`Deb822`.
+    """
     _multivalued_fields = {
         "sha1-current": [ "SHA1", "size" ],
         "sha1-history": [ "SHA1", "size", "date" ],
@@ -1563,6 +1586,8 @@ class Release(_multivalued):
     Set the size_field_behavior attribute to "dak" to make the size field
     length only as long as the longest actual value.  The default,
     "apt-ftparchive" makes the field 16 characters long regardless.
+
+    This class is a thin wrapper around the parsing of :class:`Deb822`.
     """
     # FIXME: Add support for detecting the behavior of the input, if
     # constructed from actual 822 text.
@@ -1601,8 +1626,11 @@ class Release(_multivalued):
 
 
 class Sources(Dsc, _PkgRelationMixin):
-    """Represent an APT source package list"""
+    """Represent an APT source package list
 
+    This class is a thin wrapper around the parsing of :class:`Deb822`,
+    using the field parsing of :class:`_PkgRelationMixin`.
+    """
     _relationship_fields = [ 'build-depends', 'build-depends-indep',
             'build-conflicts', 'build-conflicts-indep', 'binary' ]
 
@@ -1618,15 +1646,18 @@ class Sources(Dsc, _PkgRelationMixin):
         Note that this overloaded form of the generator uses apt_pkg (a strict
         but fast parser) by default.
 
-        See the Deb822.iter_paragraphs function for details.
+        See the :func:`~Deb822.iter_paragraphs` function for details.
         """
         return super(Sources, cls).iter_paragraphs(sequence, fields,
                                     use_apt_pkg, shared_storage, encoding)
 
 
 class Packages(Deb822, _PkgRelationMixin):
-    """Represent an APT binary package list"""
+    """Represent an APT binary package list
 
+    This class is a thin wrapper around the parsing of :class:`Deb822`,
+    using the field parsing of :class:`_PkgRelationMixin`.
+    """
     _relationship_fields = [ 'depends', 'pre-depends', 'recommends',
             'suggests', 'breaks', 'conflicts', 'provides', 'replaces',
             'enhances' ]
@@ -1643,7 +1674,7 @@ class Packages(Deb822, _PkgRelationMixin):
         Note that this overloaded form of the generator uses apt_pkg (a strict
         but fast parser) by default.
 
-        See the Deb822.iter_paragraphs function for details.
+        See the :func:`~Deb822.iter_paragraphs` function for details.
         """
         return super(Packages, cls).iter_paragraphs(sequence, fields,
                                     use_apt_pkg, shared_storage, encoding)
