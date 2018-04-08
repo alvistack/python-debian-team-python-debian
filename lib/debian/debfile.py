@@ -94,7 +94,8 @@ class DebPart(object):
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             universal_newlines=False,
                             preexec_fn=lambda:
-                                signal.signal(signal.SIGPIPE, signal.SIG_DFL))
+                            signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+                        )
                     except (OSError, ValueError) as e:
                         raise DebError("%s" % e)
 

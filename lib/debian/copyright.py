@@ -477,8 +477,8 @@ class FilesParagraph(deb822.RestrictedWrapper):
         """Create a new FilesParagraph from its required parts.
 
         :param files: The list of file globs.
-        :param copyright: The copyright for the files (free-form text).
-        :param license: The Licence for the files.
+        :param copyright_info: The copyright for the files (free-form text).
+        :param license_info: The Licence for the files.
         """
         p = cls(deb822.Deb822(), _internal_validate=False)
         p.files = files

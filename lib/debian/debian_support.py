@@ -591,7 +591,7 @@ def download_gunzip_lines(remote):
     (handle, fname) = tempfile.mkstemp()
     try:
         os.close(handle)
-        (filename, headers) = urllib.urlretrieve(remote, fname)
+        (filename, _) = urllib.urlretrieve(remote, fname)  # FIXME py3
         gfile = gzip.GzipFile(filename)
         lines = gfile.readlines()
         gfile.close()
@@ -643,7 +643,7 @@ def update_file(remote, local, verbose=None):
     re_whitespace = re.compile(r'\s+')
 
     try:
-        index_url = urllib.urlopen(index_name)
+        index_url = urllib.urlopen(index_name)     # FIXME py3
         index_fields = list(PackageFile(index_name, index_url))
     except ParseError:
         # FIXME: urllib does not raise a proper exception, so we parse
@@ -659,7 +659,7 @@ def update_file(remote, local, verbose=None):
     for fields in index_fields:
         for (field, value) in fields:
             if field == 'SHA1-Current':
-                (remote_hash, remote_size) = re_whitespace.split(value)
+                (remote_hash, _) = re_whitespace.split(value)
                 if local_hash == remote_hash:
                     if verbose:
                         print("update_file: local file is up-to-date")
@@ -670,8 +670,7 @@ def update_file(remote, local, verbose=None):
                 for entry in value.splitlines():
                     if entry == '':
                         continue
-                    (hist_hash, hist_size, patch_name) \
-                        = re_whitespace.split(entry)
+                    (hist_hash, _, patch_name) = re_whitespace.split(entry)
 
                     # After the first patch, we have to apply all
                     # remaining patches.
@@ -684,8 +683,7 @@ def update_file(remote, local, verbose=None):
                 for entry in value.splitlines():
                     if entry == '':
                         continue
-                    (patch_hash, patch_size, patch_name) \
-                        = re_whitespace.split(entry)
+                    (patch_hash, _, patch_name) = re_whitespace.split(entry)
                     patch_hashes[patch_name] = patch_hash
                 continue
 

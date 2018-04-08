@@ -229,8 +229,8 @@ class ChangeBlock(object):
             changes = self._changes
             changes.reverse()
             added = False
-            for i in range(len(changes)):
-                m = blankline.match(changes[i])
+            for i, ch_entry in enumerate(changes):
+                m = blankline.match(ch_entry)
                 if m is None:
                     changes.insert(i, change)
                     added = True
@@ -423,7 +423,8 @@ class Changelog(object):
                 allow_empty_author=allow_empty_author,
                 strict=strict)
 
-    def _parse_error(self, message, strict):
+    @staticmethod
+    def _parse_error(message, strict):
         if strict:
             raise ChangelogParseError(message)
         else:
@@ -723,9 +724,9 @@ These attributes cannot be assigned to."""
 
         :param n: integer or str representing a version or Version object
         """
-        if type(n) is int:
+        if isinstance(n, int):
             return self._blocks[n]
-        elif type(n) is str:
+        elif isinstance(n, six.string_types):
             return self[Version(n)]
         return self._blocks[self.versions.index(n)]
 
@@ -861,9 +862,9 @@ def get_maintainer():
 
     # Get maintainer's mail address
     if 'DEBEMAIL' in env:
-        email = env['DEBEMAIL']
+        email_address = env['DEBEMAIL']
     elif 'EMAIL' in env:
-        email = env['EMAIL']
+        email_address = env['EMAIL']
     else:
         addr = None
         if os.path.exists('/etc/mailname'):
@@ -882,11 +883,11 @@ def get_maintainer():
                 addr = "%s@%s" % (user, addr)
 
         if addr:
-            email = addr
+            email_address = addr
         else:
-            email = None
+            email_address = None
 
-    return (maintainer, email)
+    return (maintainer, email_address)
 
 def format_date(timestamp=None, localtime=True):
     """ format a datestamp in the required format for the changelog
