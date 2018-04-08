@@ -1,0 +1,29 @@
+[MASTER]
+#persistent=no
+ignore=tests
+extension-pkg-whitelist=apt_pkg
+
+[MESSAGES CONTROL]
+disable=
+    invalid-name,
+    protected-access,
+    too-few-public-methods,
+    too-many-public-methods,
+    too-many-ancestors,
+    too-many-instance-attributes,
+    missing-docstring,
+    too-many-arguments,
+    too-many-lines,
+    too-many-statements,
+    too-many-branches,
+    too-many-locals,
+    too-many-nested-blocks,
+    too-many-boolean-expressions,
+    locally-disabled,
+
+[REPORTS]
+reports=no
+
+[SIMILARITIES]
+min-similarity-lines=999
+
