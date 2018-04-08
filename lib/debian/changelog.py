@@ -69,12 +69,14 @@ try:
 except NameError:
     _base_exception_class = Exception
 
+
 class ChangelogParseError(_base_exception_class):
     """Indicates that the changelog could not be parsed"""
     is_user_error = True
 
     def __init__(self, line):
         self._line = line
+        super(ChangelogParseError, self).__init__()
 
     def __str__(self):
         return "Could not parse changelog: "+self._line
@@ -92,6 +94,7 @@ class VersionError(_base_exception_class):
 
     def __init__(self, version):
         self._version = version
+        super(VersionError, self).__init__()
 
     def __str__(self):
         return "Could not parse version: "+self._version
