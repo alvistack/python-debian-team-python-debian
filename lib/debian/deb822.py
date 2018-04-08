@@ -1,10 +1,194 @@
 # -*- coding: utf-8 -*- vim: fileencoding=utf-8 :
 
-""" Dictionary-like interfaces to rfc822-like files
+""" Dictionary-like interfaces to RFC822-like files
 
-This module provides a `dict`-like interface to various rfc822-like
-Debian data formats, like Packages/Sources, .changes/.dsc, pdiff Index
-files, etc.
+The Python deb822 aims to provide a dict-like interface to various RFC822-like
+Debian data formats, like Packages/Sources, .changes/.dsc, pdiff Index files,
+etc. As well as the generic :class:`Deb822` class, the specialised versions
+of these classes  (:class:`Packages`, :class:`Sources`, :class:`Changes` etc)
+know about special fields that contain specially formatted data such as
+dependency lists or whitespace separated sub-fields.
+
+This module has few external dependencies, but can use python-apt if available
+to parse the data, which gives a very significant performance boost when
+iterating over big Packages files.
+
+Whitespace separated data within fields are known as "multifields".
+The "Files" field in Sources files, for instance, has three subfields, while
+"Files" in .changes files, has five; the relevant classes here know this and
+correctly handle these cases.
+
+Key lookup in Deb822 objects and their multifields is case-insensitive, but
+the original case is always preserved, for example when printing the object.
+
+The Debian project and individual developers make extensive use of GPG
+signatures including in-line signatures. GPG signatures are automatically
+detected, verified and the payload then offered to the parser.
+
+Relevant documentation on the Deb822 file formats available here.
+
+- `deb-control(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-control.5.html>`_,
+  the `control` file in the binary package (generated from
+  `debian/control` in the source package)
+- `deb-changes(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-changes.5.html>`_,
+  `changes` files that developers upload to add new packages to the
+  archive.
+- `dsc(5) <https://manpages.debian.org/stretch/dpkg-dev/dsc.5.html>`_,
+  Debian Source Control file that defines the files that are part of a
+  source package.
+- `Debian mirror format <http://wiki.debian.org/RepositoryFormat>`_,
+  including documentation for Packages, Sources files etc.
+
+Overview of deb822 Classes
+--------------------------
+
+Classes that deb822 provides:
+
+  * :class:`Deb822` base class with no multifields. A Deb822 object holds a
+    single entry from a Deb822-style file, where paragraphs are separated by
+    blank lines and there may be many paragraphs within a file. The
+    :func:`~Deb822.iter_paragraphs` function yields paragraphs from a data
+    source.
+
+  * :class:`Packages` represents a Packages file from a Debian mirror.
+    It extends the Deb822 class by interpreting fields that
+    are package relationships (Depends, Recommends etc). Iteration is forced
+    through python-apt for performance and conformance.
+
+  * :class:`Dsc` represents .dsc files (Debian Source Control) that are the
+    metadata file of the source package.
+
+    Multivalued fields:
+
+      * Files: md5sum, size, name
+      * Checksums-Sha1: sha1, size, name
+      * Checksums-Sha256: sha256, size, name
+      * Checksums-Sha512: sha512, size, name
+
+  * :class:`Sources` represents a Sources file from a Debian mirror.
+    It extends the Dsc class by interpreting fields that
+    are package relationships (Build-Depends, Build-Conflicts etc).
+    Iteration is forced through python-apt for performance and conformance.
+
+  * :class:`Release` represents a Release file from a Debian mirror.
+
+    Multivalued fields:
+
+      * MD5Sum: md5sum, size, name
+      * SHA1: sha1, size, name
+      * SHA256: sha256, size, name
+      * SHA512: sha512, size, name
+
+  * :class:`Changes` represents a .changes file that is uploaded to "change
+    the archive" by including new source or binary packages.
+
+    Multivalued fields:
+
+      * Files: md5sum, size, section, priority, name
+      * Checksums-Sha1: sha1, size, name
+      * Checksums-Sha256: sha256, size, name
+      * Checksums-Sha512: sha512, size, name
+
+  * :class:`PdiffIndex` represents a pdiff Index file (`foo`.diff/Index) file
+    from a Debian mirror.
+
+    Multivalued fields:
+
+      * SHA1-Current: SHA1, size
+      * SHA1-History: SHA1, size, date
+      * SHA1-Patches: SHA1, size, date
+
+  * :class:`Removals` represents the ftp-master removals file listing when
+    and why source and binary packages are removed from the archive.
+
+
+Input
+=====
+
+Deb822 objects are normally initialized from a file object (from which
+at most one paragraph is read) or a string. Alternatively, any sequence
+that returns one line of input at a time may be used, e.g a list of strings.
+
+PGP signatures, if present, will be stripped.
+
+Example::
+
+    >>> from debian.deb822 import Deb822
+    >>> filename = '/var/lib/apt/lists/deb.debian.org_debian_dists_sid_InRelease'
+    >>> with open(filename) as fh:
+    ...     rel = Deb822(fh)
+    >>> print('Origin: {Origin}\\nCodename: {Codename}\\nDate: {Date}'.format_map(rel))
+    Origin: Debian
+    Codename: sid
+    Date: Sat, 07 Apr 2018 14:41:12 UTC
+    >>> print(list(rel.keys()))
+    ['Origin', 'Label', 'Suite', 'Codename', 'Changelogs', 'Date', 'Valid-Until', 'Acquire-By-Hash', 'Architectures', 'Components', 'Description', 'MD5Sum', 'SHA256']
+
+
+In the above, the `MD5Sum` and `SHA256` fields are just a very long string. If
+instead the :class:`Release` class is used, these fields are interpreted and
+can be addressed::
+
+    >>> from debian.deb822 import Release
+    >>> filename = '/var/lib/apt/lists/deb.debian.org_debian_dists_sid_InRelease'
+    >>> with open(filename) as fh:
+    ...     rel = Release(fh)
+    >>> wanted = 'main/binary-amd64/Packages'
+    >>> [(l['sha256'], l['size']) for l in rel['SHA256'] if l['name'] == wanted]
+    [('c0f7aa0b92ebd6971c0b64f93f52a8b2e15b0b818413ca13438c50eb82586665', '45314424')]
+
+
+Iteration
+=========
+
+All classes use the :func:`~Deb822.iter_paragraphs` class method to easily
+iterate through each paragraph in a file that contains multiple entries
+(e.g. a Packages.gz file).
+For example::
+
+    >>> with open('/mirror/debian/dists/sid/main/binary-i386/Sources') as f:
+    ...     for src in Sources.iter_paragraphs(f):
+    ...         print(src['Package'], src['Version'])
+
+The `iter_paragraphs` methods can use python-apt if available to parse the data,
+since it significantly boosts performance. If python-apt is not present and the
+file is a compressed file, it must first be decompressed manually. Note that
+python-apt should not be used on `debian/control` files since python-apt is
+designed to be strict and fast while the syntax of `debian/control` is a
+superset of what python-apt is designed to parse.
+This function is overridden to force use of the
+python-apt parser using `use_apt_pkg` in the :func:`~Packages.iter_paragraphs`
+and :func:`~Sources.iter_paragraphs` functions.
+
+
+Sample usage
+============
+
+Manipulating a .dsc file::
+
+   from debian import deb822
+
+   with open('foo_1.1.dsc') as f:
+       d = deb822.Dsc(f)
+   source = d['Source']
+   version = d['Version']
+
+   for f in d['Files']:
+       print('Name:', f['name'])
+       print('Size:', f['size'])
+       print('MD5sum:', f['md5sum'])
+
+    # If we like, we can change fields
+    d['Standards-Version'] = '3.7.2'
+
+    # And then dump the new contents
+    with open('foo_1.1.dsc2', 'w') as new_dsc:
+        d.dump(new_dsc)
+
+(TODO: Improve, expand)
+
+Deb822 Classes
+--------------
 """
 
 # Copyright (C) 2005-2006  dann frazier <dannf@dannf.org>
