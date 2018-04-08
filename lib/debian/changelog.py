@@ -72,6 +72,7 @@ Classes
 
 from __future__ import absolute_import
 
+import email.utils
 import os
 import pwd
 import re
@@ -866,3 +867,17 @@ def get_maintainer():
             email = None
 
     return (maintainer, email)
+
+def format_date(timestamp=None, localtime=True):
+    """ format a datestamp in the required format for the changelog
+
+    :param timestamp: float, optional. The timestamp (seconds since epoch)
+        for which the date string should be created. If not specified, the
+        current time is used.
+    :param localtime: bool, optional (default True). Use the local timezone
+        in the date string.
+
+    :returns: str, date stamp formatted according to the changelog
+        specification (i.e. RFC822).
+    """
+    return email.utils.formatdate(timestamp, localtime)
