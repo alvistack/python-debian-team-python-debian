@@ -224,7 +224,7 @@ from debian.deprecation import function_deprecated_by
 try:
     import apt_pkg
     # This module uses apt_pkg only for its TagFile interface.
-    apt_pkg.TagFile
+    apt_pkg.TagFile     # pylint: disable=pointless-statement
     _have_apt_pkg = True
 except (ImportError, AttributeError):
     _have_apt_pkg = False
@@ -255,6 +255,7 @@ if sys.version >= '3':
             return False
 else:
     def _is_real_file(f):
+        # pylint: disable=undefined-variable
         return isinstance(f, file) and hasattr(f, 'fileno')
 
 
@@ -562,6 +563,7 @@ class Deb822(Deb822Dict):
             (All values are given back as unicode objects, so an encoding is
             necessary in order to properly interpret the strings.)
         """
+        # pylint: disable=unused-argument
 
         if _have_apt_pkg and use_apt_pkg and _is_real_file(sequence):
             kwargs = {}
@@ -572,6 +574,7 @@ class Deb822(Deb822Dict):
                 # 2 as well.  This allows us to apply our own encoding
                 # handling, which is more tolerant of mixed-encoding files.
                 kwargs['bytes'] = True
+            # pylint: disable=no-member
             parser = apt_pkg.TagFile(sequence, **kwargs)
             for section in parser:
                 paragraph = cls(fields=fields,
@@ -842,6 +845,7 @@ class Deb822(Deb822Dict):
         Each element of the returned tuple is a list of lines (with trailing
         whitespace stripped).
         """
+        # pylint: disable=too-many-branches
 
         gpg_pre_lines = []
         lines = []
@@ -929,6 +933,8 @@ class Deb822(Deb822Dict):
             raise ValueError("original text cannot be found")
 
         if self.gpg_info is None:
+            # pylint: disable=no-member
+            # (raw_text is checked above)
             self.gpg_info = GpgInfo.from_sequence(self.raw_text,
                                                   keyrings=keyrings)
 
@@ -1274,6 +1280,9 @@ class _PkgRelationMixin(object):
     """
 
     def __init__(self, *args, **kwargs):
+        # pylint: disable=unused-argument
+        # (accept anything via constructors)
+
         self.__relations = _lowercase_dict({})
         self.__parsed_relations = False
         for name in self._relationship_fields:
