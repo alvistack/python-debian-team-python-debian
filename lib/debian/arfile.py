@@ -74,7 +74,7 @@ class ArFile(object):
 
         if mode == "r":
             self.__index_archive()
-        pass    # TODO write support
+        # TODO write support
 
     def __index_archive(self):
         if self.__fname:
@@ -128,7 +128,7 @@ class ArFile(object):
 
         return [f.name for f in self.__members]
 
-    def extractall():
+    def extractall(self):
         """ Not (yet) implemented. """
 
         raise NotImplementedError  # TODO
@@ -198,6 +198,7 @@ class ArMember(object):
         self.__offset = None    # start-of-data offset
         self.__end = None       # end-of-data offset
 
+    @staticmethod
     def from_file(fp, fname, encoding=None, errors=None):
         """fp is an open File object positioned on a valid file header inside
         an ar archive. Return a new ArMember on success, None otherwise. """
@@ -249,8 +250,6 @@ class ArMember(object):
         f.__end = f.__offset + f.__size
 
         return f
-
-    from_file = staticmethod(from_file)
 
     # file interface
 
