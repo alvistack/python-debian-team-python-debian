@@ -13,10 +13,24 @@ Overview
 --------
 
 Create a changelog object using the constuctor. Pass it the contents of the
-file if there are some entries, or None to create an empty changelog.
-See `/usr/share/doc/python-debian/examples/changelog/` for
-`examples <https://salsa.debian.org/python-debian-team/python-debian/tree/master/examples/changelog>`_
-of usage.
+file if there are some entries, or ``None`` to create an empty changelog::
+
+    >>> import debian.changelog
+    >>> ch = debian.changelog.Changelog()
+    >>> ch.new_block(
+    ...     package='example',
+    ...     version='0.1',
+    ...     distributions='unstable',
+    ...     urgency='low',
+    ...     author="%s <%s>" % debian.changelog.get_maintainer(),
+    ...     date=debian.changelog.format_date()
+    ... )
+    >>> ch.add_change('')
+    >>> print(ch)
+    example (0.1) unstable; urgency=low
+
+    -- Stuart Prescott <stuart@debian.org>  Sun, 08 Apr 2018 13:03:01 +1000
+
 
 If you have the full contents of a changelog, but are only interested in the
 most recent versions you can pass the ``max_blocks`` keyword parameter to the
