@@ -32,7 +32,7 @@ def function_deprecated_by(func):
         func_name = func.__name__
     except AttributeError:
         func_name = func.__func__.__name__
-    warn_msg = "Use %(func_name)s instead" % vars()
+    warn_msg = "Use %s instead" % func_name
     def deprecated_func(*args, **kwargs):
         warnings.warn(warn_msg, DeprecationWarning, stacklevel=2)
         return func(*args, **kwargs)
