@@ -22,15 +22,16 @@ import sys
 sys.path.insert(0, 'lib')
 import debian
 
-setup(name='python-debian',
-      version=debian.__version__,
-      description='Debian package related modules',
-      url='https://salsa.debian.org/python-debian-team/python-debian',
-      package_dir={'': 'lib'},
-      packages=['debian', 'debian_bundle'],
-      py_modules=['deb822'],
-      maintainer='Debian python-debian Maintainers',
-      maintainer_email='pkg-python-debian-maint@lists.alioth.debian.org',
-      install_requires=['six', 'chardet'],
-      test_suite='debian.tests',
-     )
+setup(
+    name='python-debian',
+    version=debian.__version__,
+    description='Debian package related modules',
+    url='https://salsa.debian.org/python-debian-team/python-debian',
+    package_dir={'': 'lib'},
+    packages=['debian', 'debian_bundle'],
+    py_modules=['deb822'],
+    maintainer='Debian python-debian Maintainers',
+    maintainer_email='pkg-python-debian-maint@lists.alioth.debian.org',
+    install_requires=['six', 'chardet'],
+    test_suite='debian.tests',
+)
