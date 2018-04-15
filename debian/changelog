@@ -6,7 +6,7 @@ python-debian (0.1.33) UNRELEASED; urgency=medium
   * Enable building of API documentation using sphinx.
   * Publish the API documentation via salsa.
   * Fix up various rst issues in documentation and move around docs so that
-    they can be included in the sphinx output.
+    they can be included in the sphinx output (Closes: #894214).
 
  -- Stuart Prescott <stuart@debian.org>  Sat, 17 Feb 2018 17:12:17 +1100
 
