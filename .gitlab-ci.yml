@@ -25,5 +25,5 @@ pages:
     paths:
     - public
   only:
-  - tmp/docs
+  - master
 
