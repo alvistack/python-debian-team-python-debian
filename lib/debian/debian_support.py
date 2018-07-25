@@ -23,10 +23,26 @@ import os
 import os.path
 import re
 
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        Dict,
+        Iterator,
+        List,
+        Optional,
+        Pattern,
+        Text,
+        Union,
+    )
+except ImportError:
+    # Lack of typing is not important at runtime
+    pass
+
 from debian.deprecation import function_deprecated_by
 
 try:
-    import apt_pkg
+    import apt_pkg   # type: ignore
     apt_pkg.init()
     _have_apt_pkg = True
 except ImportError:
@@ -36,12 +52,12 @@ except ImportError:
 # OpenSSL, which is incompatible with the GPL.
 try:
     # Python 2.x
-    import _sha
+    import _sha    # type: ignore
     new_sha1 = _sha.new
 except ImportError:
     # Python 3.x
     try:
-        import _sha1
+        import _sha1    # type: ignore
         new_sha1 = _sha1.sha1
     except ImportError:
         def new_sha1():
@@ -111,9 +127,11 @@ class BaseVersion(object):
         'debian_revision', 'debian_version')
 
     def __init__(self, version):
+        # type: (Union[str, BaseVersion]) -> None
         self.full_version = version
 
     def _set_full_version(self, version):
+        # type: (str) -> None
         m = self.re_valid_version.match(version)
         if not m:
             raise ValueError("Invalid version string %r" % version)
@@ -129,6 +147,7 @@ class BaseVersion(object):
         self.__debian_revision = m.group("debian_revision")
 
     def __setattr__(self, attr, value):
+        # type: (str, Optional[Text]) -> None
         if attr not in self.magic_attrs:
             super(BaseVersion, self).__setattr__(attr, value)
             return
@@ -155,6 +174,7 @@ class BaseVersion(object):
                                  % (attr, value))
 
     def __getattr__(self, attr):
+        # type: (str) -> Optional[str]
         if attr not in self.magic_attrs:
             return super(BaseVersion, self).__getattribute__(attr)
 
@@ -166,6 +186,7 @@ class BaseVersion(object):
         return getattr(self, private)
 
     def _update_full_version(self):
+        # type: () -> None
         version = ""
         if self.__epoch is not None:
             version += self.__epoch + ":"
@@ -175,9 +196,11 @@ class BaseVersion(object):
         self.full_version = version
 
     def __str__(self):
+        # type: () -> str
         return self.full_version
 
     def __repr__(self):
+        # type: () -> str
         return "%s('%s')" % (self.__class__.__name__, self)
 
     def _compare(self, other):
@@ -187,21 +210,27 @@ class BaseVersion(object):
     # @functools.total_ordering.
 
     def __lt__(self, other):
+        # type: (Any) -> bool
         return self._compare(other) < 0
 
     def __le__(self, other):
+        # type: (Any) -> bool
         return self._compare(other) <= 0
 
     def __eq__(self, other):
+        # type: (Any) -> bool
         return self._compare(other) == 0
 
     def __ne__(self, other):
+        # type: (Any) -> bool
         return self._compare(other) != 0
 
     def __ge__(self, other):
+        # type: (Any) -> bool
         return self._compare(other) >= 0
 
     def __gt__(self, other):
+        # type: (Any) -> bool
         return self._compare(other) > 0
 
     def __hash__(self):
@@ -212,12 +241,14 @@ class AptPkgVersion(BaseVersion):
     """Represents a Debian package version, using apt_pkg.VersionCompare"""
 
     def __init__(self, version):
+        # type: (Union[str, BaseVersion]) -> None
         if not _have_apt_pkg:
             raise NotImplementedError("apt_pkg not available; install the "
                                       "python-apt package")
         super(AptPkgVersion, self).__init__(version)
 
     def _compare(self, other):
+        # type: (Any) -> int
         return apt_pkg.version_compare(str(self), str(other))
 
 
@@ -232,6 +263,7 @@ class NativeVersion(BaseVersion):
     re_alpha = re.compile("[A-Za-z]")
 
     def _compare(self, other):
+        # type: (Any) -> int
         # Convert other into an instance of BaseVersion if it's not already.
         # (All we need is epoch, upstream_version, and debian_revision
         # attributes, which BaseVersion gives us.) Requires other's string
@@ -258,6 +290,7 @@ class NativeVersion(BaseVersion):
 
     @classmethod
     def _order(cls, x):
+        # type: (str) -> int
         """Return an integer value for character x"""
         if x == '~':
             return -1
@@ -270,6 +303,7 @@ class NativeVersion(BaseVersion):
 
     @classmethod
     def _version_cmp_string(cls, va, vb):
+        # type: (str, str) -> int
         la = [cls._order(x) for x in va]
         lb = [cls._order(x) for x in vb]
         while la or lb:
@@ -281,12 +315,13 @@ class NativeVersion(BaseVersion):
                 b = lb.pop(0)
             if a < b:
                 return -1
-            elif a > b:
+            if a > b:
                 return 1
         return 0
 
     @classmethod
     def _version_cmp_part(cls, va, vb):
+        # type: (str, str) -> int
         la = cls.re_all_digits_or_not.findall(va)
         lb = cls.re_all_digits_or_not.findall(vb)
         while la or lb:
@@ -314,11 +349,12 @@ if _have_apt_pkg:
     class Version(AptPkgVersion):
         pass
 else:
-    class Version(NativeVersion):
+    class Version(NativeVersion):      # type: ignore
         pass
 
 
 def version_compare(a, b):
+    # type: (Any, Any) -> int
     va = Version(a)
     vb = Version(b)
     if va < vb:
@@ -466,6 +502,7 @@ _release_list = list_releases()
 
 
 def intern_release(name, releases=None):
+    # type: (str, Optional[Any]) -> Any
     if releases is None:
         releases = _release_list
     return releases.get(name)
@@ -479,6 +516,7 @@ del list_releases
 
 
 def read_lines_sha1(lines):
+    # type: (Union[List[bytes], List[str]]) -> str
     m = new_sha1()
     for l in lines:
         if isinstance(l, bytes):
@@ -495,6 +533,7 @@ _patch_re = re.compile(r'^(\d+)(?:,(\d+))?([acd])$')
 
 
 def patches_from_ed_script(source, re_cmd=None):
+    # type: (List[Text], Optional[Pattern]) -> Iterator[Any]
     """Converts source to a stream of patches.
 
     Patches are triples of line indexes:
@@ -512,7 +551,9 @@ def patches_from_ed_script(source, re_cmd=None):
         re_cmd = _patch_re
 
     for line in i:
-        match = re_cmd.match(line)
+        # str/unicode broken for Pattern
+        # https://github.com/python/typeshed/issues/1892
+        match = re_cmd.match(line)   # type: ignore
         if match is None:
             raise ValueError("invalid patch command: %r" % line)
 
@@ -551,6 +592,7 @@ patchesFromEdScript = function_deprecated_by(patches_from_ed_script)
 
 
 def patch_lines(lines, patches):
+    # type: (List[str], Iterator) -> None
     """Applies patches to lines.  Updates lines in place."""
     for (first, last, args) in patches:
         lines[first:last] = args
@@ -560,6 +602,7 @@ patchLines = function_deprecated_by(patch_lines)
 
 
 def replace_file(lines, local):
+    # type: (List[str], str) -> None
     local_new = local + '.new'
     new_file = open(local_new, 'w+')
 
@@ -577,6 +620,7 @@ replaceFile = function_deprecated_by(replace_file)
 
 
 def download_gunzip_lines(remote):
+    # type: (Text) -> List[bytes]
     """Downloads a file from a remote location and gunzips it.
 
     Returns the lines in the file."""
@@ -587,7 +631,7 @@ def download_gunzip_lines(remote):
     import gzip
     import tempfile
     # pylint: disable=import-error
-    from six.moves.urllib.request import urlretrieve
+    from six.moves.urllib.request import urlretrieve  # type: ignore
 
     (handle, fname) = tempfile.mkstemp()
     try:
@@ -620,6 +664,7 @@ downloadFile = function_deprecated_by(download_file)
 
 
 def update_file(remote, local, verbose=None):
+    # type: (str, str, bool) -> List[str]
     """Updates the local file by downloading a remote patch.
 
     Returns a list of lines in the local file.
@@ -635,8 +680,8 @@ def update_file(remote, local, verbose=None):
     lines = local_file.readlines()
     local_file.close()
     local_hash = read_lines_sha1(lines)
-    patches_to_apply = []
-    patch_hashes = {}
+    patches_to_apply = []    # type: List[str]
+    patch_hashes = {}        # type: Dict[str, str]
 
     # pylint: disable=import-error
     from six.moves.urllib.request import urlopen
