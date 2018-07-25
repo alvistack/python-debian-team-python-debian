@@ -1304,9 +1304,9 @@ def _no_space(s):
 
 class RestrictedWrapperTest(unittest.TestCase):
     class Wrapper(deb822.RestrictedWrapper):
-        restricted_field = deb822.RestrictedField('Restricted-Field')
-        required_field = deb822.RestrictedField('Required-Field', allow_none=False)
-        space_separated = deb822.RestrictedField(
+        restricted_field = deb822.RestrictedField('Restricted-Field')  # type: ignore
+        required_field = deb822.RestrictedField('Required-Field', allow_none=False)   # type: ignore
+        space_separated = deb822.RestrictedField(    # type: ignore
                 'Space-Separated',
                 from_str=lambda s: tuple((s or '').split()),
                 to_str=lambda seq: ' '.join(_no_space(s) for s in seq) or None)
