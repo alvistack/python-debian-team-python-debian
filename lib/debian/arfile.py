@@ -25,6 +25,20 @@ from __future__ import print_function
 
 import sys
 
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        Dict,
+        IO,
+        List,
+        Optional,
+    )
+except ImportError:
+    # Missing types aren't important at runtime
+    pass
+
+
 GLOBAL_HEADER = b"!<arch>\n"
 GLOBAL_HEADER_LENGTH = len(GLOBAL_HEADER)
 
@@ -47,8 +61,14 @@ class ArFile(object):
         - members       same as getmembers()
     """
 
-    def __init__(self, filename=None, mode='r', fileobj=None,
-                 encoding=None, errors=None):
+    def __init__(self,
+                 filename=None,  # type: str
+                 mode='r',       # type: str
+                 fileobj=None,   # type: Optional[IO[bytes]]
+                 encoding=None,  # type: Optional[str]
+                 errors=None,    # type: Optional[str]
+                 ):
+        # type: (...) -> None
         """ Build an ar file representation starting from either a filename or
         an existing file object. The only supported mode is 'r'.
 
@@ -57,9 +77,8 @@ class ArFile(object):
         encoding is sys.getfilesystemencoding() and the default error handling
         scheme is 'surrogateescape' (>= 3.2) or 'strict' (< 3.2).
         """
-
-        self.__members = []
-        self.__members_dict = {}
+        self.__members = []  # type: List[ArMember]
+        self.__members_dict = {}  # type: Dict[str, ArMember]
         self.__fname = filename
         self.__fileobj = fileobj
         if encoding is None:
@@ -104,6 +123,7 @@ class ArFile(object):
             fp.close()
 
     def getmember(self, name):
+        # type: (str) -> ArMember
         """ Return the (last occurrence of a) member in the archive whose name
         is 'name'. Raise KeyError if no member matches the given name.
 
@@ -113,6 +133,7 @@ class ArFile(object):
         return self.__members_dict[name]
 
     def getmembers(self):
+        # type: () -> List[ArMember]
         """ Return a list of all members contained in the archive.
 
         The list has the same order of members in the archive and can contain
@@ -124,6 +145,7 @@ class ArFile(object):
     members = property(getmembers)
 
     def getnames(self):
+        # type: () -> List[str]
         """ Return a list of all member names in the archive. """
 
         return [f.name for f in self.__members]
@@ -139,6 +161,7 @@ class ArFile(object):
         raise NotImplementedError  # TODO
 
     def extractfile(self, member):
+        # type: (str) -> Optional[ArMember]
         """ Return a file object corresponding to the requested member. A member
         can be specified either as a string (its name) or as a ArMember
         instance. """
@@ -187,19 +210,35 @@ class ArMember(object):
         - fname     file name"""
 
     def __init__(self):
-        self.__name = None      # member name (i.e. filename) in the archive
-        self.__mtime = None     # last modification time
-        self.__owner = None     # owner user
-        self.__group = None     # owner group
-        self.__fmode = None     # permissions
-        self.__size = None      # member size in bytes
-        self.__fname = None     # file name associated with this member
-        self.__fp = None        # file pointer
-        self.__offset = None    # start-of-data offset
-        self.__end = None       # end-of-data offset
+        # type: () -> None
+        # member name (i.e. filename) in the archive
+        self.__name = None      # type: Optional[str]
+        # last modification time
+        self.__mtime = None     # type: Optional[int]
+        # owner user id
+        self.__owner = None     # type: Optional[int]
+        # owner group id
+        self.__group = None     # type: Optional[int]
+        # permissions as octal bytes
+        self.__fmode = None     # type: Optional[bytes]
+        # member size in bytes
+        self.__size = None      # type: Optional[int]
+        # file name associated with this member
+        self.__fname = ""       # type: str
+        # file pointer
+        self.__fp = None        # type: Optional[IO[bytes]]
+        # start-of-data offset
+        self.__offset = 0       # type: int
+        # end-of-data offset
+        self.__end = 0          # type: int
 
     @staticmethod
-    def from_file(fp, fname, encoding=None, errors=None):
+    def from_file(fp,             # type: IO[bytes]
+                  fname,          # type: str
+                  encoding=None,  # type: Optional[str]
+                  errors=None,    # type: Optional[str]
+                  ):
+        # type: (...) -> Optional[ArMember]
         """fp is an open File object positioned on a valid file header inside
         an ar archive. Return a new ArMember on success, None otherwise. """
 
@@ -270,6 +309,7 @@ class ArMember(object):
         return self.__fp.read(self.__end - cur)
 
     def readline(self, size=None):
+        # type: (Optional[int]) -> bytes
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
             self.__fp.seek(self.__offset)
@@ -288,6 +328,7 @@ class ArMember(object):
             return buf
 
     def readlines(self, sizehint=0):
+        # type: (int) -> List[bytes]
         # pylint: disable=unused-argument
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
@@ -304,6 +345,7 @@ class ArMember(object):
         return lines
 
     def seek(self, offset, whence=0):
+        # type: (int, int) -> None
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
             self.__fp.seek(self.__offset)
@@ -322,6 +364,7 @@ class ArMember(object):
             self.__fp.seek(self.__end + offset, 0)
 
     def tell(self):
+        # type: () -> int
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
             self.__fp.seek(self.__offset)
@@ -330,14 +373,15 @@ class ArMember(object):
 
         if cur < self.__offset:
             return 0
-        else:
-            return cur - self.__offset
+        return cur - self.__offset
 
     def seekable(self):
+        # type: () -> bool
         # pylint: disable=no-self-use
         return True
 
     def close(self):
+        # type: () -> None
         if self.__fp is not None:
             self.__fp.close()
 
