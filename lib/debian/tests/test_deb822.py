@@ -376,12 +376,12 @@ class TestDeb822(unittest.TestCase):
             self.assertEqual(v, deb822_[k])
         self.assertEqual(deb822_, dict_)
 
+    @staticmethod
     def gen_random_string(length=20):
         from random import choice
         import string
         chars = string.ascii_letters + string.digits
         return ''.join([choice(chars) for i in range(length)])
-    gen_random_string = staticmethod(gen_random_string)
 
     def deb822_from_format_string(self, string, dict_=PARSED_PACKAGE, cls=deb822.Deb822):
         """Construct a Deb822 object by formatting string with % dict.
