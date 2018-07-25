@@ -98,8 +98,6 @@ import sys
 
 import six
 
-from debian import debian_support
-
 try:
     # pylint: disable=unused-import
     from typing import (
@@ -126,6 +124,8 @@ try:
 except ImportError:
     # Missing types aren't important at runtime
     pass
+
+from debian.debian_support import Version
 
 # Python 3 doesn't have StandardError, but let's avoid changing our
 # exception inheritance hierarchy for Python 2.
@@ -161,18 +161,12 @@ class VersionError(_base_exception_class):
     is_user_error = True
 
     def __init__(self, version):
+        # type: (str) -> None
         self._version = version
         super(VersionError, self).__init__()
 
     def __str__(self):
-        return "Could not parse version: "+self._version
-
-
-# TODO(jsw): Remove this in favor of using debian_support.Version directly.  I
-# don't think we gain anything by using this empty subclass.
-class Version(debian_support.Version):
-    """Represents a version of a Debian package."""
-    # debian_support.Version now has all the functionality we need
+        return "Could not parse version: " + self._version
 
 
 class ChangeBlock(object):
