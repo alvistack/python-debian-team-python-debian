@@ -60,7 +60,7 @@ except ImportError:
         import _sha1    # type: ignore
         new_sha1 = _sha1.sha1
     except ImportError:
-        def new_sha1():
+        def new_sha1(*args):    # pylint: disable=unused-argument
             raise NotImplementedError(
                 "Built-in sha1 implementation not found; cannot use hashlib"
                 " implementation because it depends on OpenSSL, which"
@@ -128,6 +128,8 @@ class BaseVersion(object):
 
     def __init__(self, version):
         # type: (Union[str, BaseVersion]) -> None
+        if isinstance(version, BaseVersion):
+            version = str(version)
         self.full_version = version
 
     def _set_full_version(self, version):
@@ -268,6 +270,11 @@ class NativeVersion(BaseVersion):
         # (All we need is epoch, upstream_version, and debian_revision
         # attributes, which BaseVersion gives us.) Requires other's string
         # representation to be the raw version.
+
+        # If other is not defined, then the current version is bigger
+        if other is None:
+            return 1
+
         if not isinstance(other, BaseVersion):
             try:
                 other = BaseVersion(str(other))
@@ -279,10 +286,10 @@ class NativeVersion(BaseVersion):
         repoch = int(other.epoch or "0")
         if lepoch < repoch:
             return -1
-        elif lepoch > repoch:
+        if lepoch > repoch:
             return 1
-        res = self._version_cmp_part(self.upstream_version,
-                                     other.upstream_version)
+        res = self._version_cmp_part(self.upstream_version or "0",
+                                     other.upstream_version or "0")
         if res != 0:
             return res
         return self._version_cmp_part(self.debian_revision or "0",
@@ -294,12 +301,11 @@ class NativeVersion(BaseVersion):
         """Return an integer value for character x"""
         if x == '~':
             return -1
-        elif cls.re_digit.match(x):
+        if cls.re_digit.match(x):
             return int(x) + 1
-        elif cls.re_alpha.match(x):
+        if cls.re_alpha.match(x):
             return ord(x)
-        else:
-            return ord(x) + 256
+        return ord(x) + 256
 
     @classmethod
     def _version_cmp_string(cls, va, vb):
@@ -332,11 +338,11 @@ class NativeVersion(BaseVersion):
             if lb:
                 b = lb.pop(0)
             if cls.re_digits.match(a) and cls.re_digits.match(b):
-                a = int(a)   # pylint: disable=redefined-variable-type
-                b = int(b)   # pylint: disable=redefined-variable-type
-                if a < b:
+                aval = int(a)
+                bval = int(b)
+                if aval < bval:
                     return -1
-                elif a > b:
+                if aval > bval:
                     return 1
             else:
                 res = cls._version_cmp_string(a, b)
@@ -359,10 +365,9 @@ def version_compare(a, b):
     vb = Version(b)
     if va < vb:
         return -1
-    elif va > vb:
+    if va > vb:
         return 1
-    else:
-        return 0
+    return 0
 
 
 class PackageFile:
@@ -393,7 +398,7 @@ class PackageFile:
         pkg = []
         while line:
             if line.strip(' \t') == '\n':
-                if len(pkg) == 0:
+                if not pkg:
                     self.raise_syntax_error('expected package record')
                 yield pkg
                 pkg = []
@@ -579,12 +584,12 @@ def patches_from_ed_script(source, re_cmd=None):
                 last = first + 1
 
         lines = []
-        for l in i:
-            if l == '':
+        for c in i:
+            if c == '':
                 raise ValueError("end of stream in command: %r" % line)
-            if l == '.\n' or l == '.':
+            if c in ('.\n', '.'):
                 break
-            lines.append(l)
+            lines.append(c)
         yield (first, last, lines)
 
 
@@ -750,8 +755,8 @@ def update_file(remote, local, verbose=None):
             remote + '.diff/' + patch_name + '.gz')
         if read_lines_sha1(patch_contents) != patch_hashes[patch_name]:
             raise ValueError("patch %r was garbled" % patch_name)
-        patch_contents = [p.decode('UTF-8') for p in patch_contents]
-        patch_lines(lines, patches_from_ed_script(patch_contents))
+        patch_contents_unicode = [p.decode('UTF-8') for p in patch_contents]
+        patch_lines(lines, patches_from_ed_script(patch_contents_unicode))
 
     new_hash = read_lines_sha1(lines)
     if new_hash != remote_hash:

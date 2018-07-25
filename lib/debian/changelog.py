@@ -269,7 +269,7 @@ class ChangeBlock(object):
     def add_change(self, change):
         # type: (str) -> None
         """ Append a change entry to the block """
-        if self._changes is None:
+        if not self._changes:
             self._changes = [change]
         else:
             # Bit of trickery to keep the formatting nicer with a blank
@@ -294,8 +294,8 @@ class ChangeBlock(object):
         bugs = []
         for match in type_re.finditer(changes):
             closes_list = match.group(0)
-            for match in re.finditer(r"\d+", closes_list):
-                bugs.append(int(match.group(0)))
+            for bugmatch in re.finditer(r"\d+", closes_list):
+                bugs.append(int(bugmatch.group(0)))
         return bugs
 
     @property
@@ -529,7 +529,7 @@ class Changelog(object):
             file = file.decode(encoding)
         if isinstance(file, six.string_types):
             # Make sure the changelog file is not empty.
-            if len(file.strip()) == 0:
+            if not file.strip():
                 self._parse_error('Empty changelog file.', strict)
                 return
 
@@ -541,7 +541,7 @@ class Changelog(object):
             # those with trailing newlines (e.g. when given a file object
             # directly)
             line = line.rstrip('\n')
-            if state == first_heading or state == next_heading_or_eof:
+            if state in (first_heading, next_heading_or_eof):
                 top_match = topline.match(line)
                 blank_match = blankline.match(line)
                 if top_match is not None:
@@ -629,8 +629,7 @@ class Changelog(object):
                         self.initial_blank_lines.append(line)
                     else:
                         self._blocks[-1].add_trailing_line(line)
-            elif (state == start_of_change_data
-                  or state == more_changes_or_trailer):
+            elif state in (start_of_change_data, more_changes_or_trailer):
                 change_match = changere.match(line)
                 end_match = endline.match(line)
                 end_no_details_match = endline_nodetails.match(line)
@@ -683,7 +682,7 @@ class Changelog(object):
             else:
                 assert False, "Unknown state: %s" % state
 
-        if ((state != next_heading_or_eof and state != slurp_to_end)
+        if (state not in (next_heading_or_eof, slurp_to_end)
                 or (state == slurp_to_end
                     and old_state != next_heading_or_eof)):
             self._parse_error(
@@ -799,7 +798,7 @@ These attributes cannot be assigned to."""
         """
         if isinstance(n, int):
             return self._blocks[n]
-        elif isinstance(n, six.string_types):
+        if isinstance(n, six.string_types):
             return self[Version(n)]
         return self._blocks[self.versions.index(n)]
 

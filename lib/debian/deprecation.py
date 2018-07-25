@@ -21,6 +21,7 @@
 
 import warnings
 
+
 def function_deprecated_by(func):
     """ Return a function that warns it is deprecated by another function.
 

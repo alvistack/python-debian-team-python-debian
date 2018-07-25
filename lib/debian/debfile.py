@@ -49,6 +49,7 @@ from debian.arfile import ArFile, ArError, ArMember
 from debian.changelog import Changelog
 from debian.deb822 import Deb822
 
+
 DATA_PART = 'data.tar'      # w/o extension
 CTRL_PART = 'control.tar'
 PART_EXTS = ['gz', 'bz2', 'xz', 'lzma']  # possible extensions
@@ -108,6 +109,7 @@ class DebPart(object):
                         import signal
                         import io
 
+                        # pylint: disable=subprocess-popen-preexec-fn
                         proc = subprocess.Popen(
                             ['unxz', '--stdout'],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -175,6 +177,8 @@ class DebPart(object):
             fobj = self.tgz().extractfile('./' + fname)
         except KeyError:    # XXX python << 2.5 TarFile compatibility
             fobj = self.tgz().extractfile(fname)
+        if fobj is None:
+            raise DebError("File not found inside package")
         if encoding is not None:
             if sys.version >= '3':
                 import io
@@ -182,13 +186,14 @@ class DebPart(object):
                     # XXX http://bugs.python.org/issue13815
                     fobj.flush = lambda: None   # type: ignore
                 return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)
-            else:
-                import codecs
-                if errors is None:
-                    errors = 'strict'
-                return codecs.EncodedFile(fobj, encoding, errors=errors)
-        else:
-            return fobj
+
+            # CRUFT: Python 2 only
+            import codecs
+            if errors is None:
+                errors = 'strict'
+            return codecs.EncodedFile(fobj, encoding, errors=errors)
+
+        return fobj
 
     def get_content(self,
                     fname,          # type: str
@@ -322,7 +327,7 @@ class DebFile(ArFile):
             # type: (str) -> str
             candidates = ['%s.%s' % (basename, ext) for ext in PART_EXTS]
             # also permit uncompressed data.tar and control.tar
-            if basename == DATA_PART or basename == CTRL_PART:
+            if basename in (DATA_PART, CTRL_PART):
                 candidates.append(basename)
             parts = actual_names.intersection(set(candidates))
             if not parts:

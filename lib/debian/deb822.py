@@ -1004,10 +1004,10 @@ class Deb822(Deb822Dict):
                     else:
                         gpg_post_lines.append(line)
 
-        if len(lines):
+        if lines:
             return (gpg_pre_lines, lines, gpg_post_lines)
-        else:
-            raise EOFError('only blank lines found in input')
+
+        raise EOFError('only blank lines found in input')
 
     @classmethod
     def gpg_stripped_paragraph(cls, sequence):
@@ -1112,15 +1112,17 @@ class GpgInfo(dict):
         n = cls()
 
         if isinstance(out, six.string_types):
-            out = out.split('\n')
-        if isinstance(err, six.string_types):
-            err = err.split('\n')
+            n.out = out.split('\n')
+        else:
+            n.out = out
 
-        n.out = out
-        n.err = err
+        if isinstance(err, six.string_types):
+            n.err = err.split('\n')
+        else:
+            n.err = err
 
         header = '[GNUPG:] '
-        for line in out:
+        for line in n.out:
             if not line.startswith(header):
                 continue
 
@@ -1318,15 +1320,15 @@ class PkgRelation(object):
                     d['restrictions'] = parse_restrictions(
                         parts['restrictions'])
                 return d
-            else:
-                warnings.warn(
-                    'cannot parse package'
-                    ' relationship "%s", returning it raw' % raw)
-                return {
-                    'name': raw,
-                    'version': None,
-                    'arch': None
-                }
+
+            warnings.warn(
+                'cannot parse package'
+                ' relationship "%s", returning it raw' % raw)
+            return {
+                'name': raw,
+                'version': None,
+                'arch': None
+            }
 
         tl_deps = cls.__comma_sep_RE.split(raw.strip())   # top-level deps
         cnf = map(cls.__pipe_sep_RE.split, tl_deps)
@@ -1558,7 +1560,7 @@ class _multivalued(Deb822):
             # unparseable data.
             pass
         else:
-            Deb822.validate_input(key, value)
+            super(_multivalued, self).validate_input(key, value)  # type: ignore
 
     def get_as_string(self, key):
         # type: (str) -> str
@@ -1650,8 +1652,9 @@ class _gpg_multivalued(_multivalued):
                     raw_text.write(b"\n".join(gpg_post_lines))
                     self.raw_text = raw_text.getvalue()
                 try:
-                    args = list(args)
-                    args[0] = lines
+                    argsl = list(args)
+                    argsl[0] = lines
+                    args = tuple(argsl)
                 except IndexError:
                     kwargs["sequence"] = lines
 
@@ -1778,6 +1781,7 @@ class Release(_multivalued):
                              "'apt-ftparchive' or 'dak'")
         else:
             self.__size_field_behavior = value
+
     size_field_behavior = property(lambda self: self.__size_field_behavior,
                                    set_size_field_behavior)
 
@@ -1793,9 +1797,10 @@ class Release(_multivalued):
         # type: (str) -> int
         if self.size_field_behavior == "apt-ftparchive":
             return 16
-        elif self.size_field_behavior == "dak":
+        if self.size_field_behavior == "dak":
             lengths = [len(str(item['size'])) for item in self[key]]
             return max(lengths)
+        raise ValueError("Illegal value for size_field_behavior")
 
 
 class Sources(Dsc, _PkgRelationMixin):
@@ -2079,7 +2084,10 @@ class Removals(Deb822):
     def date(self):
         # type: () -> datetime.datetime
         """ a datetime object for the removal action """
-        ts = email.utils.mktime_tz(email.utils.parsedate_tz(self['date']))
+        timearray = email.utils.parsedate_tz(self['date'])
+        if timearray is None:
+            raise ValueError("No date specified")
+        ts = email.utils.mktime_tz(timearray)
         return datetime.datetime.fromtimestamp(ts)
 
     @property

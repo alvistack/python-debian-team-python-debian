@@ -152,14 +152,15 @@ class Copyright(object):
             for i in range(1, len(paragraphs)):
                 p = paragraphs[i]
                 if 'Files' in p:
-                    p = FilesParagraph(p, strict)
+                    pf = FilesParagraph(p, strict)
+                    self.__paragraphs.append(pf)
                 elif 'License' in p:
-                    # pylint: disable=redefined-variable-type
-                    p = LicenseParagraph(p, strict)
+                    pl = LicenseParagraph(p, strict)
+                    self.__paragraphs.append(pl)
                 else:
                     _complain('Non-header paragraph has neither "Files" nor '
                               '"License" fields', strict)
-                self.__paragraphs.append(p)
+
         else:
             self.__header = Header()
 
@@ -552,6 +553,8 @@ class FilesParagraph(deb822.RestrictedWrapper):
         # type: (str) -> bool
         """Returns True iff filename is matched by a glob in Files."""
         pat = self.files_pattern()
+        if pat is None:
+            return False
         return pat.match(filename) is not None
 
     files = deb822.RestrictedField(

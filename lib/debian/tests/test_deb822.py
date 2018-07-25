@@ -28,14 +28,16 @@ import sys
 import tempfile
 import unittest
 import warnings
-try:
+
+import six
+
+if six.PY3:
+    from io import BytesIO, StringIO
+else:
     from StringIO import StringIO
     BytesIO = StringIO
-except ImportError:
-    from io import BytesIO, StringIO
 
-import apt_pkg
-import six
+import apt_pkg   #type: ignore
 
 from debian import deb822
 

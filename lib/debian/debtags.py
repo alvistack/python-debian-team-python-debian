@@ -59,6 +59,9 @@ def parse_tags(input_data):
         # Is there a way to remove the last character of a line that does not
         # make a copy of the entire line?
         m = lre.match(line)
+        if not m:
+            continue
+
         pkgs = set(m.group(1).split(', '))
         if m.group(2):
             tags = set(m.group(2).split(', '))
@@ -260,7 +263,7 @@ class DB:
         fcoll = DB()
         tofacet = re.compile(r"^([^:]+).+")
         for pkg, tags in self.iter_packages_tags():
-            ftags = set([tofacet.sub(r"\1", t) for t in tags])
+            ftags = {tofacet.sub(r"\1", t) for t in tags}
             fcoll.insert(pkg, ftags)
         return fcoll
 
@@ -442,40 +445,28 @@ class DB:
     def tags_of_package(self, pkg):
         # type: (str) -> Set[str]
         """Return the tag set of a package"""
-        return pkg in self.db and self.db[pkg] or set()
+        return self.db[pkg] if pkg in self.db else set()
 
     tagsOfPackage = function_deprecated_by(tags_of_package)
 
     def packages_of_tag(self, tag):
         # type: (str) -> Set[str]
         """Return the package set of a tag"""
-        return tag in self.rdb and self.rdb[tag] or set()
+        return self.rdb[tag] if tag in self.rdb else set()
 
     packagesOfTag = function_deprecated_by(packages_of_tag)
 
     def tags_of_packages(self, pkgs):
         # type: (Iterable[str]) -> Set[str]
-        """Return the set of tags that have all the packages in pkgs"""
-        res = None
-        for p in pkgs:
-            if res is None:
-                res = set(self.tags_of_package(p))
-            else:
-                res &= self.tags_of_package(p)
-        return res
+        """Return the set of tags that have all the packages in ``pkgs``"""
+        return set.union(*(self.tags_of_package(p) for p in pkgs))
 
     tagsOfPackages = function_deprecated_by(tags_of_packages)
 
     def packages_of_tags(self, tags):
         # type: (Iterable[str]) -> Set[str]
-        """Return the set of packages that have all the tags in tags"""
-        res = None
-        for t in tags:
-            if res is None:
-                res = set(self.packages_of_tag(t))
-            else:
-                res &= self.packages_of_tag(t)
-        return res
+        """Return the set of packages that have all the tags in ``tags``"""
+        return set.union(*(self.packages_of_tag(t) for t in tags))
 
     packagesOfTags = function_deprecated_by(packages_of_tags)
 
@@ -484,7 +475,7 @@ class DB:
         """
         Return the cardinality of a tag
         """
-        return tag in self.rdb and len(self.rdb[tag]) or 0
+        return len(self.rdb[tag]) if tag in self.rdb else 0
 
     def discriminance(self, tag):
         # type: (str) -> int
@@ -574,10 +565,9 @@ class DB:
                 tagset = set(tags[:i+1])
 
         # Return always at least the first tag
-        if len(tagset) == 0:
+        if not tagset:
             return set(tags[:1])
-        else:
-            return tagset
+        return tagset
 
     idealTagset = function_deprecated_by(ideal_tagset)
 
@@ -590,6 +580,7 @@ class DB:
         have 'hasalsotag' with a score of 'score'.
         """
         for pivot in self.iter_tags():
+            # pylint: disable=cell-var-from-loop
             with_ = self.filter_packages_tags(lambda pt: pivot in pt[1])
             without = self.filter_packages_tags(lambda pt: pivot not in pt[1])
             for tag in with_.iter_tags():

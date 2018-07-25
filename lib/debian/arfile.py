@@ -177,7 +177,7 @@ class ArFile(object):
         for m in self.__members:
             if isinstance(member, ArMember) and m.name == member.name:
                 return m
-            elif member == m.name:
+            if member == m.name:
                 return m
         return None
 
@@ -262,6 +262,10 @@ class ArMember(object):
                     errors = 'surrogateescape'
                 else:
                     errors = 'strict'
+        else:
+            # Unused parameters for Python 2
+            encoding = ""
+            errors = ""
 
         # http://en.wikipedia.org/wiki/Ar_(Unix)
         # from   to     Name                      Format
@@ -275,9 +279,11 @@ class ArMember(object):
 
         # XXX struct.unpack can be used as well here
         f = ArMember()
-        f.__name = buf[0:16].split(b"/")[0].strip()
+        name = buf[0:16].split(b"/")[0].strip()
         if sys.version >= '3':
-            f.__name = f.__name.decode(encoding, errors)
+            f.__name = name.decode(encoding, errors)
+        else:
+            f.__name = name    # type: ignore
         f.__mtime = int(buf[16:28])
         f.__owner = int(buf[28:34])
         f.__group = int(buf[34:40])
@@ -294,13 +300,14 @@ class ArMember(object):
 
     # XXX this is not a sequence like file objects
     def read(self, size=0):
+        # type: (int) -> bytes
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
             self.__fp.seek(self.__offset)
 
         cur = self.__fp.tell()
 
-        if size > 0 and size <= self.__end - cur:   # there's room
+        if 0 < size <= self.__end - cur:   # there's room
             return self.__fp.read(size)
 
         if cur >= self.__end or cur < self.__offset:
@@ -324,8 +331,7 @@ class ArMember(object):
         buf = self.__fp.readline()
         if self.__fp.tell() > self.__end:
             return b''
-        else:
-            return buf
+        return buf
 
     def readlines(self, sizehint=0):
         # type: (int) -> List[bytes]
