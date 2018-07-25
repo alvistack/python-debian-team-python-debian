@@ -5,21 +5,23 @@ extension-pkg-whitelist=apt_pkg
 
 [MESSAGES CONTROL]
 disable=
+    fixme,
     invalid-name,
+    locally-disabled,
+    missing-docstring,
     protected-access,
     too-few-public-methods,
-    too-many-public-methods,
     too-many-ancestors,
+    too-many-boolean-expressions,
+    too-many-branches,
     too-many-instance-attributes,
-    missing-docstring,
     too-many-arguments,
     too-many-lines,
-    too-many-statements,
-    too-many-branches,
     too-many-locals,
     too-many-nested-blocks,
-    too-many-boolean-expressions,
-    locally-disabled,
+    too-many-public-methods,
+    too-many-statements,
+    useless-object-inheritance,
 
 [REPORTS]
 reports=no
