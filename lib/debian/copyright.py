@@ -33,6 +33,24 @@ import io
 import re
 import warnings
 
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        IO,
+        Iterable,
+        Iterator,
+        List,
+        Optional,
+        Pattern,
+        Text,
+        Tuple,
+        Union,
+    )
+except ImportError:
+    # Lack of typing is not important at runtime
+    pass
+
 from debian import deb822
 
 
@@ -61,6 +79,7 @@ class MachineReadableFormatError(Error, ValueError):
 
 
 def _complain(msg, strict):
+    # type: (str, bool) -> None
     if strict:
         raise MachineReadableFormatError(msg)
     warnings.warn(msg)
@@ -104,6 +123,7 @@ class Copyright(object):
     """
 
     def __init__(self, sequence=None, encoding='utf-8', strict=True):
+        # type: (Optional[Union[List[str], IO[str]]], str, bool) -> None
         """ Create a new copyright file in the current format.
 
         :param sequence: Sequence of lines, e.g. a list of strings or a
@@ -121,7 +141,7 @@ class Copyright(object):
         """
         super(Copyright, self).__init__()
 
-        self.__paragraphs = []
+        self.__paragraphs = []  # type: List[ParagraphTypes]
 
         if sequence is not None:
             paragraphs = list(deb822.Deb822.iter_paragraphs(
@@ -145,6 +165,7 @@ class Copyright(object):
 
     @property
     def header(self):
+        # type: () -> Header
         """The file header paragraph."""
         return self.__header
 
@@ -155,6 +176,7 @@ class Copyright(object):
         self.__header = hdr
 
     def all_paragraphs(self):
+        # type: () -> Iterator[AllParagraphTypes]
         """Returns an iterator over all paragraphs (header, Files, License).
 
         The header (returned first) will be returned as a Header object; file
@@ -165,6 +187,7 @@ class Copyright(object):
         return itertools.chain([self.header], (p for p in self.__paragraphs))
 
     def __iter__(self):
+        # type: () -> Iterator[AllParagraphTypes]
         """Iterate over all paragraphs
 
         see all_paragraphs() for more information
@@ -173,10 +196,12 @@ class Copyright(object):
         return self.all_paragraphs()
 
     def all_files_paragraphs(self):
+        # type: () -> Iterator[FilesParagraph]
         """Returns an iterator over the contained FilesParagraph objects."""
         return (p for p in self.__paragraphs if isinstance(p, FilesParagraph))
 
     def find_files_paragraph(self, filename):
+        # type: (str) -> Optional[FilesParagraph]
         """Returns the FilesParagraph for the given filename.
 
         In accordance with the spec, this method returns the last FilesParagraph
@@ -189,6 +214,7 @@ class Copyright(object):
         return result
 
     def add_files_paragraph(self, paragraph):
+        # type: (FilesParagraph) -> None
         """Adds a FilesParagraph to this object.
 
         The paragraph is inserted directly after the last FilesParagraph (which
@@ -204,10 +230,12 @@ class Copyright(object):
         self.__paragraphs.insert(last_i + 1, paragraph)
 
     def all_license_paragraphs(self):
+        # type: () -> Iterator[LicenseParagraph]
         """Returns an iterator over standalone LicenseParagraph objects."""
         return (p for p in self.__paragraphs if isinstance(p, LicenseParagraph))
 
     def add_license_paragraph(self, paragraph):
+        # type: (LicenseParagraph) -> None
         """Adds a LicenceParagraph to this object.
 
         The paragraph is inserted after any other paragraphs.
@@ -217,6 +245,7 @@ class Copyright(object):
         self.__paragraphs.append(paragraph)
 
     def dump(self, f=None):
+        # type: (Optional[IO[Text]]) -> Optional[str]
         """Dumps the contents of the copyright file.
 
         If f is None, returns a unicode object.  Otherwise, writes the contents
@@ -233,10 +262,11 @@ class Copyright(object):
             f.write('\n')
             p.dump(f, text_mode=True)
         if return_string:
-            return f.getvalue()
-
+            return f.getvalue()    # type: ignore
+        return None
 
 def _single_line(s):
+    # type: (str) -> str
     """Returns s if it is a single line; otherwise raises MachineReadableFormatError."""
     if '\n' in s:
         raise MachineReadableFormatError('must be single line')
@@ -249,6 +279,7 @@ class _LineBased(object):
 
     @staticmethod
     def from_str(s):
+        # type: (Optional[str]) -> Iterable[str]
         """Returns the lines in 's', with whitespace stripped, as a tuple."""
         return tuple(v for v in
                      (line.strip() for line in (s or '').strip().splitlines())
@@ -256,6 +287,7 @@ class _LineBased(object):
 
     @staticmethod
     def to_str(seq):
+        # type: (Iterable[str]) -> Optional[str]
         """Returns the sequence as a string with each element on its own line.
 
         If 'seq' has one element, the result will be on a single line.
@@ -266,6 +298,7 @@ class _LineBased(object):
             return None
 
         def process_and_validate(s):
+            # type: (str) -> str
             s = s.strip()
             if not s:
                 raise MachineReadableFormatError('values must not be empty')
@@ -291,11 +324,13 @@ class _SpaceSeparated(object):
 
     @staticmethod
     def from_str(s):
+        # type: (Optional[str]) -> Iterable[str]
         """Returns the values in s as a tuple (empty if only whitespace)."""
         return tuple(v for v in (s or '').split() if v)
 
     @classmethod
     def to_str(cls, seq):
+        # type: (Iterable[str]) -> Optional[str]
         """Returns the sequence as a space-separated string (None if empty)."""
         l = list(seq)
         if not l:
@@ -315,6 +350,7 @@ class _SpaceSeparated(object):
 # TODO(jsw): Move multiline formatting/parsing elsewhere?
 
 def format_multiline(s):
+    # type: (Optional[str]) -> Optional[str]
     """Formats multiline text for insertion in a Deb822 field.
 
     Each line except for the first one is prefixed with a single space.  Lines
@@ -326,6 +362,7 @@ def format_multiline(s):
 
 
 def format_multiline_lines(lines):
+    # type: (List[str]) -> str
     """Same as format_multline, but taking input pre-split into lines."""
     out_lines = []
     for i, line in enumerate(lines):
@@ -338,6 +375,7 @@ def format_multiline_lines(lines):
 
 
 def parse_multiline(s):
+    # type: (Optional[str]) -> Optional[str]
     """Inverse of format_multiline.
 
     Technically it can't be a perfect inverse, since format_multline must
@@ -353,6 +391,7 @@ def parse_multiline(s):
 
 
 def parse_multiline_as_lines(s):
+    # type: (str) -> List[str]
     """Same as parse_multiline, but returns a list of lines.
 
     (This is the inverse of format_multiline_lines.)
@@ -389,15 +428,17 @@ class License(collections.namedtuple('License', 'synopsis text')):
 
     @classmethod
     def from_str(cls, s):
+        # type: (Optional[str]) -> Optional[License]
         if s is None:
             return None
 
         lines = parse_multiline_as_lines(s)
         if not lines:
-            return cls('')
+            return cls('')   # type: ignore
         return cls(lines[0], text='\n'.join(itertools.islice(lines, 1, None)))
 
     def to_str(self):
+        # type: () -> str
         return format_multiline_lines([self.synopsis] + self.text.splitlines())
 
     # TODO(jsw): Parse the synopsis?
@@ -405,6 +446,7 @@ class License(collections.namedtuple('License', 'synopsis text')):
 
 
 def globs_to_re(globs):
+    # type: (Iterable[str]) -> Pattern
     r"""Returns an re object for the given globs.
 
     Only * and ? wildcards are supported.  Literal * and ? may be matched via
@@ -457,6 +499,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
     """
 
     def __init__(self, data, _internal_validate=True, strict=True):
+        # type: (deb822.Deb822, bool, bool) -> None
         super(FilesParagraph, self).__init__(data)
 
         if _internal_validate:
@@ -470,10 +513,15 @@ class FilesParagraph(deb822.RestrictedWrapper):
             if not self.files:
                 _complain('Files paragraph has empty Files field', strict)
 
-        self.__cached_files_pat = (None, None)
+        self.__cached_files_pat = ('', re.compile(''))  # type: Tuple[str, Pattern]
 
     @classmethod
-    def create(cls, files, copyright, license):
+    def create(cls,
+               files,      # type: Optional[List[str]]
+               copyright,  # type: Optional[str]
+               license,    # type: Optional[License]
+              ):
+        # type: (...) -> FilesParagraph
         """Create a new FilesParagraph from its required parts.
 
         :param files: The list of file globs.
@@ -488,6 +536,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
         return p
 
     def files_pattern(self):
+        # type: () -> Optional[Pattern]
         """Returns a regular expression equivalent to the Files globs.
 
         Caches the result until files is set to a different value.
@@ -500,6 +549,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
         return self.__cached_files_pat[1]
 
     def matches(self, filename):
+        # type: (str) -> bool
         """Returns True iff filename is matched by a glob in Files."""
         pat = self.files_pattern()
         return pat.match(filename) is not None
@@ -508,13 +558,13 @@ class FilesParagraph(deb822.RestrictedWrapper):
         'Files', from_str=_SpaceSeparated.from_str,
         to_str=_SpaceSeparated.to_str, allow_none=False)
 
-    copyright = deb822.RestrictedField('Copyright', allow_none=False)
+    copyright = deb822.RestrictedField('Copyright', allow_none=False)  # type: ignore
 
     license = deb822.RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
         allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')
+    comment = deb822.RestrictedField('Comment')    # type: ignore
 
 
 class LicenseParagraph(deb822.RestrictedWrapper):
@@ -526,6 +576,7 @@ class LicenseParagraph(deb822.RestrictedWrapper):
     """
 
     def __init__(self, data, _internal_validate=True):
+        # type: (deb822.Deb822, bool) -> None
         super(LicenseParagraph, self).__init__(data)
         if _internal_validate:
             if 'License' not in data:
@@ -536,6 +587,7 @@ class LicenseParagraph(deb822.RestrictedWrapper):
 
     @classmethod
     def create(cls, license):
+        # type: (License) -> LicenseParagraph
         """Returns a LicenseParagraph with the given license."""
         # pylint: disable=redefined-builtin
         if not isinstance(license, License):
@@ -551,10 +603,10 @@ class LicenseParagraph(deb822.RestrictedWrapper):
         'License', from_str=License.from_str, to_str=License.to_str,
         allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')
+    comment = deb822.RestrictedField('Comment')    # type: ignore
 
     # Hide 'Files'.
-    __files = deb822.RestrictedField('Files')
+    __files = deb822.RestrictedField('Files')    # type: ignore
 
 
 class Header(deb822.RestrictedWrapper):
@@ -565,9 +617,10 @@ class Header(deb822.RestrictedWrapper):
     """
 
     def __init__(self, data=None):
+        # type: (Optional[deb822.Deb822]) -> None
         """Initializer.
 
-        :param parsed: A deb822.Deb822 object for underlying data.  If None, a
+        :param data: A deb822.Deb822 object for underlying data.  If None, a
             new one will be created.
         """
         if data is None:
@@ -603,30 +656,41 @@ class Header(deb822.RestrictedWrapper):
             warnings.warn('format not known: %r' % fmt)
 
     def known_format(self):
+        # type: () -> bool
         """Returns True iff the format is known."""
         return self.format in _KNOWN_FORMATS
 
     def current_format(self):
+        # type: () -> bool
         """Returns True iff the format is the current format."""
         return self.format == _CURRENT_FORMAT
 
-    format = deb822.RestrictedField(
+    # lots of type ignores due to  https://github.com/python/mypy/issues/1279
+    format = deb822.RestrictedField(                    # type: ignore
         'Format', to_str=_single_line, allow_none=False)
 
-    upstream_name = deb822.RestrictedField(
+    upstream_name = deb822.RestrictedField(              # type: ignore
         'Upstream-Name', to_str=_single_line)
 
-    upstream_contact = deb822.RestrictedField(
+    upstream_contact = deb822.RestrictedField(           # type: ignore
         'Upstream-Contact', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
 
-    source = deb822.RestrictedField('Source')
+    source = deb822.RestrictedField('Source')            # type: ignore
 
-    disclaimer = deb822.RestrictedField('Disclaimer')
+    disclaimer = deb822.RestrictedField('Disclaimer')    # type: ignore
 
-    comment = deb822.RestrictedField('Comment')
+    comment = deb822.RestrictedField('Comment')          # type: ignore
 
-    license = deb822.RestrictedField(
+    license = deb822.RestrictedField(                    # type: ignore
         'License', from_str=License.from_str, to_str=License.to_str)
 
-    copyright = deb822.RestrictedField('Copyright')
+    copyright = deb822.RestrictedField('Copyright')      # type: ignore
+
+
+try:
+    ParagraphTypes = Union[FilesParagraph, LicenseParagraph]
+    AllParagraphTypes = Union[Header, FilesParagraph, LicenseParagraph]
+except NameError:
+    # ignore exception if typing is not loaded
+    pass
