@@ -540,7 +540,7 @@ class DB:
 
         Return the tagset made of the highest number of tags taken in
         consecutive sequence from the beginning of the given vector,
-        that would intersecate with the tagset of a comfortable amount
+        that would intersect with the tagset of a comfortable amount
         of packages.
 
         Comfortable is defined in terms of how far it is from 7.
@@ -576,7 +576,7 @@ class DB:
         """
         Generate the list of correlation as a tuple (hastag, hasalsotag, score).
 
-        Every touple will indicate that the tag 'hastag' tends to also
+        Every tuple will indicate that the tag 'hastag' tends to also
         have 'hasalsotag' with a score of 'score'.
         """
         for pivot in self.iter_tags():

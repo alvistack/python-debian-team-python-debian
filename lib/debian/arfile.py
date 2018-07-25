@@ -54,7 +54,7 @@ class ArError(Exception):
 class ArFile(object):
     """ Representation of an ar archive, see man 1 ar.
 
-    The interface of this class tries to mimick that of the TarFile module in
+    The interface of this class tries to mimic that of the TarFile module in
     the standard library.
 
     ArFile objects have the following (read-only) properties:
