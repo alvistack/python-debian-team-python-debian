@@ -858,22 +858,18 @@ Description: python modules to work with Debian-related data formats
         # Avoid spitting out the encoding warning during testing.
         warnings.filterwarnings(action='ignore', category=UnicodeWarning)
 
-        filename = 'test_Sources.mixed_encoding'
-        # TODO: With Python >= 2.7, this might be better written as:
-        #   with open(filename, 'rb') as f1, open(filename, 'rb') as f2:
-        f1 = open(find_test_file(filename), 'rb')
-        f2 = open(find_test_file(filename), 'rb')
-        for paragraphs in [deb822.Sources.iter_paragraphs(f1),
-                           deb822.Sources.iter_paragraphs(f2,
-                                                          use_apt_pkg=False)]:
-            p1 = next(paragraphs)
-            self.assertEqual(p1['maintainer'],
-                             six.u('Adeodato Sim\xf3 <dato@net.com.org.es>'))
-            p2 = next(paragraphs)
-            self.assertEqual(p2['uploaders'],
-                             six.u('Frank K\xfcster <frank@debian.org>'))
-        f2.close()
-        f1.close()
+        filename = find_test_file('test_Sources.mixed_encoding')
+        with open(filename, 'rb') as f1, open(filename, 'rb') as f2:
+            for paragraphs in [
+                        deb822.Sources.iter_paragraphs(f1),
+                        deb822.Sources.iter_paragraphs(f2, use_apt_pkg=False)
+                    ]:
+                p1 = next(paragraphs)
+                self.assertEqual(p1['maintainer'],
+                                six.u('Adeodato Sim\xf3 <dato@net.com.org.es>'))
+                p2 = next(paragraphs)
+                self.assertEqual(p2['uploaders'],
+                                six.u('Frank K\xfcster <frank@debian.org>'))
 
     def test_dump_text_mode(self):
         d = deb822.Deb822(CHANGES_FILE.splitlines())
