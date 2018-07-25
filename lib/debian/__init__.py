@@ -1,9 +1,11 @@
 """ Tools for working with Debian-related file formats """
 
+__version__ = ""
+
 try:
     # pylint: disable=no-member
-    import debian._version
-    __version__ = debian._version.__version__
+    import debian._version     # type: ignore
+    __version__ = debian._version.__version__     # type: ignore
 
 except ImportError:
     try:
