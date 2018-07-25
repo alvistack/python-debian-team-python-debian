@@ -28,7 +28,24 @@ import tarfile
 import sys
 import os.path
 
-from debian.arfile import ArFile, ArError
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        Dict,
+        IO,
+        Iterator,
+        List,
+        Optional,
+        Text,
+        TypeVar,
+        Union,
+    )
+except ImportError:
+    # Missing types aren't important at runtime
+    pass
+
+from debian.arfile import ArFile, ArError, ArMember
 from debian.changelog import Changelog
 from debian.deb822 import Deb822
 
@@ -67,10 +84,12 @@ class DebPart(object):
     """
 
     def __init__(self, member):
+        # type: (ArMember) -> None
         self.__member = member  # arfile.ArMember file member
-        self.__tgz = None
+        self.__tgz = None   # type: Optional[tarfile.TarFile]
 
     def tgz(self):
+        # type: () -> tarfile.TarFile
         """Return a TarFile object corresponding to this part of a .deb
         package.
 
@@ -109,7 +128,7 @@ class DebPart(object):
                     buffer = self.__member
 
                 try:
-                    self.__tgz = tarfile.open(fileobj=buffer, mode='r:*')
+                    self.__tgz = tarfile.open(fileobj=buffer, mode='r:*')    # type: ignore
                 except (tarfile.ReadError, tarfile.CompressionError) as e:
                     raise DebError("tarfile has returned an error: '%s'" % e)
             else:
@@ -118,6 +137,7 @@ class DebPart(object):
 
     @staticmethod
     def __normalize_member(fname):
+        # type: (str) -> str
         """ try (not so hard) to obtain a member file name in a form relative
         to the .tar.gz root and with no heading '.' """
 
@@ -134,6 +154,7 @@ class DebPart(object):
     # './' for all file members.
 
     def has_file(self, fname):
+        # type: (str) -> bool
         """Check if this part contains a given file name."""
 
         fname = DebPart.__normalize_member(fname)
@@ -142,6 +163,7 @@ class DebPart(object):
                 or (fname in names))  # XXX python << 2.5 TarFile compatibility
 
     def get_file(self, fname, encoding=None, errors=None):
+        # type: (str, Optional[str], Optional[str]) -> Union[IO[bytes], IO[str]]
         """Return a file object corresponding to a given file name.
 
         If encoding is given, then the file object will return Unicode data;
@@ -158,7 +180,7 @@ class DebPart(object):
                 import io
                 if not hasattr(fobj, 'flush'):
                     # XXX http://bugs.python.org/issue13815
-                    fobj.flush = lambda: None
+                    fobj.flush = lambda: None   # type: ignore
                 return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)
             else:
                 import codecs
@@ -168,7 +190,12 @@ class DebPart(object):
         else:
             return fobj
 
-    def get_content(self, fname, encoding=None, errors=None):
+    def get_content(self,
+                    fname,          # type: str
+                    encoding=None,  # type: Optional[str]
+                    errors=None,    # type: Optional[str]
+                   ):
+        # type: (...) -> Optional[Union[bytes, Text]]
         """Return the string content of a given file, or None (e.g. for
         directories).
 
@@ -186,19 +213,24 @@ class DebPart(object):
     # container emulation
 
     def __iter__(self):
+        # type: () -> Iterator[str]
         return iter(self.tgz().getnames())
 
     def __contains__(self, fname):
+        # type: (str) -> bool
         return self.has_file(fname)
 
     if sys.version < '3':
         def has_key(self, fname):
+            # type: (str) -> bool
             return self.has_file(fname)
 
     def __getitem__(self, fname):
+        # type: (str) ->  Optional[Union[bytes, Text]]
         return self.get_content(fname)
 
     def close(self):
+        # type: () -> None
         self.__member.close()
 
 
@@ -210,6 +242,7 @@ class DebData(DebPart):
 class DebControl(DebPart):
 
     def scripts(self):
+        # () -> Dict[str, bytes]
         """ Return a dictionary of maintainer scripts (postinst, prerm, ...)
         mapping script names to script text. """
 
@@ -221,6 +254,7 @@ class DebControl(DebPart):
         return scripts
 
     def debcontrol(self):
+        # () -> Deb822
         """ Return the debian/control as a Deb822 (a Debian-specific dict-like
         class) object.
 
@@ -230,6 +264,7 @@ class DebControl(DebPart):
         return Deb822(self.get_content(CONTROL_FILE))
 
     def md5sums(self, encoding=None, errors=None):
+        # type: (Optional[str], Optional[str]) -> Dict[Union[str, bytes], str]
         """ Return a dictionary mapping filenames (of the data part) to
         md5sums. Fails if the control part does not contain a 'md5sum' file.
 
@@ -245,23 +280,25 @@ class DebControl(DebPart):
                 "'%s' file not found, can't list MD5 sums" % MD5_FILE)
 
         md5_file = self.get_file(MD5_FILE, encoding=encoding, errors=errors)
-        sums = {}
+        sums = {}  # type:  Dict[Any, str]
+
+        newline = '\r\n'     # type: Union[str, bytes]
         if encoding is None:
             newline = b'\r\n'
-        else:
-            newline = '\r\n'    # pylint: disable=redefined-variable-type
+
         for line in md5_file.readlines():
             # we need to support spaces in filenames, .split() is not enough
-            md5, fname = line.rstrip(newline).split(None, 1)
+            md5, fname = line.rstrip(newline).split(None, 1)  # type: ignore
             if sys.version >= '3' and isinstance(md5, bytes):
                 sums[fname] = md5.decode()
             else:
-                sums[fname] = md5
+                sums[fname] = md5  # type: ignore
         md5_file.close()
         return sums
 
 
 class DebFile(ArFile):
+    # pylint: disable=abstract-method
     """Representation of a .deb file (a Debian binary package)
 
     DebFile objects have the following (read-only) properties:
@@ -277,10 +314,12 @@ class DebFile(ArFile):
     """
 
     def __init__(self, filename=None, mode='r', fileobj=None):
+        # type: (str, str, IO[bytes]) -> None
         ArFile.__init__(self, filename, mode, fileobj)
         actual_names = set(self.getnames())
 
         def compressed_part_name(basename):
+            # type: (str) -> str
             candidates = ['%s.%s' % (basename, ext) for ext in PART_EXTS]
             # also permit uncompressed data.tar and control.tar
             if basename == DATA_PART or basename == CTRL_PART:
@@ -302,7 +341,7 @@ class DebFile(ArFile):
                 "missing required part in given .deb"
                 " (expected: '%s')" % INFO_PART)
 
-        self.__parts = {}
+        self.__parts = {}   # type: Dict[str, DebPart]
         self.__parts[CTRL_PART] = DebControl(self.getmember(
             compressed_part_name(CTRL_PART)))
         self.__parts[DATA_PART] = DebData(self.getmember(
@@ -323,18 +362,22 @@ class DebFile(ArFile):
     # proxy methods for the appropriate parts
 
     def debcontrol(self):
+        # type: () -> Deb822
         """ See .control.debcontrol() """
         return self.control.debcontrol()
 
     def scripts(self):
+        # type: () -> List[bytes]
         """ See .control.scripts() """
         return self.control.scripts()
 
     def md5sums(self, encoding=None, errors=None):
+        # type: (Optional[str], Optional[Any]) -> Dict[str, str]
         """ See .control.md5sums() """
         return self.control.md5sums(encoding=encoding, errors=errors)
 
     def changelog(self):
+        # type: () -> Optional[Changelog]
         """ Return a Changelog object for the changelog.Debian.gz of the
         present .deb package. Return None if no changelog can be found. """
 
@@ -351,6 +394,7 @@ class DebFile(ArFile):
         return None
 
     def close(self):
+        # type: () -> None
         self.control.close()
         self.data.close()
 
