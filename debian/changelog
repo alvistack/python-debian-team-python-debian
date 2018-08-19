@@ -1,4 +1,4 @@
-python-debian (0.1.33) UNRELEASED; urgency=medium
+python-debian (0.1.33) unstable; urgency=medium
 
   * Switch to salsa.debian.org URLs for homepage, source location etc.
   * Bump to debhelper compat 11 (no changes required).
@@ -12,7 +12,7 @@ python-debian (0.1.33) UNRELEASED; urgency=medium
   * Add Python 2 compatible type annotation comments throughout.
   * Considerable code polish based on pylint and mypy.
 
- -- Stuart Prescott <stuart@debian.org>  Sat, 17 Feb 2018 17:12:17 +1100
+ -- Stuart Prescott <stuart@debian.org>  Sun, 19 Aug 2018 17:19:11 +1000
 
 python-debian (0.1.32) unstable; urgency=medium
 
