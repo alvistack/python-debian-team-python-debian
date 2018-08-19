@@ -73,17 +73,18 @@ Notable specifications:
 Style guide
 -----------
 
- - Try to be whitespace clean and follow pep8 in new code.
+ - Code should be whitespace clean, pep8 & pylint compatible;
+   a `.pylintrc` configuration file is provided and will one day be
+   added to the CI process. (Where pep8 and pylintrc disagree about
+   whitespace, follow pylint's recommendations.)
 
- - Aspire to writing something that pylint would like. (TODO: add a
-   `.pylintrc` and enable that as part of the testing process)
+ - Write type annotations to help mypy understand the types and
+   ensure that mypy is happy with the code.
+
+ - Write tests. For everything.
 
  - Write docstrings in rst format so that sphinx can generate API
    documentation.
-
- - Whitespace-only diffs are annoying for everyone. Perhaps we should have a
-   giant clean-up flag day, but doing so invalidates every other patch or
-   branch that is out there and that seems hard to justify.
 
 
 Test suite
