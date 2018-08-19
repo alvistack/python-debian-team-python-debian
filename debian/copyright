@@ -18,8 +18,7 @@ License: GPL-2+
 Files:
  examples/changelog/*
  lib/debian/changelog.py
- README.changelog
- setup.py.in
+ setup.py
  lib/debian/tests/test_changelog.py
 Copyright: Copyright (C) 2006-2007 James Westby <jw+debian@jameswestby.net>
            Copyright (C) 2008 Canonical Ltd.
