@@ -2,11 +2,15 @@ python-debian (0.1.33) UNRELEASED; urgency=medium
 
   * Switch to salsa.debian.org URLs for homepage, source location etc.
   * Bump to debhelper compat 11 (no changes required).
+  * Update standards-version to 4.2.0 (no changes required).
   * Enable the test suite as a CI pipeline on salsa.debian.org.
   * Enable building of API documentation using sphinx.
   * Publish the API documentation via salsa.
   * Fix up various rst issues in documentation and move around docs so that
     they can be included in the sphinx output (Closes: #894214).
+  * Fix handling of http vs https in copyright-format/1.0 parser.
+  * Add Python 2 compatible type annotation comments throughout.
+  * Considerable code polish based on pylint and mypy.
 
  -- Stuart Prescott <stuart@debian.org>  Sat, 17 Feb 2018 17:12:17 +1100
 
