@@ -13,5 +13,6 @@ Depends:
  binutils (>= 2.23),
  python2.7,
  python-debian,
+ python-unittest2,
  debian-keyring,
  debian-archive-keyring
