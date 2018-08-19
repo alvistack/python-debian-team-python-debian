@@ -41,11 +41,6 @@ override_dh_auto_install:
 	# python and dh_python3 will leave them behind.
 	rm -rf $(CURDIR)/*/usr/lib/python3.*
 
-override_dh_installexamples:
-	# TODO: Enrico would like to keep wxssearch out of the package
-	# but so far, he has no better place for it
-	dh_installexamples -X wxssearch
-
 dist: lib/debian/_version.py
 	rm -f dist/python?debian-$(DEB_VERSION)*
 	python3 setup.py sdist bdist_wheel bdist_egg
