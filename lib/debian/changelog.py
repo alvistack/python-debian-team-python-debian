@@ -493,7 +493,7 @@ class Changelog(object):
         # type: (...) -> None
         """ Read and parse a changelog file
 
-        If you create an Changelog object without sepcifying a changelog
+        If you create an Changelog object without specifying a changelog
         file, you can parse a changelog file with this method. If the
         changelog doesn't parse cleanly, a :class:`ChangelogParseError`
         exception is thrown. The constructor will parse the changelog on
