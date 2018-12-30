@@ -45,7 +45,7 @@ except ImportError:
     # Missing types aren't important at runtime
     pass
 
-from debian.arfile import ArFile, ArError, ArMember
+from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
 from debian.changelog import Changelog
 from debian.deb822 import Deb822
 
