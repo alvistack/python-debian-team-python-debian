@@ -48,7 +48,6 @@ FILE_MAGIC = b"`\n"
 
 class ArError(Exception):
     """ Common base for all exceptions raised within the arfile module """
-    pass
 
 
 class ArFile(object):

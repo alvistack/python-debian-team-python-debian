@@ -1108,7 +1108,6 @@ class GpgInfo(dict):
 # XXX handle utf-8 %-encoding
     def uid(self):
         """Return the primary ID of the signee key, None is not available"""
-        pass
 
     @classmethod
     def from_output(cls, out, err=None):
