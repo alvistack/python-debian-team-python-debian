@@ -338,6 +338,7 @@ class TagSectionWrapper(Mapping):
         # type: (...) -> None
         self.__section = section
         self.decoder = decoder or _AutoDecoder()
+        super(TagSectionWrapper, self).__init__()
 
     def __iter__(self):
         # type: () -> Iterator[str]
@@ -454,6 +455,7 @@ class Deb822Dict(MutableMapping):
         self.__parsed = None  # type: Optional[Union[Deb822, TagSectionWrapper]]
         self.encoding = encoding
         self.decoder = _AutoDecoder(self.encoding)
+        super(Deb822Dict, self).__init__()
 
         if _dict is not None:
             # _dict may be a dict or a list of two-sized tuples
