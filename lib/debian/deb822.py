@@ -220,6 +220,19 @@ Deb822 Classes
 from __future__ import absolute_import, print_function
 
 import collections
+try:
+    # Python 3
+    from collections.abc import (
+        Mapping,
+        MutableMapping,
+    )
+except ImportError:
+    # Python 2.7 cruft
+    from collections import (
+        Mapping,
+        MutableMapping,
+    )
+
 import datetime
 import email.utils
 import io
@@ -311,7 +324,7 @@ class RestrictedFieldError(Error):
     """Raised when modifying the raw value of a field is not allowed."""
 
 
-class TagSectionWrapper(collections.Mapping):
+class TagSectionWrapper(Mapping):
     """Wrap a TagSection object, using its find_raw method to get field values
 
     This allows us to pick which whitespace to strip off the beginning and end
@@ -412,7 +425,7 @@ class OrderedSet(object):
     # ###
 
 
-class Deb822Dict(collections.MutableMapping):
+class Deb822Dict(MutableMapping):
     """A dictionary-like object suitable for storing RFC822-like data.
 
     Deb822Dict behaves like a normal dict, except:
@@ -469,7 +482,7 @@ class Deb822Dict(collections.MutableMapping):
             else:
                 self.__keys.extend([_strI(f) for f in _fields if f in self.__parsed])
 
-    # ### BEGIN collections.MutableMapping methods
+    # ### BEGIN collections.abc.MutableMapping methods
 
     def __iter__(self):
         # type: () -> Iterator[str]
@@ -523,7 +536,7 @@ class Deb822Dict(collections.MutableMapping):
     if sys.version < '3':
         has_key = __contains__
 
-    # ### END collections.MutableMapping methods
+    # ### END collections.abc.MutableMapping methods
 
     def __repr__(self):
         return '{%s}' % ', '.join(['%r: %r' % (k, v) for k, v in self.items()])
