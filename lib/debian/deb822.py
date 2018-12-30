@@ -285,6 +285,7 @@ except ImportError:
     pass
 
 from debian.deprecation import function_deprecated_by
+import debian.debian_support
 
 try:
     import apt_pkg    # type: ignore
@@ -1401,6 +1402,16 @@ class _lowercase_dict(dict):
         return dict.__getitem__(self, key.lower())
 
 
+class _VersionAccessorMixin(object):
+    """Give access to Version keys as debian_support.Version objects."""
+    def get_version(self):
+        return debian.debian_support.Version(self['Version'])
+
+    def set_version(self, version):
+        self['Version'] = str(version)
+
+
+
 class _PkgRelationMixin(object):
     """Package relationship mixin
 
@@ -1688,7 +1699,7 @@ class _gpg_multivalued(_multivalued):
         raise TypeError('bytes or unicode/string required, not %s' % type(s))
 
 
-class Dsc(_gpg_multivalued):
+class Dsc(_gpg_multivalued, _VersionAccessorMixin):
     """ Representation of a .dsc (Debian Source Control) file
 
     This class is a thin wrapper around the transparent GPG handling
@@ -1702,7 +1713,7 @@ class Dsc(_gpg_multivalued):
     }
 
 
-class Changes(_gpg_multivalued):
+class Changes(_gpg_multivalued, _VersionAccessorMixin):
     """ Representation of a .changes (archive changes) file
 
     This class is a thin wrapper around the transparent GPG handling
@@ -1854,7 +1865,7 @@ class Sources(Dsc, _PkgRelationMixin):
             sequence, fields, use_apt_pkg, shared_storage, encoding)
 
 
-class Packages(Deb822, _PkgRelationMixin):
+class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
     """Represent an APT binary package list
 
     This class is a thin wrapper around the parsing of :class:`Deb822`,

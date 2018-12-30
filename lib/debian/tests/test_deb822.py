@@ -40,6 +40,7 @@ else:
 import apt_pkg   #type: ignore
 
 from debian import deb822
+from debian.debian_support import Version
 
 
 UNPARSED_PACKAGE = '''\
@@ -1236,6 +1237,35 @@ class TestPkgRelations(unittest.TestCase):
         term = rel[0][0]['archqual']
         self.assertEqual(term, "native")
         self.assertEqual(deb822.PkgRelation.str(rel), r)
+
+
+class TestVersionAccessor(unittest.TestCase):
+
+    def test_get_version(self):
+        # should not be available in most basic Deb822
+        p = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
+        with self.assertRaises(AttributeError):
+            p.get_version()
+
+        # should be available in Packages
+        p = deb822.Packages(UNPARSED_PACKAGE.splitlines())
+        v = p.get_version()
+        self.assertEqual(str(v), '1.5.12-1')
+        self.assertTrue(isinstance(v, Version))
+
+    def test_set_version(self):
+        # should not be available in most basic Deb822
+        p = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
+        with self.assertRaises(AttributeError):
+            p.set_version()
+
+        # should be available in Packages
+        p = deb822.Packages(UNPARSED_PACKAGE.splitlines())
+        newver = '9.8.7-1'
+        v = Version(newver)
+        p.set_version(v)
+        self.assertEqual(p['Version'], newver)
+        self.assertTrue(isinstance(p['Version'], six.string_types))
 
 
 @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
