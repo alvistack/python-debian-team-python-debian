@@ -296,21 +296,17 @@ except (ImportError, AttributeError):
     _have_apt_pkg = False
 
 
-if sys.version >= '3':
-    def _is_real_file(f):
-        # type: (Any) -> bool
-        if not isinstance(f, io.IOBase):
-            return False
-        try:
-            f.fileno()
-            return True
-        except (AttributeError, io.UnsupportedOperation):
-            return False
-else:
-    def _is_real_file(f):
-        # type: (Any) -> bool
-        # pylint: disable=undefined-variable
-        return isinstance(f, file) and hasattr(f, 'fileno')  # type: ignore
+def _is_real_file(f):
+    """ test that a file-like object is really a filehandle
+
+    Only filehandles can be given to apt_pkg.TagFile.
+    """
+    # type: (Any) -> bool
+    try:
+        f.fileno()
+        return True
+    except (AttributeError, io.UnsupportedOperation):
+        return False
 
 
 GPGV_DEFAULT_KEYRINGS = frozenset(['/usr/share/keyrings/debian-keyring.gpg'])
@@ -648,7 +644,28 @@ class Deb822(Deb822Dict):
         """
         # pylint: disable=unused-argument
 
-        if _have_apt_pkg and use_apt_pkg and _is_real_file(sequence):
+        apt_pkg_allowed = use_apt_pkg and _is_real_file(sequence)
+
+        if use_apt_pkg and not _have_apt_pkg:
+            # warn that apt_pkg was requested but not installed
+            msg = (
+                "Parsing of Deb822 data with python{pyver}-apt's apt_pkg was "
+                "requested but this package is not importable. "
+                "Is python{pyver}-apt installed?"
+            ).format(
+                pyver=('3' if sys.version_info[0] == 3 else '')
+            )
+            warnings.warn(msg)
+
+        elif use_apt_pkg and not apt_pkg_allowed:
+            # warn that apt_pkg was requested but can't be used
+            msg = (
+                "Parsing of Deb822 data with python-apt's apt_pkg was "
+                "requested but this cannot be done on non-file input."
+            )
+            warnings.warn(msg)
+
+        if _have_apt_pkg and apt_pkg_allowed:
             kwargs = {}
             if sys.version >= '3':
                 # bytes=True is supported for both Python 2 and 3, but we

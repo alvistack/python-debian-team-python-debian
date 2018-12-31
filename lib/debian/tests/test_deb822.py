@@ -26,7 +26,10 @@ import os.path
 import re
 import sys
 import tempfile
-import unittest
+if sys.version_info[0] >= 3:
+    import unittest
+else:
+    import unittest2 as unittest
 import warnings
 
 import six
@@ -456,14 +459,38 @@ class TestDeb822(unittest.TestCase):
         for d in deb822.Deb822.iter_paragraphs(text):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
-    def test_iter_paragraphs_file(self):
+    def test_iter_paragraphs_file_io(self):
         text = StringIO(UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
 
         for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=False):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
-        for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=True):
-            self.assertWellParsed(d, PARSED_PACKAGE)
+        with self.assertWarns(UserWarning):
+            # The StringIO is not a real file so this will raise a warning
+            for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=True):
+                self.assertWellParsed(d, PARSED_PACKAGE)
+
+    def test_iter_paragraphs_file(self):
+        text = StringIO()
+        text.write(UNPARSED_PACKAGE)
+        text.write('\n\n\n')
+        text.write(UNPARSED_PACKAGE)
+
+        with tempfile.NamedTemporaryFile() as fh:
+            if sys.version_info[0] >= 3:
+                txt = text.getvalue().encode('UTF-8')
+            else:
+                txt = text.getvalue()
+            fh.write(txt)
+
+            fh.seek(0)
+            for d in deb822.Deb822.iter_paragraphs(fh, use_apt_pkg=False):
+                self.assertWellParsed(d, PARSED_PACKAGE)
+
+            fh.seek(0)
+            for d in deb822.Deb822.iter_paragraphs(fh, use_apt_pkg=True):
+                self.assertWellParsed(d, PARSED_PACKAGE)
+
 
     def test_iter_paragraphs_with_gpg(self):
         for string in GPG_SIGNED:
