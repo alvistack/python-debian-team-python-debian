@@ -297,11 +297,11 @@ except (ImportError, AttributeError):
 
 
 def _is_real_file(f):
+    # type: (Any) -> bool
     """ test that a file-like object is really a filehandle
 
     Only filehandles can be given to apt_pkg.TagFile.
     """
-    # type: (Any) -> bool
     try:
         f.fileno()
         return True
