@@ -512,7 +512,7 @@ class TestDeb822(unittest.TestCase):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
     def test_iter_paragraphs_with_extra_whitespace(self):
-        """ Paragraphs not elided when stray whitespace is between
+        """ Paragraphs splitting when stray whitespace is between
 
         From policy §5.1:
 
@@ -522,33 +522,59 @@ class TestDeb822(unittest.TestCase):
 
         On the principle of "be strict in what you send; be generous in
         what you receive", deb822 should permit such extra whitespace between
-        deb822 stanzas.
+        deb822 stanzas. See #715558 for further details.
 
-        See #715558 for further details.
+        However, when dealing with Packages and Sources files, the behaviour
+        of apt is to not split on whitespace-only lines, and so the internal
+        parser must be able to avoid doing so when dealing with these data.
+        See #913274 for further details.
         """
         for extra_space in (" ", "  ", "\t"):
             text = six.u(UNPARSED_PACKAGE) + '%s\n' % extra_space + \
                         six.u(UNPARSED_PACKAGE)
-            count = len(list(deb822.Deb822.iter_paragraphs(text)))
-            self.assertEqual(2, count,
-                        "Wrong number paragraphs were found in list: 2 != %d" % count)
 
             fd, filename = tempfile.mkstemp()
             fp = os.fdopen(fd, 'wb')
             fp.write(text.encode('utf-8'))
             fp.close()
 
+            def test_count(cmd, expected, *args, **kwargs):
+                #print("\n", cmd.__class__, expected)
+                with open_utf8(filename) as fh:
+                    count = len(list(cmd(fh, *args, **kwargs)))
+                    self.assertEqual(
+                        expected,
+                        count,
+                        "Wrong number paragraphs were found: expected {expected}, got {count}".format(
+                            count=count,
+                            expected=expected,
+                        )
+                    )
+
             try:
-                with open_utf8(filename) as fh:
-                    count = len(list(deb822.Deb822.iter_paragraphs(fh)))
-                    self.assertEqual(2, count,
-                            "Wrong number paragraphs were found in file: 2 != %d" % count)
-                with open_utf8(filename) as fh:
-                    count = len(list(deb822.Packages.iter_paragraphs(fh)))
-                    # this time the apt_pkg parser should be used and this
-                    # *should* elide the paragraphs and make a mess
-                    self.assertEqual(count, 1,
-                            "Wrong number paragraphs were found in file: 1 != %d" % count)
+                # apt_pkg not used, should split
+                test_count(deb822.Deb822.iter_paragraphs, 2)
+                test_count(deb822.Deb822.iter_paragraphs, 2, use_apt_pkg=False)
+
+                # apt_pkg used, should not split
+                test_count(deb822.Deb822.iter_paragraphs, 1, use_apt_pkg=True)
+
+                # Specialised iter_paragraphs force use of apt_pkg and don't split
+                test_count(deb822.Packages.iter_paragraphs, 1, use_apt_pkg=True)
+                test_count(deb822.Sources.iter_paragraphs, 1, use_apt_pkg=True)
+                test_count(deb822.Packages.iter_paragraphs, 1, use_apt_pkg=False)
+                test_count(deb822.Sources.iter_paragraphs, 1, use_apt_pkg=False)
+
+                # Explicitly set internal parser to not split
+                strict = {'whitespace-separates-paragraphs': False}
+                test_count(deb822.Packages.iter_paragraphs, 1, use_apt_pkg=False, strict=strict)
+                test_count(deb822.Sources.iter_paragraphs, 1, use_apt_pkg=False, strict=strict)
+
+                # Explicitly set internal parser to split
+                strict = {'whitespace-separates-paragraphs': True}
+                test_count(deb822.Packages.iter_paragraphs, 2, use_apt_pkg=False, strict=strict)
+                test_count(deb822.Sources.iter_paragraphs, 2, use_apt_pkg=False, strict=strict)
+
             finally:
                 os.remove(filename)
 

@@ -584,6 +584,34 @@ class Deb822(Deb822Dict):
     :param encoding: When parsing strings, interpret them in this encoding.
         (All values are given back as unicode objects, so an encoding is
         necessary in order to properly interpret the strings.)
+
+    :param strict: Dict controlling the strictness of the internal parser
+        to permit tuning of its behaviour between "generous in what it
+        accepts" and "strict conformance". Known keys are described below.
+
+    *Internal parser tuning*
+
+    - `whitespace-separates-paragraphs`: (default: `True`)
+      Blank lines between paragraphs should not have any whitespace in them
+      at all. However:
+
+      - Policy §5.1 permits `debian/control` in source packages to separate
+        packages with lines containing whitespace to allow human edited
+        files to have stray whitespace. Failing to honour this breaks
+        tools such as
+        `wrap-and-sort <https://manpages.debian.org/wrap-and-sort>`_
+        (see, for example,
+        `Debian Bug 715558 <https://bugs.debian.org/715558/>`_).
+      - `apt_pkg.TagFile` accepts whitespace-only lines within the
+        `Description` field; strictly matching the behaviour of apt's
+        Deb822 parser requires setting this key to `False` (as is done
+        by default for :class:`Sources` and :class:`Packages`.
+        (see, for example,
+        `Debian Bug 913274 <https://bugs.debian.org/913274/>`_).
+
+    Note that these tuning parameter are only for the parser that is
+    internal to `Deb822` and do not apply to python-apt's apt_pkg.TagFile
+    parser which would normally be used for Packages and Sources files.
     """
 
     def __init__(self,
@@ -591,6 +619,7 @@ class Deb822(Deb822Dict):
                  fields=None,       # type: Optional[List[str]]
                  _parsed=None,      # type: Optional[Union[Deb822, TagSectionWrapper]]
                  encoding="utf-8",  # type: str
+                 strict=None,       # type: Optional[Dict]
                  ):
         # type: (...) -> None
 
@@ -606,7 +635,7 @@ class Deb822(Deb822Dict):
 
         if iterable is not None:
             try:
-                self._internal_parser(iterable, fields)
+                self._internal_parser(iterable, fields, strict)
             except EOFError:
                 pass
 
@@ -620,6 +649,7 @@ class Deb822(Deb822Dict):
                         use_apt_pkg=False,       # type: bool
                         shared_storage=False,    # type: bool
                         encoding="utf-8",        # type: str
+                        strict=None,             # type: Optional[Dict]
                        ):
         # type: (...) -> Iterator[Deb822]
         """Generator that yields a Deb822 object for each paragraph in sequence.
@@ -641,6 +671,8 @@ class Deb822(Deb822Dict):
         :param encoding: Interpret the paragraphs in this encoding.
             (All values are given back as unicode objects, so an encoding is
             necessary in order to properly interpret the strings.)
+        :param strict: dict of settings to tune the internal parser if that is
+            being used. See the documentation for :class:`Deb822` for details.
         """
         # pylint: disable=unused-argument
 
@@ -695,7 +727,7 @@ class Deb822(Deb822Dict):
                 # StringIO/list can be iterated directly
                 iterable = iter(sequence)  # type: ignore
             while True:
-                x = cls(iterable, fields, encoding=encoding)
+                x = cls(iterable, fields, encoding=encoding, strict=strict)
                 if not x:
                     break
                 yield x
@@ -735,6 +767,7 @@ class Deb822(Deb822Dict):
     def _internal_parser(self,
                          sequence,      # type: IterableDataSourceType
                          fields=None,   # type: Optional[List[str]]
+                         strict=None,   # type: Optional[Dict]
                          ):
         # The key is non-whitespace, non-colon characters before any colon.
         key_part = r"^(?P<key>[^: \t\n\r\f\v]+)\s*:\s*"
@@ -753,7 +786,7 @@ class Deb822(Deb822Dict):
         content = ""
 
         for linebytes in self.gpg_stripped_paragraph(
-                self._skip_useless_lines(sequence)):
+                self._skip_useless_lines(sequence), strict):
             line = self.decoder.decode(linebytes)
 
             m = single.match(line)
@@ -970,14 +1003,26 @@ class Deb822(Deb822Dict):
     mergeFields = function_deprecated_by(merge_fields)
 
     @staticmethod
-    def split_gpg_and_payload(sequence):
-        # type: (Iterable[bytes]) -> Tuple[List[bytes], List[bytes], List[bytes]]
+    def split_gpg_and_payload(sequence,         # type: Iterable[bytes]
+                              strict=None,      # type: Optional[Dict]
+                              ):
+        # type: (...) -> Tuple[List[bytes], List[bytes], List[bytes]]
         """Return a (gpg_pre, payload, gpg_post) tuple
 
         Each element of the returned tuple is a list of lines (with trailing
         whitespace stripped).
+
+        :param sequence: iterable.
+            An iterable that yields lines of data (str, unicode,
+            bytes) to be parsed, possibly including a GPG in-line signature.
+        :param strict: dict, optional.
+            Control over the strictness of the parser. See the :class:`Deb822`
+            class documentation for details.
         """
         # pylint: disable=too-many-branches
+
+        if not strict:
+            strict = {}
 
         gpg_pre_lines = []    # type: List[bytes]
         lines = []   # type: List[bytes]
@@ -985,9 +1030,14 @@ class Deb822(Deb822Dict):
         state = b'SAFE'
         gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
                            br'PGP (?P<what>[^-]+)-----[\r\t ]*$')
+        initial_blank_line = re.compile(br'^\s*$')
+
         # Include whitespace-only lines in blank lines to split paragraphs.
         # (see #715558)
-        blank_line = re.compile(br'^\s*$')
+        if strict.get('whitespace-separates-paragraphs', True):
+            blank_line = re.compile(br'^\s*$')
+        else:
+            blank_line = re.compile(br'^$')
         first_line = True
 
         for line in sequence:
@@ -1002,7 +1052,7 @@ class Deb822(Deb822Dict):
 
             # skip initial blank lines, if any
             if first_line:
-                if blank_line.match(line):
+                if initial_blank_line.match(line):
                     continue
                 else:
                     first_line = False
@@ -1043,9 +1093,9 @@ class Deb822(Deb822Dict):
         raise EOFError('only blank lines found in input')
 
     @classmethod
-    def gpg_stripped_paragraph(cls, sequence):
-        # type: (Iterator) -> List[bytes]
-        return cls.split_gpg_and_payload(sequence)[1]
+    def gpg_stripped_paragraph(cls, sequence, strict=None):
+        # type: (Iterator, Optional[Dict]) -> List[bytes]
+        return cls.split_gpg_and_payload(sequence, strict)[1]
 
     def get_gpg_info(self, keyrings=None):
         # type: (List[str]) -> GpgInfo
@@ -1659,6 +1709,7 @@ class _gpg_multivalued(_multivalued):
             sequence = args[0]
         except IndexError:
             sequence = kwargs.get("sequence", None)
+        strict = kwargs.get("strict", None)
 
         if sequence is not None:
             # If the input is a unicode object or a file opened in text mode,
@@ -1681,7 +1732,8 @@ class _gpg_multivalued(_multivalued):
                 try:
                     gpg_pre_lines, lines, gpg_post_lines = \
                         self.split_gpg_and_payload(
-                            self._bytes(s, encoding) for s in sequence)
+                            (self._bytes(s, encoding) for s in sequence),
+                            strict)
                 except EOFError:
                     # Empty input
                     gpg_pre_lines = lines = gpg_post_lines = []
@@ -1869,6 +1921,7 @@ class Sources(Dsc, _PkgRelationMixin):
                         use_apt_pkg=True,        # type: bool
                         shared_storage=False,    # type: bool
                         encoding="utf-8",        # type: str
+                        strict=None,             # type: Optional[Dict]
                        ):
         # type: (...) -> Iterator
         """Generator that yields a Deb822 object for each paragraph in Sources.
@@ -1878,8 +1931,12 @@ class Sources(Dsc, _PkgRelationMixin):
 
         See the :func:`~Deb822.iter_paragraphs` function for details.
         """
+        if not strict:
+            strict = {
+                'whitespace-separates-paragraphs': False,
+            }
         return super(Sources, cls).iter_paragraphs(
-            sequence, fields, use_apt_pkg, shared_storage, encoding)
+            sequence, fields, use_apt_pkg, shared_storage, encoding, strict)
 
 
 class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
@@ -1906,6 +1963,7 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
                         use_apt_pkg=True,      # type: bool
                         shared_storage=False,  # type: bool
                         encoding="utf-8",      # type: str
+                        strict=None,           # type: Optional[Dict]
                        ):
         # type: (...) -> Iterator
         """Generator that yields a Deb822 object for each paragraph in Packages.
@@ -1915,8 +1973,12 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
 
         See the :func:`~Deb822.iter_paragraphs` function for details.
         """
+        if not strict:
+            strict = {
+                'whitespace-separates-paragraphs': False,
+            }
         return super(Packages, cls).iter_paragraphs(
-            sequence, fields, use_apt_pkg, shared_storage, encoding)
+            sequence, fields, use_apt_pkg, shared_storage, encoding, strict)
 
 
 class _ClassInitMeta(type):
