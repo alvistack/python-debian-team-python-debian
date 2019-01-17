@@ -296,7 +296,7 @@ except (ImportError, AttributeError):
     _have_apt_pkg = False
 
 
-def _is_real_file(f):
+def _has_fileno(f):
     # type: (Any) -> bool
     """ test that a file-like object is really a filehandle
 
@@ -644,7 +644,7 @@ class Deb822(Deb822Dict):
         """
         # pylint: disable=unused-argument
 
-        apt_pkg_allowed = use_apt_pkg and _is_real_file(sequence)
+        apt_pkg_allowed = use_apt_pkg and _has_fileno(sequence)
 
         if use_apt_pkg and not _have_apt_pkg:
             # warn that apt_pkg was requested but not installed
