@@ -54,7 +54,8 @@ apidoc:
 	  deb822.py debian/tests/ debian_bundle/
 
 doc: apidoc
-	make -C docs/ SPHINXOPTS="-a -v -n" html
+	PYTHONPATH=$(CURDIR)/lib \
+	  make -C docs/ SPHINXOPTS="-a -v -n" html
 
 qa:
 	pylint3 --rcfile .pylintrc lib
