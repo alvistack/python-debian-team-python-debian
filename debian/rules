@@ -18,7 +18,7 @@ export PYBUILD_NAME=debian
 override_dh_auto_clean:
 	dh_auto_clean
 	rm -f lib/debian/_version.py
-	rm -rf docs/api lib/debian/__pycache__
+	rm -rf docs/api docs/_static lib/debian/__pycache__ build/sphinx/ .mypy_cache/
 
 override_dh_auto_build: lib/debian/_version.py
 	dh_auto_build
