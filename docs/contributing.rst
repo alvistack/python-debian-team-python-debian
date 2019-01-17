@@ -86,6 +86,11 @@ Style guide
  - Write docstrings in rst format so that sphinx can generate API
    documentation.
 
+The pylint and mypy tools can be run easily from debian/rules to track code
+quality::
+
+        $ ./debian/rules qa
+
 
 Test suite
 ----------
