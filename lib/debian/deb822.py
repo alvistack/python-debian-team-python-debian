@@ -222,16 +222,10 @@ from __future__ import absolute_import, print_function
 import collections
 try:
     # Python 3
-    from collections.abc import (
-        Mapping,
-        MutableMapping,
-    )
+    import collections.abc as collections_abc
 except ImportError:
     # Python 2.7 cruft
-    from collections import (
-        Mapping,
-        MutableMapping,
-    )
+    import collections as collections_abc
 
 import datetime
 import email.utils
@@ -321,7 +315,7 @@ class RestrictedFieldError(Error):
     """Raised when modifying the raw value of a field is not allowed."""
 
 
-class TagSectionWrapper(Mapping):
+class TagSectionWrapper(collections_abc.Mapping):
     """Wrap a TagSection object, using its find_raw method to get field values
 
     This allows us to pick which whitespace to strip off the beginning and end
@@ -423,7 +417,7 @@ class OrderedSet(object):
     # ###
 
 
-class Deb822Dict(MutableMapping):
+class Deb822Dict(collections_abc.MutableMapping):
     """A dictionary-like object suitable for storing RFC822-like data.
 
     Deb822Dict behaves like a normal dict, except:
