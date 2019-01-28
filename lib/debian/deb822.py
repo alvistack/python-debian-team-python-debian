@@ -225,7 +225,8 @@ try:
     import collections.abc as collections_abc
 except ImportError:
     # Python 2.7 cruft
-    import collections as collections_abc
+    # pylint: disable=reimported
+    import collections as collections_abc    # type: ignore
 
 import datetime
 import email.utils
