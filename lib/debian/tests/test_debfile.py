@@ -52,11 +52,12 @@ class TestArFile(unittest.TestCase):
         with os.popen("ar t test.ar") as ar:
             self.testmembers = [x.strip() for x in ar.readlines()]
         self.a = arfile.ArFile("test.ar")
+        self.fp = open("test.ar", "rb")
 
     def tearDown(self):
         if os.path.exists('test.ar'):
             os.unlink('test.ar')
-    
+
     def test_getnames(self):
         """ test for file list equality """
         self.assertEqual(self.a.getnames(), self.testmembers)
@@ -67,7 +68,7 @@ class TestArFile(unittest.TestCase):
             m = self.a.getmember(member)
             assert m
             self.assertEqual(m.name, member)
-            
+
             mstat = os.stat(find_test_file(member))
 
             self.assertEqual(m.size, mstat[stat.ST_SIZE])
@@ -81,7 +82,7 @@ class TestArFile(unittest.TestCase):
         for i in [10,100,10000,100000]:
             m.seek(i, 0)
             self.assertEqual(m.tell(), i, "failed tell()")
-            
+
             m.seek(-i, 1)
             self.assertEqual(m.tell(), 0, "failed tell()")
 
@@ -90,15 +91,15 @@ class TestArFile(unittest.TestCase):
         self.assertRaises(IOError, m.seek, -1, 1)
         m.seek(0)
         m.close()
-    
+
     def test_file_read(self):
         """ test for faked read """
         for m in self.a.getmembers():
             f = open(find_test_file(m.name), 'rb')
-        
+
             for i in [10, 100, 10000]:
                 self.assertEqual(m.read(i), f.read(i))
-       
+
             m.close()
             f.close()
 
@@ -107,11 +108,24 @@ class TestArFile(unittest.TestCase):
 
         for m in self.a.getmembers():
             f = open(find_test_file(m.name), 'rb')
-        
+
             self.assertEqual(m.readlines(), f.readlines())
-            
+
             m.close()
             f.close()
+
+
+class TestArFileFileObj(TestArFile):
+
+    def setUp(self):
+        super(TestArFileFileObj, self).setUp()
+        self.fp = open("test.ar", "rb")
+        self.a = arfile.ArFile(fileobj=self.fp)
+
+    def tearDown(self):
+        self.fp.close()
+        super(TestArFileFileObj, self).tearDown()
+
 
 class TestDebFile(unittest.TestCase):
 
@@ -170,13 +184,13 @@ class TestDebFile(unittest.TestCase):
             deb.close()
 
     def test_data_names(self):
-        """ test for file list equality """ 
+        """ test for file list equality """
         tgz = self.d.data.tgz()
         with os.popen("dpkg-deb --fsys-tarfile %s | tar t" %
                       self.debname) as tar:
             dpkg_names = [os.path.normpath(x.strip()) for x in tar.readlines()]
         debfile_names = [os.path.normpath(name) for name in tgz.getnames()]
-        
+
         # skip the root
         self.assertEqual(debfile_names[1:], dpkg_names[1:])
 

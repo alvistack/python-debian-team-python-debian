@@ -230,6 +230,8 @@ class ArMember(object):
         self.__offset = 0       # type: int
         # end-of-data offset
         self.__end = 0          # type: int
+        # current position
+        self.__cur = 0          # type: int
 
     @staticmethod
     def from_file(fp,             # type: IO[bytes]
@@ -290,8 +292,11 @@ class ArMember(object):
         f.__size = int(buf[48:58])
 
         f.__fname = fname
+        if not fname:
+            f.__fp = fp
         f.__offset = fp.tell()   # start-of-data
         f.__end = f.__offset + f.__size
+        f.__cur = f.__offset
 
         return f
 
@@ -302,43 +307,43 @@ class ArMember(object):
         # type: (int) -> bytes
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
-            self.__fp.seek(self.__offset)
+        self.__fp.seek(self.__cur)
 
-        cur = self.__fp.tell()
+        if 0 < size <= self.__end - self.__cur:   # there's room
+            buf = self.__fp.read(size)
+            self.__cur = self.__fp.tell()
+            return buf
 
-        if 0 < size <= self.__end - cur:   # there's room
-            return self.__fp.read(size)
-
-        if cur >= self.__end or cur < self.__offset:
+        if self.__cur >= self.__end or self.__cur < self.__offset:
             return b''
 
-        return self.__fp.read(self.__end - cur)
+        buf = self.__fp.read(self.__end - self.__cur)
+        self.__cur = self.__fp.tell()
+        return buf
 
     def readline(self, size=None):
         # type: (Optional[int]) -> bytes
         if self.__fp is None:
             self.__fp = open(self.__fname, "rb")
-            self.__fp.seek(self.__offset)
+        self.__fp.seek(self.__cur)
 
         if size is not None:
             buf = self.__fp.readline(size)
-            if self.__fp.tell() > self.__end:
+            self.__cur = self.__fp.tell()
+            if self.__cur > self.__end:
                 return b''
 
             return buf
 
         buf = self.__fp.readline()
-        if self.__fp.tell() > self.__end:
+        self.__cur = self.__fp.tell()
+        if self.__cur > self.__end:
             return b''
         return buf
 
     def readlines(self, sizehint=0):
         # type: (int) -> List[bytes]
         # pylint: disable=unused-argument
-        if self.__fp is None:
-            self.__fp = open(self.__fname, "rb")
-            self.__fp.seek(self.__offset)
-
         buf = None
         lines = []
         while True:
@@ -351,34 +356,24 @@ class ArMember(object):
 
     def seek(self, offset, whence=0):
         # type: (int, int) -> None
-        if self.__fp is None:
-            self.__fp = open(self.__fname, "rb")
-            self.__fp.seek(self.__offset)
+        if self.__cur < self.__offset:
+            self.__cur = self.__offset
 
-        if self.__fp.tell() < self.__offset:
-            self.__fp.seek(self.__offset)
-
-        if whence < 2 and offset + self.__fp.tell() < self.__offset:
+        if whence < 2 and offset + self.__cur < self.__offset:
             raise IOError("Can't seek at %d" % offset)
 
         if whence == 1:
-            self.__fp.seek(offset, 1)
+            self.__cur = self.__cur + offset
         elif whence == 0:
-            self.__fp.seek(self.__offset + offset, 0)
+            self.__cur = self.__offset + offset
         elif whence == 2:
-            self.__fp.seek(self.__end + offset, 0)
+            self.__cur = self.__end + offset
 
     def tell(self):
         # type: () -> int
-        if self.__fp is None:
-            self.__fp = open(self.__fname, "rb")
-            self.__fp.seek(self.__offset)
-
-        cur = self.__fp.tell()
-
-        if cur < self.__offset:
+        if self.__cur < self.__offset:
             return 0
-        return cur - self.__offset
+        return self.__cur - self.__offset
 
     def seekable(self):
         # type: () -> bool
@@ -387,8 +382,9 @@ class ArMember(object):
 
     def close(self):
         # type: () -> None
-        if self.__fp is not None:
+        if self.__fp is not None and self.__fname is not None:
             self.__fp.close()
+            self.__fp = None
 
     def next(self):
         return self.readline()
