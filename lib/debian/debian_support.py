@@ -379,7 +379,7 @@ class PackageFile:
     re_field = re.compile(r'^([A-Za-z][A-Za-z0-9-_]+):(?:\s*(.*?))?\s*$')
     re_continuation = re.compile(r'^\s+(?:\.|(\S.*?)\s*)$')
 
-    def __init__(self, name, file_obj=None):
+    def __init__(self, name, file_obj=None, encoding="utf-8"):
         """Creates a new package file object.
 
         name - the name of the file the data comes from
@@ -387,13 +387,14 @@ class PackageFile:
                   file with the indicated name.
         """
         if file_obj is None:
-            file_obj = open(name)
+            file_obj = open(name, 'rb')
         self.name = name
         self.file = file_obj
         self.lineno = 0
+        self.encoding = encoding
 
     def __iter__(self):
-        line = self.file.readline().decode()
+        line = self.file.readline().decode(self.encoding)
         self.lineno += 1
         pkg = []
         while line:
@@ -402,7 +403,7 @@ class PackageFile:
                     self.raise_syntax_error('expected package record')
                 yield pkg
                 pkg = []
-                line = self.file.readline().decode()
+                line = self.file.readline().decode(self.encoding)
                 self.lineno += 1
                 continue
 
@@ -413,7 +414,7 @@ class PackageFile:
             contents = contents or ''
 
             while True:
-                line = self.file.readline().decode()
+                line = self.file.readline().decode(self.encoding)
                 self.lineno += 1
                 match = self.re_continuation.match(line)
                 if match:
