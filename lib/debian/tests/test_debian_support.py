@@ -246,5 +246,23 @@ class PdiffTests(unittest.TestCase):
             os.remove(copy)
 
 
+class PackageFileTests(unittest.TestCase):
+    """ Tests for functions dealing with Packages and Sources """
+
+    def test_read_file(self):
+        # test_Packages is ASCII
+        packfile = find_test_file('test_Packages')
+        pf = debian_support.PackageFile(packfile)
+        pflist = list(pf)
+        self.assertEqual(len(pflist), 3)
+
+        # test_Sources is UTF-8
+        # test for bad decoding, #928655
+        packfile = find_test_file('test_Sources')
+        pf = debian_support.PackageFile(packfile)
+        pflist = list(pf)
+        self.assertEqual(len(pflist), 4)
+
+
 if __name__ == "__main__":
     unittest.main()
