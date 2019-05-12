@@ -639,7 +639,7 @@ class Header(deb822.RestrictedWrapper):
         super(Header, self).__init__(data)
 
         fmt = self.format   # type: ignore
-        if fmt != _CURRENT_FORMAT:
+        if fmt != _CURRENT_FORMAT and fmt is not None:
             # Add a terminal slash onto the end if missing
             if not fmt.endswith('/'):
                 fmt += "/"

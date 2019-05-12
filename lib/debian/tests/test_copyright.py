@@ -687,6 +687,11 @@ class HeaderTest(unittest.TestCase):
             h.format = None
         self.assertEqual(('value must not be None',), cm.exception.args)
 
+    def test_format_upgrade_no_header(self):
+        data = deb822.Deb822()
+        with self.assertRaises(copyright.NotMachineReadableError):
+            copyright.Header(data=data)
+
     def test_format_https_upgrade(self):
         data = deb822.Deb822()
         data['Format'] = "http%s" % FORMAT[5:]
