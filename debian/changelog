@@ -1,3 +1,18 @@
+python-debian (0.1.35) unstable; urgency=medium
+
+  [ Stuart Prescott ]
+  * Fix decode error when using debian_support.PackageFile by allowing the
+    caller to specify an encoding, defaulting to UTF-8 (Closes: #928655).
+  * Remove needs-recommends from autopkgtest definitions.
+
+  [ Jan Teske ]
+  * Fix overwriting of names in importing abc.Mapping and typing.Mapping.
+
+  [ Jelmer Vernooĳ ]
+  * Correctly raise NotMachineReadableError when no format is set.
+
+ -- Stuart Prescott <stuart@debian.org>  Thu, 30 May 2019 00:23:06 +1000
+
 python-debian (0.1.34) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
