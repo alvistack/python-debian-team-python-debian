@@ -2086,14 +2086,14 @@ class RestrictedWrapper(object):
     @classmethod
     def __init_restricted_field(cls, attr_name, field):
         def getter(self):
-            # type: () -> Union[None, Tuple[str], str]
+            # type: (RestrictedWrapper) -> Union[None, Tuple[str], str]
             val = self.__data.get(field.name)
             if field.from_str is not None:
                 return field.from_str(val)
             return val
 
         def setter(self, val):
-            # type: (Any) -> None
+            # type: (RestrictedWrapper, Any) -> None
             if val is not None and field.to_str is not None:
                 val = field.to_str(val)
             if val is None:
