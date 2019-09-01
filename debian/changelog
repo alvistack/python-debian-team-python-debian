@@ -1,3 +1,14 @@
+python-debian (0.1.36) unstable; urgency=medium
+
+  * Support streams without a filename in ArMember, with thanks to Matthias
+    Dellweg for the patch.
+  * Update autopkgtest variables in tests.
+  * Update Standards-Version to 4.4.0 (no changes required).
+  * Update to debhelper-compat 12.
+  * Update type annotations for newer mpypy.
+
+ -- Stuart Prescott <stuart@debian.org>  Sun, 01 Sep 2019 23:50:42 +1000
+
 python-debian (0.1.35) unstable; urgency=medium
 
   [ Stuart Prescott ]
