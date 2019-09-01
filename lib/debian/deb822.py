@@ -2012,7 +2012,7 @@ class RestrictedField(collections.namedtuple(
         function to) None for fields that do not exist in the underlying data
         object.
 
-        :param field_name: The name of the deb822 field.
+        :param name: The name of the deb822 field.
         :param from_str: The function to apply for getters (default is to
             return the string directly).
         :param to_str: The function to apply for setters (default is to use the
@@ -2032,7 +2032,7 @@ class RestrictedWrapper(object):
 
     The underlying data is hidden internally.  Subclasses may keep a reference
     to the data before giving it to this class's constructor, if necessary, but
-    RestrictedProperty should cover most use-cases.  The dump method from
+    RestrictedField should cover most use-cases.  The dump method from
     Deb822 is directly proxied.
 
     Typical usage::
@@ -2056,10 +2056,10 @@ class RestrictedWrapper(object):
                 data['Bar'] = 'baz'
                 super(MyClass, self).__init__(data)
 
-            foo = deb822.RestrictedProperty(
+            foo = deb822.RestrictedField(
                     'Foo', from_str=Foo.from_str, to_str=Foo.to_str)
 
-            bar = deb822.RestrictedProperty('Bar', allow_none=False)
+            bar = deb822.RestrictedField('Bar', allow_none=False)
 
         d = MyClass()
         d['Bar'] # returns 'baz'
