@@ -1,1 +1,7 @@
 README.debtags
+lib/debian/_version.py
+docs/api/
+docs/_static/
+lib/debian/__pycache__/
+build/sphinx/
+.mypy_cache/

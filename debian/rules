@@ -15,11 +15,6 @@ export PYBUILD_NAME=debian
 %.py: %.py.in debian/changelog
 	sed -e 's/__CHANGELOG_VERSION__/$(DEB_VERSION)/' < $< > $@
 
-override_dh_auto_clean:
-	dh_auto_clean
-	rm -f lib/debian/_version.py
-	rm -rf docs/api docs/_static lib/debian/__pycache__ build/sphinx/ .mypy_cache/
-
 override_dh_auto_build: lib/debian/_version.py
 	dh_auto_build
 	lib/debian/doc-debtags > README.debtags
