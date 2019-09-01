@@ -470,7 +470,7 @@ class Deb822Dict(collections_abc.MutableMapping):
                     'length %d; 2 is required' % (this, len_))
 
         if _parsed is not None:
-            self.__parsed = _parsed   # type: Union[Deb822, TagSectionWrapper]
+            self.__parsed = _parsed
             if _fields is None:
                 self.__keys.extend([_strI(k) for k in self.__parsed])
             else:
@@ -1997,7 +1997,6 @@ class _ClassInitMeta(type):
 
 class RestrictedField(collections.namedtuple(
         'RestrictedField', 'name from_str to_str allow_none')):
-    # type: ignore   # https://github.com/python/mypy/issues/1279
     """Placeholder for a property providing access to a restricted field.
 
     Use this as an attribute when defining a subclass of RestrictedWrapper.

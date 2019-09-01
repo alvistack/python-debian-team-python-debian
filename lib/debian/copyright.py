@@ -531,9 +531,10 @@ class FilesParagraph(deb822.RestrictedWrapper):
         """
         # pylint: disable=redefined-builtin
         p = cls(deb822.Deb822(), _internal_validate=False)
-        p.files = files
-        p.copyright = copyright
-        p.license = license
+        # mypy doesn't handle the metaprogrammed properties at all
+        p.files = files          # type: ignore
+        p.copyright = copyright  # type: ignore
+        p.license = license      # type: ignore
         return p
 
     def files_pattern(self):
@@ -559,7 +560,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
 
     files = deb822.RestrictedField(
         'Files', from_str=_SpaceSeparated.from_str,
-        to_str=_SpaceSeparated.to_str, allow_none=False)
+        to_str=_SpaceSeparated.to_str, allow_none=False) # type: ignore
 
     copyright = deb822.RestrictedField('Copyright', allow_none=False)  # type: ignore
 
@@ -596,7 +597,7 @@ class LicenseParagraph(deb822.RestrictedWrapper):
         if not isinstance(license, License):
             raise TypeError('license must be a License instance')
         paragraph = cls(deb822.Deb822(), _internal_validate=False)
-        paragraph.license = license
+        paragraph.license = license   # type: ignore  ## properties
         return paragraph
 
     # TODO(jsw): Validate that the synopsis of the license is a short name or
@@ -604,7 +605,7 @@ class LicenseParagraph(deb822.RestrictedWrapper):
     # requires help from the License class.
     license = deb822.RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
-        allow_none=False)
+        allow_none=False)  # type: ignore
 
     comment = deb822.RestrictedField('Comment')    # type: ignore
 
@@ -638,6 +639,7 @@ class Header(deb822.RestrictedWrapper):
 
         super(Header, self).__init__(data)
 
+        fmt = str()  # Set this to be a string type to appease later checking
         fmt = self.format   # type: ignore
         if fmt != _CURRENT_FORMAT and fmt is not None:
             # Add a terminal slash onto the end if missing
@@ -650,7 +652,7 @@ class Header(deb822.RestrictedWrapper):
 
             if fmt in _KNOWN_FORMATS:
                 warnings.warn('Fixing Format URL')
-                self.format = fmt
+                self.format = fmt   # type: ignore
 
         if fmt is None:
             raise NotMachineReadableError(
