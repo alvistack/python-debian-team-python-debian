@@ -1049,8 +1049,7 @@ class Deb822(Deb822Dict):
             if first_line:
                 if initial_blank_line.match(line):
                     continue
-                else:
-                    first_line = False
+                first_line = False
 
             m = gpgre.match(line)
 
@@ -1681,8 +1680,8 @@ class _multivalued(Deb822):
                     fd.write(six.u(" %s") % value)
                 fd.write(six.u("\n"))
             return fd.getvalue().rstrip("\n")
-        else:
-            return Deb822.get_as_string(self, key)
+
+        return Deb822.get_as_string(self, key)
 
 
 class _gpg_multivalued(_multivalued):
@@ -1868,8 +1867,8 @@ class Release(_multivalued):
         if value not in ["apt-ftparchive", "dak"]:
             raise ValueError("size_field_behavior must be either "
                              "'apt-ftparchive' or 'dak'")
-        else:
-            self.__size_field_behavior = value
+
+        self.__size_field_behavior = value
 
     size_field_behavior = property(lambda self: self.__size_field_behavior,
                                    set_size_field_behavior)

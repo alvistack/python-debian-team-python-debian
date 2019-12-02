@@ -480,8 +480,7 @@ class Changelog(object):
         # type: (str, bool) -> None
         if strict:
             raise ChangelogParseError(message)
-        else:
-            warnings.warn(message)
+        warnings.warn(message)
 
     def parse_changelog(self,
                         file,             # type: Optional[IterableDataSource]

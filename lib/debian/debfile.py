@@ -105,6 +105,7 @@ class DebPart(object):
                 # Permit compressed members and also uncompressed data.tar
                 if sys.version_info < (3, 3) and extension == 'xz':
                     try:
+                        # pylint: disable=import-outside-toplevel
                         import subprocess
                         import signal
                         import io
@@ -181,14 +182,14 @@ class DebPart(object):
             raise DebError("File not found inside package")
         if encoding is not None:
             if sys.version >= '3':
-                import io
+                import io   # pylint: disable=import-outside-toplevel
                 if not hasattr(fobj, 'flush'):
                     # XXX http://bugs.python.org/issue13815
                     fobj.flush = lambda: None   # type: ignore
                 return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)
 
             # CRUFT: Python 2 only
-            import codecs
+            import codecs     # pylint: disable=import-outside-toplevel
             if errors is None:
                 errors = 'strict'
             return codecs.EncodedFile(fobj, encoding, errors=errors)
@@ -334,12 +335,13 @@ class DebFile(ArFile):
                 raise DebError(
                     "missing required part in given .deb"
                     " (expected one of: %s)" % candidates)
-            elif len(parts) > 1:
+
+            if len(parts) > 1:
                 raise DebError(
                     "too many parts in given .deb"
                     " (was looking for only one of: %s)" % candidates)
-            else:   # singleton list
-                return list(parts)[0]
+
+            return list(parts)[0]   # singleton list
 
         if INFO_PART not in actual_names:
             raise DebError(
