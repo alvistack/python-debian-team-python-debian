@@ -52,7 +52,7 @@ doc: apidoc
 	PYTHONPATH=$(CURDIR)/lib \
 	  make -C docs/ SPHINXOPTS="-a -v -n" html
 
-qa:
+qa: lib/debian/_version.py
 	pylint --rcfile .pylintrc lib
 	mypy lib
 
