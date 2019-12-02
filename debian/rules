@@ -53,7 +53,7 @@ doc: apidoc
 	  make -C docs/ SPHINXOPTS="-a -v -n" html
 
 qa:
-	pylint3 --rcfile .pylintrc lib
+	pylint --rcfile .pylintrc lib
 	mypy lib
 
 .PHONY: dist doc apidoc qa
