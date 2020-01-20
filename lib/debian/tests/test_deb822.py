@@ -1098,6 +1098,7 @@ class TestPkgRelations(unittest.TestCase):
         pkgs = deb822.Packages.iter_paragraphs(f)
         pkg1 = next(pkgs)
         rel1 = {'breaks': [],
+                'built-using': [],
                 'conflicts': [],
                 'depends': [
                         [rel({'name': 'file', 'archqual': 'i386'})],
@@ -1131,6 +1132,7 @@ class TestPkgRelations(unittest.TestCase):
         self.assertPkgDictEqual(rel1, pkg1.relations)
         pkg2 = next(pkgs)
         rel2 = {'breaks': [],
+                'built-using': [],
                 'conflicts': [],
                 'depends': [
                         [rel({'name': 'lrzsz'})],

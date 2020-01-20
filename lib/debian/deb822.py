@@ -1942,7 +1942,7 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
     _relationship_fields = [
         'depends', 'pre-depends', 'recommends', 'suggests',
         'breaks', 'conflicts', 'provides', 'replaces',
-        'enhances',
+        'enhances', 'built-using',
     ]
 
     def __init__(self, *args, **kwargs):
