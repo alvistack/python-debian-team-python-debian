@@ -693,16 +693,8 @@ class Deb822(Deb822Dict):
             warnings.warn(msg)
 
         if _have_apt_pkg and apt_pkg_allowed:
-            kwargs = {}
-            if sys.version >= '3':
-                # bytes=True is supported for both Python 2 and 3, but we
-                # only actually need it for Python 3, so this saves us from
-                # having to require a newer version of python-apt for Python
-                # 2 as well.  This allows us to apply our own encoding
-                # handling, which is more tolerant of mixed-encoding files.
-                kwargs['bytes'] = True
             # pylint: disable=no-member
-            parser = apt_pkg.TagFile(sequence, **kwargs)
+            parser = apt_pkg.TagFile(sequence, bytes=True)
             for section in parser:
                 paragraph = cls(fields=fields,
                                 _parsed=TagSectionWrapper(section, _AutoDecoder(encoding)),
