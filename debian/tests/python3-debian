@@ -3,7 +3,7 @@ set -e -u -x
 cp -r lib/debian/tests/ "$AUTOPKGTEST_TMP"
 cd "$AUTOPKGTEST_TMP/tests/"
 export PYTHONWARNINGS=d
-for py in $(py3versions -i); do
+for py in $(py3versions -s); do
   # text mode file opening is locale dependent so try both ASCII and UTF-8
   LC_ALL=C $py -m unittest discover --verbose
   LC_ALL=C.UTF-8 $py -m unittest discover --verbose
