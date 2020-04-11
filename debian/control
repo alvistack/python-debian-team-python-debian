@@ -23,6 +23,7 @@ Standards-Version: 4.4.0
 Vcs-Browser: https://salsa.debian.org/python-debian-team/python-debian
 Vcs-Git: https://salsa.debian.org/python-debian-team/python-debian.git
 Homepage: https://salsa.debian.org/python-debian-team/python-debian
+Rules-Requires-Root: no
 
 Package: python3-debian
 Architecture: all
