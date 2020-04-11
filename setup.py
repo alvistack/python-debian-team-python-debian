@@ -25,6 +25,7 @@ import debian
 description = """\
 This package provides Python 3 modules that abstract many formats of Debian
 related files. Currently handled are:
+
   * Debtags information (debian.debtags module)
   * debian/changelog (debian.changelog module)
   * Packages files, pdiffs (debian.debian_support module)
