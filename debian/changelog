@@ -1,10 +1,29 @@
-python-debian (0.1.37) UNRELEASED; urgency=medium
+python-debian (0.1.37) unstable; urgency=medium
 
+  [ Sandro Tosi ]
   * Drop python2 support; Closes: #937691
   * lib/debian/doc-debtags
     - run using python3
 
- -- Sandro Tosi <morph@debian.org>  Fri, 10 Apr 2020 23:05:10 -0400
+  [ Stuart Prescott ]
+  * Update Standards-Version to 4.5.0 (no changes required).
+  * Add Rules-Requires-Root: no.
+  * Test with all supported Python 3 interpreters at build time, not only
+    in the autopkgtest tests.
+  * Include the version of the interpreter in the test output.
+  * Update from pylint3 to pylint.
+  * Fix some pylint warnings.
+  * Include pylint and mypy checks for merge requests on salsa.
+  * Add additional metadata to setup.py, with thanks to Konrad Weihmann for
+    the suggestion.
+
+  [ Colin Watson ]
+  * Parse Built-Using relationship fields.
+
+  [ Michael Hudson-Doyle ]
+  * Run tests with 'supported' not 'installed' Python 3 interpreters.
+
+ -- Stuart Prescott <stuart@debian.org>  Sat, 11 Apr 2020 17:54:43 +1000
 
 python-debian (0.1.36) unstable; urgency=medium
 
