@@ -14,12 +14,6 @@ Build-Depends:
  binutils (>= 2.23),
  debhelper-compat (= 12),
  dh-python,
- python-all (>= 2.6.6-3~),
- python-apt (>> 1.1~),
- python-chardet,
- python-setuptools,
- python-six (>> 1.4~),
- python-unittest2,
  python3-all (>= 3.1.2-8~),
  python3-apt (>> 1.1~),
  python3-chardet,
@@ -29,35 +23,6 @@ Standards-Version: 4.4.0
 Vcs-Browser: https://salsa.debian.org/python-debian-team/python-debian
 Vcs-Git: https://salsa.debian.org/python-debian-team/python-debian.git
 Homepage: https://salsa.debian.org/python-debian-team/python-debian
-
-Package: python-debian
-Architecture: all
-Depends:
- python-chardet,
- python-six (>> 1.4~),
- ${misc:Depends},
- ${python:Depends}
-Recommends:
- python-apt
-Suggests:
- gpgv
-Provides:
- python-deb822
-Conflicts:
- python-deb822
-Replaces:
- python-deb822
-Description: Python modules to work with Debian-related data formats
- This package provides Python modules that abstract many formats of Debian
- related files. Currently handled are:
-  * Debtags information (debian.debtags module)
-  * debian/changelog (debian.changelog module)
-  * Packages files, pdiffs (debian.debian_support module)
-  * Control files of single or multiple RFC822-style paragraphs, e.g.
-    debian/control, .changes, .dsc, Packages, Sources, Release, etc.
-    (debian.deb822 module)
-  * Raw .deb and .ar files, with (read-only) access to contained
-    files and meta-information
 
 Package: python3-debian
 Architecture: all

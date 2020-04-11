@@ -10,7 +10,7 @@ include /usr/share/dpkg/pkg-info.mk
 export PYBUILD_NAME=debian
 
 %:
-	dh $@ --with python2,python3 --buildsystem pybuild
+	dh $@ --with python3 --buildsystem pybuild
 
 %.py: %.py.in debian/changelog
 	sed -e 's/__CHANGELOG_VERSION__/$(DEB_VERSION)/' < $< > $@
@@ -24,8 +24,6 @@ override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	# run all the tests with both a UTF-8 aware locale and a non-UTF-8
 	# aware locale to catch errors related to encoding.
-	LC_ALL=C python -m unittest discover --verbose lib/
-	LC_ALL=C.UTF-8 python -m unittest discover --verbose lib/
 	LC_ALL=C python3 -m unittest discover --verbose lib/
 	LC_ALL=C.UTF-8 python3 -m unittest discover --verbose lib/
 endif
@@ -39,7 +37,6 @@ override_dh_auto_install:
 dist: lib/debian/_version.py
 	rm -f dist/python?debian-$(DEB_VERSION)*
 	python3 setup.py sdist bdist_wheel bdist_egg
-	python2 setup.py bdist_wheel bdist_egg
 	echo "You can now: twine upload --sign dist/python?debian-$(DEB_VERSION)*"
 
 apidoc:

@@ -1,3 +1,11 @@
+python-debian (0.1.37) UNRELEASED; urgency=medium
+
+  * Drop python2 support; Closes: #937691
+  * lib/debian/doc-debtags
+    - run using python3
+
+ -- Sandro Tosi <morph@debian.org>  Fri, 10 Apr 2020 23:05:10 -0400
+
 python-debian (0.1.36) unstable; urgency=medium
 
   * Support streams without a filename in ArMember, with thanks to Matthias
