@@ -24,8 +24,14 @@ override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	# run all the tests with both a UTF-8 aware locale and a non-UTF-8
 	# aware locale to catch errors related to encoding.
-	LC_ALL=C python3 -m unittest discover --verbose lib/
-	LC_ALL=C.UTF-8 python3 -m unittest discover --verbose lib/
+	for py in `py3versions -s`; do \
+	  set -e; \
+	  echo "----------------------------------------------"; \
+	  echo "Testing with $$py"; \
+	  echo "----------------------------------------------"; \
+	  LC_ALL=C $$py -m unittest discover --verbose lib/; \
+	  LC_ALL=C.UTF-8 $$py -m unittest discover --verbose lib/; \
+	done
 endif
 
 override_dh_auto_install:
