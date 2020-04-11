@@ -21,8 +21,19 @@
 
 import warnings
 
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        Callable,
+    )
+except ImportError:
+    # Missing types aren't important at runtime
+    pass
+
 
 def function_deprecated_by(func):
+    # type: (Callable[..., Any]) -> Callable[..., Any]
     """ Return a function that warns it is deprecated by another function.
 
         Returns a new function that warns it is deprecated by function
@@ -32,9 +43,9 @@ def function_deprecated_by(func):
     try:
         func_name = func.__name__
     except AttributeError:
-        func_name = func.__func__.__name__
+        func_name = func.__func__.__name__  # type: ignore
     warn_msg = "Use %s instead" % func_name
-    def deprecated_func(*args, **kwargs):
+    def deprecated_func(*args, **kwargs):        # type: ignore
         warnings.warn(warn_msg, DeprecationWarning, stacklevel=2)
         return func(*args, **kwargs)
     return deprecated_func

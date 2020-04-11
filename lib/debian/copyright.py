@@ -37,6 +37,7 @@ try:
     # pylint: disable=unused-import
     from typing import (
         Any,
+        Callable,
         IO,
         Iterable,
         Iterator,
@@ -46,10 +47,14 @@ try:
         Text,
         Tuple,
         Union,
+        TYPE_CHECKING,
     )
+
+    ParagraphTypes = Union["FilesParagraph", "LicenseParagraph"]
+    AllParagraphTypes = Union["Header", "FilesParagraph", "LicenseParagraph"]
 except ImportError:
     # Lack of typing is not important at runtime
-    pass
+    TYPE_CHECKING = False
 
 from debian import deb822
 
@@ -172,6 +177,7 @@ class Copyright(object):
 
     @header.setter
     def header(self, hdr):
+        # type: (Header) -> None
         if not isinstance(hdr, Header):
             raise TypeError('value must be a Header object')
         self.__header = hdr
@@ -416,6 +422,7 @@ class License(collections.namedtuple('License', 'synopsis text')):
     """Represents the contents of a License field.  Immutable."""
 
     def __new__(cls, synopsis, text=''):
+        # type: (str, Optional[str]) -> License
         """Creates a new License object.
 
         :param synopsis: The short name of the license, or an expression giving
@@ -435,7 +442,7 @@ class License(collections.namedtuple('License', 'synopsis text')):
 
         lines = parse_multiline_as_lines(s)
         if not lines:
-            return cls('')   # type: ignore
+            return cls('')
         return cls(lines[0], text='\n'.join(itertools.islice(lines, 1, None)))
 
     def to_str(self):
@@ -447,7 +454,7 @@ class License(collections.namedtuple('License', 'synopsis text')):
 
 
 def globs_to_re(globs):
-    # type: (Iterable[str]) -> Pattern
+    # type: (Iterable[str]) -> Pattern[str]
     r"""Returns an re object for the given globs.
 
     Only * and ? wildcards are supported.  Literal * and ? may be matched via
@@ -514,7 +521,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
             if not self.files:
                 _complain('Files paragraph has empty Files field', strict)
 
-        self.__cached_files_pat = ('', re.compile(''))  # type: Tuple[str, Pattern]
+        self.__cached_files_pat = ('', re.compile(''))  # type: Tuple[str, Pattern[str]]
 
     @classmethod
     def create(cls,
@@ -538,7 +545,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
         return p
 
     def files_pattern(self):
-        # type: () -> Optional[Pattern]
+        # type: () -> Optional[Pattern[str]]
         """Returns a regular expression equivalent to the Files globs.
 
         Caches the result until files is set to a different value.
@@ -560,15 +567,15 @@ class FilesParagraph(deb822.RestrictedWrapper):
 
     files = deb822.RestrictedField(
         'Files', from_str=_SpaceSeparated.from_str,
-        to_str=_SpaceSeparated.to_str, allow_none=False) # type: ignore
+        to_str=_SpaceSeparated.to_str, allow_none=False)
 
-    copyright = deb822.RestrictedField('Copyright', allow_none=False)  # type: ignore
+    copyright = deb822.RestrictedField('Copyright', allow_none=False)
 
     license = deb822.RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
         allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')    # type: ignore
+    comment = deb822.RestrictedField('Comment')
 
 
 class LicenseParagraph(deb822.RestrictedWrapper):
@@ -605,12 +612,12 @@ class LicenseParagraph(deb822.RestrictedWrapper):
     # requires help from the License class.
     license = deb822.RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
-        allow_none=False)  # type: ignore
+        allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')    # type: ignore
+    comment = deb822.RestrictedField('Comment')
 
     # Hide 'Files'.
-    __files = deb822.RestrictedField('Files')    # type: ignore
+    __files = deb822.RestrictedField('Files')
 
 
 class Header(deb822.RestrictedWrapper):
@@ -671,35 +678,27 @@ class Header(deb822.RestrictedWrapper):
         return self.format == _CURRENT_FORMAT
 
     # lots of type ignores due to  https://github.com/python/mypy/issues/1279
-    format = deb822.RestrictedField(                    # type: ignore
+    format = deb822.RestrictedField(
         'Format', to_str=_single_line, allow_none=False)
 
-    upstream_name = deb822.RestrictedField(              # type: ignore
+    upstream_name = deb822.RestrictedField(
         'Upstream-Name', to_str=_single_line)
 
-    upstream_contact = deb822.RestrictedField(           # type: ignore
+    upstream_contact = deb822.RestrictedField(
         'Upstream-Contact', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
 
-    source = deb822.RestrictedField('Source')            # type: ignore
+    source = deb822.RestrictedField('Source')
 
-    disclaimer = deb822.RestrictedField('Disclaimer')    # type: ignore
+    disclaimer = deb822.RestrictedField('Disclaimer')
 
-    comment = deb822.RestrictedField('Comment')          # type: ignore
+    comment = deb822.RestrictedField('Comment')
 
-    license = deb822.RestrictedField(                    # type: ignore
+    license = deb822.RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str)
 
-    copyright = deb822.RestrictedField('Copyright')      # type: ignore
+    copyright = deb822.RestrictedField('Copyright')
 
     files_excluded = deb822.RestrictedField(
         'Files-Excluded', from_str=_LineBased.from_str,
-        to_str=_LineBased.to_str)  # type: ignore
-
-
-try:
-    ParagraphTypes = Union[FilesParagraph, LicenseParagraph]
-    AllParagraphTypes = Union[Header, FilesParagraph, LicenseParagraph]
-except NameError:
-    # ignore exception if typing is not loaded
-    pass
+        to_str=_LineBased.to_str)

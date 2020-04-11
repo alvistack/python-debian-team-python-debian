@@ -34,14 +34,43 @@ from debian import arfile
 from debian import debfile
 
 
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        Callable,
+        Dict,
+        IO,
+        List,
+        Optional,
+        Union,
+        Text,
+        Tuple,
+        Type,
+        TypeVar,
+    )
+except ImportError:
+    # Missing types aren't important at runtime
+    TypeVar = lambda t: None
+
+
 def find_test_file(filename):
+    # type: (str) -> str
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
+
+
+T = TypeVar("T")
+def not_none(obj):
+    # type: (Optional[T]) -> T
+    assert obj is not None
+    return obj
 
 
 class TestArFile(unittest.TestCase):
 
     def setUp(self):
+        # type: () -> None
         os.system(
             "ar rU test.ar %s %s %s >/dev/null 2>&1" % (
                 find_test_file("test_debfile.py"),
@@ -55,14 +84,18 @@ class TestArFile(unittest.TestCase):
         self.fp = open("test.ar", "rb")
 
     def tearDown(self):
+        # type: () -> None
+        self.fp.close()
         if os.path.exists('test.ar'):
             os.unlink('test.ar')
 
     def test_getnames(self):
+        # type: () -> None
         """ test for file list equality """
         self.assertEqual(self.a.getnames(), self.testmembers)
 
     def test_getmember(self):
+        # type: () -> None
         """ test for each member equality """
         for member in self.testmembers:
             m = self.a.getmember(member)
@@ -76,6 +109,7 @@ class TestArFile(unittest.TestCase):
             self.assertEqual(m.group, mstat[stat.ST_GID])
 
     def test_file_seek(self):
+        # type: () -> None
         """ test for faked seek """
         m = self.a.getmember(self.testmembers[0])
 
@@ -93,17 +127,18 @@ class TestArFile(unittest.TestCase):
         m.close()
 
     def test_file_read(self):
+        # type: () -> None
         """ test for faked read """
         for m in self.a.getmembers():
-            f = open(find_test_file(m.name), 'rb')
+            with open(find_test_file(m.name), 'rb') as f:
 
-            for i in [10, 100, 10000]:
-                self.assertEqual(m.read(i), f.read(i))
+                for i in [10, 100, 10000]:
+                    self.assertEqual(m.read(i), f.read(i))
 
             m.close()
-            f.close()
 
     def test_file_readlines(self):
+        # type: () -> None
         """ test for faked readlines """
 
         for m in self.a.getmembers():
@@ -118,12 +153,12 @@ class TestArFile(unittest.TestCase):
 class TestArFileFileObj(TestArFile):
 
     def setUp(self):
+        # type: () -> None
         super(TestArFileFileObj, self).setUp()
-        self.fp = open("test.ar", "rb")
         self.a = arfile.ArFile(fileobj=self.fp)
 
     def tearDown(self):
-        self.fp.close()
+        # type: () -> None
         super(TestArFileFileObj, self).tearDown()
 
 
@@ -141,14 +176,12 @@ class TestDebFile(unittest.TestCase):
         ]
 
     def setUp(self):
+        # type: () -> None
         def uudecode(infile, outfile):
-            uu_deb = open(infile, 'rb')
-            bin_deb = open(outfile, 'wb')
-            uu.decode(uu_deb, bin_deb)
-            uu_deb.close()
-            bin_deb.close()
+            # type: (str, str) -> None
+            with open(infile, 'rb') as uu_deb, open(outfile, 'wb') as bin_deb:
+                uu.decode(uu_deb, bin_deb)
 
-        self.debfiles = {}
         for package in self.test_debs + self.test_compressed_debs:
             uudecode('%s.uu' % package, package)
 
@@ -156,15 +189,18 @@ class TestDebFile(unittest.TestCase):
         self.d = debfile.DebFile(self.debname)
 
     def tearDown(self):
+        # type: () -> None
         self.d.close()
         for package in self.test_debs + self.test_compressed_debs:
             os.unlink(package)
 
     def test_missing_members(self):
+        # type: () -> None
         with self.assertRaises(debfile.DebError):
             debfile.DebFile(find_test_file('test-broken.deb'))
 
     def test_data_compression(self):
+        # type: () -> None
         for package in self.test_compressed_debs:
             deb = debfile.DebFile(package)
             # random test on the data part, just to check that content access
@@ -175,6 +211,7 @@ class TestDebFile(unittest.TestCase):
             deb.close()
 
     def test_control_compression(self):
+        # type: () -> None
         for package in self.test_compressed_debs:
             deb = debfile.DebFile(package)
             # random test on the control part
@@ -184,6 +221,7 @@ class TestDebFile(unittest.TestCase):
             deb.close()
 
     def test_data_names(self):
+        # type: () -> None
         """ test for file list equality """
         tgz = self.d.data.tgz()
         with os.popen("dpkg-deb --fsys-tarfile %s | tar t" %
@@ -195,22 +233,25 @@ class TestDebFile(unittest.TestCase):
         self.assertEqual(debfile_names[1:], dpkg_names[1:])
 
     def test_control(self):
+        # type: () -> None
         """ test for control equality """
         with os.popen("dpkg-deb -f %s" % self.debname) as dpkg_deb:
             filecontrol = "".join(dpkg_deb.readlines())
 
         self.assertEqual(
-            self.d.control.get_content("control").decode("utf-8"), filecontrol)
+            not_none(self.d.control.get_content("control")).decode("utf-8"),
+            filecontrol)
         self.assertEqual(
             self.d.control.get_content("control", encoding="utf-8"),
             filecontrol)
 
     def test_md5sums(self):
+        # type: () -> None
         """test md5 extraction from .debs"""
-        md5 = self.d.md5sums()
-        self.assertEqual(md5[b'usr/bin/hello'],
+        md5b = self.d.md5sums()
+        self.assertEqual(md5b[b'usr/bin/hello'],
                 '9c1a72a78f82216a0305b6c90ab71058')
-        self.assertEqual(md5[b'usr/share/locale/zh_TW/LC_MESSAGES/hello.mo'],
+        self.assertEqual(md5b[b'usr/share/locale/zh_TW/LC_MESSAGES/hello.mo'],
                 'a7356e05bd420872d03cd3f5369de42f')
         md5 = self.d.md5sums(encoding='UTF-8')
         self.assertEqual(md5[six.u('usr/bin/hello')],

@@ -4,8 +4,8 @@ __version__ = ""
 
 try:
     # pylint: disable=no-member
-    import debian._version     # type: ignore
-    __version__ = debian._version.__version__     # type: ignore
+    import debian._version
+    __version__ = debian._version.__version__
 
 except ImportError:
     try:
@@ -17,7 +17,7 @@ except ImportError:
             os.path.dirname(__file__), '..', '..', 'debian', 'changelog')
         with open(changelog_filename, 'rb') as fh:
             c = debian.changelog.Changelog(fh)
-            version = str(c.get_version())
+            version = str(c.version)
             mark = "~" if c.distributions == 'UNRELEASED' else "+"
     except:    # pylint: disable=bare-except
         # Fake a version string in desperation

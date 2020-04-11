@@ -29,9 +29,13 @@ try:
     # pylint: disable=unused-import
     from typing import (
         Any,
+        BinaryIO,
         Dict,
+        Generator,
         IO,
+        Iterator,
         List,
+        NoReturn,
         Optional,
     )
 except ImportError:
@@ -61,9 +65,9 @@ class ArFile(object):
     """
 
     def __init__(self,
-                 filename=None,  # type: str
+                 filename=None,  # type: Optional[str]
                  mode='r',       # type: str
-                 fileobj=None,   # type: Optional[IO[bytes]]
+                 fileobj=None,   # type: Optional[BinaryIO]
                  encoding=None,  # type: Optional[str]
                  errors=None,    # type: Optional[str]
                  ):
@@ -78,7 +82,7 @@ class ArFile(object):
         """
         self.__members = []  # type: List[ArMember]
         self.__members_dict = {}  # type: Dict[str, ArMember]
-        self.__fname = filename
+        self.__fname = filename  # type: Optional[str]
         self.__fileobj = fileobj
         if encoding is None:
             encoding = sys.getfilesystemencoding()
@@ -95,6 +99,7 @@ class ArFile(object):
         # TODO write support
 
     def __index_archive(self):
+        # type: () -> None
         if self.__fname:
             fp = open(self.__fname, "rb")
         elif self.__fileobj:
@@ -150,11 +155,13 @@ class ArFile(object):
         return [f.name for f in self.__members]
 
     def extractall(self):
+        # type: () -> NoReturn
         """ Not (yet) implemented. """
 
         raise NotImplementedError  # TODO
 
     def extract(self, member, path):
+        # type: (str, str) -> NoReturn
         """ Not (yet) implemented. """
 
         raise NotImplementedError  # TODO
@@ -183,11 +190,13 @@ class ArFile(object):
     # container emulation
 
     def __iter__(self):
+        # type: () -> Iterator[ArMember]
         """ Iterate over the members of the present ar archive. """
 
         return iter(self.__members)
 
     def __getitem__(self, name):
+        # type: (str) -> ArMember
         """ Same as .getmember(name). """
 
         return self.getmember(name)
@@ -223,9 +232,9 @@ class ArMember(object):
         # member size in bytes
         self.__size = None      # type: Optional[int]
         # file name associated with this member
-        self.__fname = ""       # type: str
+        self.__fname = ""       # type: Optional[str]
         # file pointer
-        self.__fp = None        # type: Optional[IO[bytes]]
+        self.__fp = None        # type: Optional[BinaryIO]
         # start-of-data offset
         self.__offset = 0       # type: int
         # end-of-data offset
@@ -234,8 +243,8 @@ class ArMember(object):
         self.__cur = 0          # type: int
 
     @staticmethod
-    def from_file(fp,             # type: IO[bytes]
-                  fname,          # type: str
+    def from_file(fp,             # type: BinaryIO
+                  fname,          # type: Optional[str]
                   encoding=None,  # type: Optional[str]
                   errors=None,    # type: Optional[str]
                   ):
@@ -306,6 +315,8 @@ class ArMember(object):
     def read(self, size=0):
         # type: (int) -> bytes
         if self.__fp is None:
+            if self.__fname is None:
+                raise ValueError("Cannot have both fp and fname undefined")
             self.__fp = open(self.__fname, "rb")
         self.__fp.seek(self.__cur)
 
@@ -324,6 +335,8 @@ class ArMember(object):
     def readline(self, size=None):
         # type: (Optional[int]) -> bytes
         if self.__fp is None:
+            if self.__fname is None:
+                raise ValueError("Cannot have both fp and fname undefined")
             self.__fp = open(self.__fname, "rb")
         self.__fp.seek(self.__cur)
 
@@ -387,10 +400,13 @@ class ArMember(object):
             self.__fp = None
 
     def next(self):
+        # type: () -> bytes
         return self.readline()
 
     def __iter__(self):
+        # type: () -> Iterator[bytes]
         def nextline():
+            # type: () -> Generator[bytes, None, None]
             line = self.readline()
             if line:
                 yield line

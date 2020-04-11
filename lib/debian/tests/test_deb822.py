@@ -40,10 +40,31 @@ else:
     from StringIO import StringIO
     BytesIO = StringIO
 
-import apt_pkg   #type: ignore
+import apt_pkg
 
 from debian import deb822
 from debian.debian_support import Version
+
+
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        Callable,
+        Dict,
+        IO,
+        List,
+        Optional,
+        Union,
+        Text,
+        Tuple,
+        Type,
+        TypeVar,
+    )
+except ImportError:
+    # Missing types aren't important at runtime
+    TypeVar = lambda t: None
+    pass
 
 
 UNPARSED_PACKAGE = '''\
@@ -290,14 +311,23 @@ PARSED_PARAGRAPHS_WITH_COMMENTS = [
 
 
 def find_test_file(filename):
+    # type: (str) -> str
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
+
+
+T = TypeVar("T")
+def not_none(obj):
+    # type: (Optional[T]) -> T
+    assert obj is not None
+    return obj
 
 
 KEYRING = os.path.abspath(find_test_file('test-keyring.gpg'))
 
 
 def open_utf8(filename, mode='r'):
+    # type: (str, str) -> IO[Text]
     """Open a UTF-8 text file in text mode."""
     if sys.version < '3':
         # TODO(jsw): This isn't actually doing what the docstring says.  The
@@ -313,6 +343,7 @@ def open_utf8(filename, mode='r'):
 
 class TestDeb822Dict(unittest.TestCase):
     def make_dict(self):
+        # type: () -> deb822.Deb822Dict
         d = deb822.Deb822Dict()
         d['TestKey'] = 1
         d['another_key'] = 2
@@ -320,12 +351,14 @@ class TestDeb822Dict(unittest.TestCase):
         return d
 
     def test_case_insensitive_lookup(self):
+        # type: () -> None
         d = self.make_dict()
 
         self.assertEqual(1, d['testkey'])
         self.assertEqual(2, d['Another_keY'])
 
     def test_case_insensitive_assignment(self):
+        # type: () -> None
         d = self.make_dict()
         d['testkey'] = 3
 
@@ -336,11 +369,13 @@ class TestDeb822Dict(unittest.TestCase):
         self.assertEqual(4, d['Foo'])
 
     def test_case_preserved(self):
+        # type: () -> None
         d = self.make_dict()
 
         self.assertEqual(sorted(['another_key', 'TestKey']), sorted(d.keys()))
 
     def test_order_preserved(self):
+        # type: () -> None
         d = self.make_dict()
         d['Third_key'] = 3
         d['another_Key'] = 2.5
@@ -358,18 +393,21 @@ class TestDeb822Dict(unittest.TestCase):
         self.assertEqual(keys, keys2)
 
     def test_derived_dict_equality(self):
+        # type: () -> None
         d1 = self.make_dict()
         d2 = dict(d1)
 
         self.assertEqual(d1, d2)
 
     def test_unicode_key_access(self):
+        # type: () -> None
         d = self.make_dict()
         self.assertEqual(1, d[six.u('testkey')])
 
 
 class TestDeb822(unittest.TestCase):
     def assertWellParsed(self, deb822_, dict_):
+        # type: (deb822.Deb822, deb822.Deb822Mapping) -> None
         """Check that the given Deb822 object has the very same keys and
            values as the given dict.
         """
@@ -382,35 +420,29 @@ class TestDeb822(unittest.TestCase):
 
     @staticmethod
     def gen_random_string(length=20):
+        # type: (int) -> str
         from random import choice
         import string
         chars = string.ascii_letters + string.digits
         return ''.join([choice(chars) for i in range(length)])
 
-    def deb822_from_format_string(self, string, dict_=PARSED_PACKAGE, cls=deb822.Deb822):
-        """Construct a Deb822 object by formatting string with % dict.
-        
-        Returns the formatted string, and a dict object containing only the
-        keys that were used for the formatting."""
-
-        dict_subset = DictSubset(dict_)
-        string = string % dict_subset
-        parsed = cls(string.splitlines())
-        return parsed, dict_subset
-
     def test_parser(self):
+        # type: () -> None
         deb822_ = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
         self.assertWellParsed(deb822_, PARSED_PACKAGE)
 
     def test_parser_with_newlines(self):
+        # type: () -> None
         deb822_ = deb822.Deb822([ l+'\n' for l in UNPARSED_PACKAGE.splitlines()])
         self.assertWellParsed(deb822_, PARSED_PACKAGE)
 
     def test_strip_initial_blanklines(self):
+        # type: () -> None
         deb822_ = deb822.Deb822(['\n'] * 3 + UNPARSED_PACKAGE.splitlines())
         self.assertWellParsed(deb822_, PARSED_PACKAGE)
 
     def test_gpg_stripping(self):
+        # type: () -> None
         for string in GPG_SIGNED:
             unparsed_with_gpg = string % UNPARSED_PACKAGE
             deb822_ = deb822.Deb822(unparsed_with_gpg.splitlines())
@@ -418,6 +450,7 @@ class TestDeb822(unittest.TestCase):
 
     @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
     def test_gpg_info(self):
+        # type: () -> None
         unparsed_with_gpg = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
         deb822_from_str = deb822.Dsc(unparsed_with_gpg)
         result_from_str = deb822_from_str.get_gpg_info(keyrings=[KEYRING])
@@ -447,6 +480,7 @@ class TestDeb822(unittest.TestCase):
 
     @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
     def test_gpg_info2(self):
+        # type: () -> None
         with open(find_test_file('test_Dsc.badsig'), mode='rb') as f:
             dsc = deb822.Dsc(f)
             i = dsc.get_gpg_info(keyrings=[KEYRING])
@@ -454,12 +488,14 @@ class TestDeb822(unittest.TestCase):
             self.assertEqual('at', dsc['Source'])
 
     def test_iter_paragraphs_array(self):
+        # type: () -> None
         text = (UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE).splitlines()
 
         for d in deb822.Deb822.iter_paragraphs(text):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
     def test_iter_paragraphs_file_io(self):
+        # type: () -> None
         text = StringIO(UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
 
         for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=False):
@@ -471,6 +507,7 @@ class TestDeb822(unittest.TestCase):
                 self.assertWellParsed(d, PARSED_PACKAGE)
 
     def test_iter_paragraphs_file(self):
+        # type: () -> None
         text = StringIO()
         text.write(UNPARSED_PACKAGE)
         text.write('\n\n\n')
@@ -493,15 +530,20 @@ class TestDeb822(unittest.TestCase):
 
 
     def test_iter_paragraphs_with_gpg(self):
+        # type: () -> None
         for string in GPG_SIGNED:
             string = string % UNPARSED_PACKAGE
             text = (string + '\n\n\n' + string).splitlines()
 
-            count = len([self.assertWellParsed(d, PARSED_PACKAGE) \
-                            for d in deb822.Deb822.iter_paragraphs(text)])
+            count = 0
+            for d in deb822.Deb822.iter_paragraphs(text):
+                self.assertWellParsed(d, PARSED_PACKAGE)
+                count += 1
+
             self.assertEqual(2, count)
 
     def test_iter_paragraphs_bytes(self):
+        # type: () -> None
         text = (UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
         if six.PY2:
             binary = text
@@ -512,6 +554,7 @@ class TestDeb822(unittest.TestCase):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
     def test_iter_paragraphs_with_extra_whitespace(self):
+        # type: () -> None
         """ Paragraphs splitting when stray whitespace is between
 
         From policy §5.1:
@@ -539,6 +582,7 @@ class TestDeb822(unittest.TestCase):
             fp.close()
 
             def test_count(cmd, expected, *args, **kwargs):
+                # type: (Callable[..., Any], int, *Any, **Any) -> None
                 #print("\n", cmd.__class__, expected)
                 with open_utf8(filename) as fh:
                     count = len(list(cmd(fh, *args, **kwargs)))
@@ -579,11 +623,12 @@ class TestDeb822(unittest.TestCase):
                 os.remove(filename)
 
     def _test_iter_paragraphs(self, filename, cls, **kwargs):
+        # type: (str, Type[deb822.Deb822], **Any) -> None
         """Ensure iter_paragraphs consistency"""
         
-        f = open(filename, 'rb')
-        packages_content = f.read()
-        f.close()
+        with open(filename, 'rb') as fh:
+            packages_content = fh.read()
+
         # XXX: The way multivalued fields parsing works, we can't guarantee
         # that trailing whitespace is reproduced.
         packages_content = b"\n".join([line.rstrip() for line in
@@ -608,39 +653,48 @@ class TestDeb822(unittest.TestCase):
             self.assertEqual(s.getvalue(), packages_content)
 
     def test_iter_paragraphs_apt_shared_storage_packages(self):
+        # type: () -> None
         self._test_iter_paragraphs(find_test_file("test_Packages"),
                                    deb822.Packages,
                                    use_apt_pkg=True, shared_storage=True)
     def test_iter_paragraphs_apt_no_shared_storage_packages(self):
+        # type: () -> None
         self._test_iter_paragraphs(find_test_file("test_Packages"),
                                    deb822.Packages,
                                    use_apt_pkg=True, shared_storage=False)
     def test_iter_paragraphs_no_apt_no_shared_storage_packages(self):
+        # type: () -> None
         self._test_iter_paragraphs(find_test_file("test_Packages"),
                                    deb822.Packages,
                                    use_apt_pkg=False, shared_storage=False)
 
     def test_iter_paragraphs_apt_shared_storage_sources(self):
+        # type: () -> None
         self._test_iter_paragraphs(find_test_file("test_Sources"),
                                    deb822.Sources,
                                    use_apt_pkg=True, shared_storage=True)
     def test_iter_paragraphs_apt_no_shared_storage_sources(self):
+        # type: () -> None
         self._test_iter_paragraphs(find_test_file("test_Sources"),
                                    deb822.Sources,
                                    use_apt_pkg=True, shared_storage=False)
     def test_iter_paragraphs_no_apt_no_shared_storage_sources(self):
+        # type: () -> None
         self._test_iter_paragraphs(find_test_file("test_Sources"),
                                    deb822.Sources,
                                    use_apt_pkg=False, shared_storage=False)
 
     def test_parser_empty_input(self):
+        # type: () -> None
         self.assertEqual({}, deb822.Deb822([]))
 
     def test_iter_paragraphs_empty_input(self):
+        # type: () -> None
         generator = deb822.Deb822.iter_paragraphs([])
         self.assertRaises(StopIteration, next, generator)
 
     def test_parser_limit_fields(self):
+        # type: () -> None
         wanted_fields = [ 'Package', 'MD5sum', 'Filename', 'Description' ]
         deb822_ = deb822.Deb822(UNPARSED_PACKAGE.splitlines(), wanted_fields)
 
@@ -650,6 +704,7 @@ class TestDeb822(unittest.TestCase):
             self.assertEqual(PARSED_PACKAGE[key], deb822_[key])
 
     def test_iter_paragraphs_limit_fields(self):
+        # type: () -> None
         wanted_fields = [ 'Package', 'MD5sum', 'Filename', 'Tag' ]
 
         for deb822_ in deb822.Deb822.iter_paragraphs(
@@ -661,6 +716,7 @@ class TestDeb822(unittest.TestCase):
                 self.assertEqual(PARSED_PACKAGE[key], deb822_[key])
 
     def test_dont_assume_trailing_newline(self):
+        # type: () -> None
         deb822a = deb822.Deb822(['Package: foo'])
         deb822b = deb822.Deb822(['Package: foo\n'])
 
@@ -672,6 +728,7 @@ class TestDeb822(unittest.TestCase):
         self.assertEqual(deb822a['Description'], deb822b['Description'])
 
     def test__delitem__(self):
+        # type: () -> None
         parsed = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
         deriv = deb822.Deb822(_parsed=parsed)
         dict_ = PARSED_PACKAGE.copy()
@@ -685,6 +742,7 @@ class TestDeb822(unittest.TestCase):
 
 
     def test_policy_compliant_whitespace(self):
+        # type: () -> None
         string = (
             'Package: %(Package)s\n'
             'Version :%(Version)s \n'
@@ -704,6 +762,7 @@ class TestDeb822(unittest.TestCase):
             self.assertEqual(dict_[k], v)
     
     def test_case_insensitive(self):
+        # type: () -> None
         # PARSED_PACKAGE is a deb822.Deb822Dict object, so we can test
         # it directly
         self.assertEqual(PARSED_PACKAGE['Architecture'],
@@ -725,6 +784,7 @@ class TestDeb822(unittest.TestCase):
             self.assertEqual(deb822_[k], deb822_[k.lower()])
 
     def test_multiline_trailing_whitespace_after_colon(self):
+        # type: () -> None
         """Trailing whitespace after the field name on multiline fields
 
         If the field's value starts with a newline (e.g. on MD5Sum fields in
@@ -766,7 +826,9 @@ Description: python modules to work with Debian-related data formats
         parsed_control = deb822.Deb822(control_paragraph.splitlines())
         field_re = re.compile(r"^\S+:")
         field_with_space_re = re.compile(r"^\S+: ")
-        for line in parsed_control.dump().splitlines():
+        dump = parsed_control.dump()
+        self.assertIsNotNone(dump)
+        for line in dump.splitlines():
             if field_re.match(line):
                 self.assertTrue(field_with_space_re.match(line),
                                 "Multiline fields that do not start with "
@@ -774,6 +836,7 @@ Description: python modules to work with Debian-related data formats
                                 "colon and the beginning of the value")
 
     def test_blank_value(self):
+        # type: () -> None
         """Fields with blank values are parsable--so they should be dumpable"""
 
         d = deb822.Deb822()
@@ -791,6 +854,7 @@ Description: python modules to work with Debian-related data formats
         self.assertEqual(dumped, expected)
 
     def test_copy(self):
+        # type: () -> None
         """The copy method of Deb822 should return another Deb822 object"""
         d = deb822.Deb822()
         d['Foo'] = 'bar'
@@ -802,16 +866,19 @@ Description: python modules to work with Debian-related data formats
         self.assertEqual(d_copy.dump(), expected_dump)
 
     def test_bug457929_multivalued_dump_works(self):
+        # type: () -> None
         """dump() was not working in multivalued classes, see #457929."""
         changesobj = deb822.Changes(CHANGES_FILE.splitlines())
         self.assertEqual(CHANGES_FILE, changesobj.dump())
 
     def test_bug487902_multivalued_checksums(self):
+        # type: () -> None
         """New multivalued field Checksums was not handled correctly, see #487902."""
         changesobj = deb822.Changes(CHECKSUM_CHANGES_FILE.splitlines())
         self.assertEqual(CHECKSUM_CHANGES_FILE, changesobj.dump())
 
     def test_case_preserved_in_input(self):
+        # type: () -> None
         """The field case in the output from dump() should be the same as the
         input, even if multiple Deb822 objects have been created using
         different case conventions.
@@ -832,6 +899,7 @@ Description: python modules to work with Debian-related data formats
         self.assertEqual(d3.dump(), "Some-Test-Key: some value\n")
 
     def test_unicode_values(self):
+        # type: () -> None
         """Deb822 objects should contain only unicode values
 
         (Technically, they are allowed to contain any type of object, but when
@@ -848,16 +916,16 @@ Description: python modules to work with Debian-related data formats
             objects.extend(deb822.Packages.iter_paragraphs(f))
         with open_utf8(find_test_file('test_Sources')) as f:
             objects.extend(deb822.Deb822.iter_paragraphs(f))
-        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as f:
+        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as fb:
             objects.extend(deb822.Deb822.iter_paragraphs(
-                f, encoding="iso8859-1"))
+                fb, encoding="iso8859-1"))
         for d in objects:
             for value in d.values():
                 self.assertTrue(isinstance(value, six.text_type))
 
         # The same should be true for Sources and Changes except for their
         # _multivalued fields
-        multi = []
+        multi = []   # type: List[Union[deb822.Changes, deb822.Sources]]
         multi.append(deb822.Changes(CHANGES_FILE))
         multi.append(deb822.Changes(SIGNED_CHECKSUM_CHANGES_FILE
                                     % CHECKSUM_CHANGES_FILE))
@@ -869,11 +937,12 @@ Description: python modules to work with Debian-related data formats
                     self.assertTrue(isinstance(value, six.text_type))
 
     def test_encoding_integrity(self):
+        # type: () -> None
         with open_utf8(find_test_file('test_Sources')) as f:
             utf8 = list(deb822.Deb822.iter_paragraphs(f))
-        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as f:
+        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as fb:
             latin1 = list(deb822.Deb822.iter_paragraphs(
-                f, encoding='iso8859-1'))
+                fb, encoding='iso8859-1'))
 
         # dump() with no fd returns a unicode object - both should be identical
         self.assertEqual(len(utf8), len(latin1))
@@ -882,10 +951,10 @@ Description: python modules to work with Debian-related data formats
 
         # XXX: The way multiline fields parsing works, we can't guarantee
         # that trailing whitespace is reproduced.
-        with open(find_test_file('test_Sources'), 'rb') as f:
-            utf8_contents = b"\n".join([line.rstrip() for line in f] + [b''])
-        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as f:
-            latin1_contents = b"\n".join([line.rstrip() for line in f] + [b''])
+        with open(find_test_file('test_Sources'), 'rb') as fb:
+            utf8_contents = b"\n".join([line.rstrip() for line in fb] + [b''])
+        with open(find_test_file('test_Sources.iso8859-1'), 'rb') as fb:
+            latin1_contents = b"\n".join([line.rstrip() for line in fb] + [b''])
 
         utf8_to_latin1 = BytesIO()
         for d in utf8:
@@ -901,6 +970,7 @@ Description: python modules to work with Debian-related data formats
         self.assertEqual(latin1_contents, utf8_to_latin1.getvalue())
 
     def test_mixed_encodings(self):
+        # type: () -> None
         """Test that we can handle a simple case of mixed encodings
 
         In general, this isn't guaranteed to work.  It uses the chardet
@@ -926,6 +996,7 @@ Description: python modules to work with Debian-related data formats
                                 six.u('Frank K\xfcster <frank@debian.org>'))
 
     def test_dump_text_mode(self):
+        # type: () -> None
         d = deb822.Deb822(CHANGES_FILE.splitlines())
         buf = io.StringIO()
         d.dump(fd=buf, text_mode=True)
@@ -933,6 +1004,7 @@ Description: python modules to work with Debian-related data formats
 
 
     def test_bug597249_colon_as_first_value_character(self):
+        # type: () -> None
         """Colon should be allowed as the first value character. See #597249.
         """
 
@@ -942,9 +1014,11 @@ Description: python modules to work with Debian-related data formats
 
     @staticmethod
     def _dictset(d, key, value):
+        # type: (Dict[str, Any], str, Any) -> None
         d[key] = value
 
     def test_field_value_ends_in_newline(self):
+        # type: () -> None
         """Field values are not allowed to end with newlines"""
 
         d = deb822.Deb822()
@@ -952,6 +1026,7 @@ Description: python modules to work with Debian-related data formats
         self.assertRaises(ValueError, self._dictset, d, 'foo', 'bar\nbaz\n')
 
     def test_field_value_contains_blank_line(self):
+        # type: () -> None
         """Field values are not allowed to contain blank lines"""
 
         d = deb822.Deb822()
@@ -959,21 +1034,25 @@ Description: python modules to work with Debian-related data formats
         self.assertRaises(ValueError, self._dictset, d, 'foo', '\n\nbaz')
 
     def test_multivalued_field_contains_newline(self):
+        # type: () -> None
+        # mypy does not handle metaprogramming for multivalued fields
         """Multivalued field components are not allowed to contain newlines"""
 
         d = deb822.Dsc()
         # We don't check at set time, since one could easily modify the list
         # without deb822 knowing.  We instead check at get time.
-        d['Files'] = [{'md5sum': 'deadbeef', 'size': '9605', 'name': 'bad\n'}]
+        d['Files'] = [{'md5sum': 'deadbeef', 'size': '9605', 'name': 'bad\n'}]   # type: ignore
         self.assertRaises(ValueError, d.get_as_string, 'files')
 
     def _test_iter_paragraphs_comments(self, paragraphs):
+        # type: (List[deb822.Deb822]) -> None
         self.assertEqual(len(paragraphs), len(PARSED_PARAGRAPHS_WITH_COMMENTS))
         for i in range(len(paragraphs)):
             self.assertWellParsed(paragraphs[i],
                                   PARSED_PARAGRAPHS_WITH_COMMENTS[i])
 
     def test_iter_paragraphs_comments_use_apt_pkg(self):
+        # type: () -> None
         """ apt_pkg does not support comments within multiline fields
 
         This test checks that a file with comments inside multiline fields
@@ -995,16 +1074,19 @@ Description: python modules to work with Debian-related data formats
             os.remove(filename)
 
     def test_iter_paragraphs_comments_native(self):
+        # type: () -> None
         paragraphs = list(deb822.Deb822.iter_paragraphs(
             UNPARSED_PARAGRAPHS_WITH_COMMENTS.splitlines(), use_apt_pkg=False))
         self._test_iter_paragraphs_comments(paragraphs)
 
     def test_iter_paragraphs_string_comments_native(self):
+        # type: () -> None
         paragraphs = list(deb822.Deb822.iter_paragraphs(
             UNPARSED_PARAGRAPHS_WITH_COMMENTS, use_apt_pkg=False))
         self._test_iter_paragraphs_comments(paragraphs)
 
     def test_release(self):
+        # type: () -> None
         with open(find_test_file('test_Release')) as f:
             release = deb822.Release(f)
         self.assertEqual(release['Codename'], 'sid')
@@ -1014,18 +1096,21 @@ Description: python modules to work with Debian-related data formats
         self.assertEqual(release['SHA512'][0]['size'], '113433')
 
     def test_changes_binary_mode(self):
+        # type: () -> None
         """Trivial parse test for a signed file in binary mode"""
         with io.open(find_test_file('test_Changes'), 'rb') as f:
             changes = deb822.Changes(f)
         self.assertEqual('python-debian', changes['Source'])
 
     def test_changes_text_mode(self):
+        # type: () -> None
         """Trivial parse test for a signed file in text mode"""
         with io.open(find_test_file('test_Changes'), 'r', encoding='utf-8') as f:
             changes = deb822.Changes(f)
         self.assertEqual('python-debian', changes['Source'])
 
     def test_removals(self):
+        # type: () -> None
         with open(find_test_file('test_removals.822')) as f:
             removals = deb822.Removals.iter_paragraphs(f)
             r = next(removals)
@@ -1051,19 +1136,9 @@ Description: python modules to work with Debian-related data formats
 
 
 class TestPkgRelations(unittest.TestCase):
-    # TODO(jsw): Stop overriding this for Python versions that actually include
-    # assertWarns.  Unfortunately, that's not possible right now because for
-    # some reason sys.modules changes size during case.py's iteration of it in
-    # _AssertWarnsContext.__enter__ (python3.4).
-    def assertWarns(self, warning, callable, *args, **kwds):
-        with warnings.catch_warnings(record=True) as warning_list:
-            warnings.simplefilter('always')
-
-            result = callable(*args, **kwds)
-
-            self.assertTrue(any(item.category == warning for item in warning_list))
 
     def assertPkgDictEqual(self, expected, actual):
+        # type: (deb822.Deb822Mapping, deb822.Deb822Mapping) -> None
         p1keys = sorted(expected.keys())
         p2keys = sorted(actual.keys())
         self.assertEqual(p1keys, p2keys, "Different fields present in packages")
@@ -1073,6 +1148,7 @@ class TestPkgRelations(unittest.TestCase):
 
     @staticmethod
     def rel(dict_):
+        # type: (deb822.Deb822MutableMapping) -> deb822.Deb822Mapping
         """Modify dict_ to ensure it contains all fields from parse_relations
 
         Accept a dict that partially describes a package relationship and add
@@ -1091,6 +1167,7 @@ class TestPkgRelations(unittest.TestCase):
         return dict_
 
     def test_packages(self):
+        # type: () -> None
         # make the syntax a bit more compact
         rel = TestPkgRelations.rel
 
@@ -1172,6 +1249,7 @@ class TestPkgRelations(unittest.TestCase):
         f.close()
 
     def test_pkgrelation_str(self):
+        # type: () -> None
         bin_rels = [
             'file, libc6 (>= 2.7-1), libpaper1, psutils, '
             'perl:any, python:native'
@@ -1194,6 +1272,7 @@ class TestPkgRelations(unittest.TestCase):
                     "foo bar")
 
     def test_sources(self):
+        # type: () -> None
         # make the syntax a bit more compact
         rel = TestPkgRelations.rel
 
@@ -1255,11 +1334,11 @@ class TestPkgRelations(unittest.TestCase):
         self.assertPkgDictEqual(rel2, pkg2.relations)
         f.close()
 
-    def test_restrictions_parse(self):
+    def test_restrictions_parse(self):   # type: ignore
         """ test parsing of restriction formulas """
         r = "foo <cross>"
         # relation 0, alternative 0, restrictions set 0, condition 0
-        term = deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'][0][0]
+        term = not_none(deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'])[0][0]
         self.assertEqual(term.enabled, True)
         self.assertEqual(term[0], True)
         self.assertEqual(term.profile, 'cross')
@@ -1267,20 +1346,21 @@ class TestPkgRelations(unittest.TestCase):
 
         r = "foo <!stage1> <!stage2 !cross>"
         # relation 0, alternative 0, restrictions set 1, condition 0
-        term = deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'][1][0]
+        term = not_none(deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'])[1][0]
         self.assertEqual(term.enabled, False)
         self.assertEqual(term[0], False)
         self.assertEqual(term.profile, 'stage2')
         self.assertEqual(term[1], 'stage2')
 
         # relation 0, alternative 0, restrictions set 1, condition 1
-        term = deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'][1][1]
+        term = not_none(deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'])[1][1]
         self.assertEqual(term.enabled, False)
         self.assertEqual(term[0], False)
         self.assertEqual(term.profile, 'cross')
         self.assertEqual(term[1], 'cross')
 
     def test_multiarch_parse(self):
+        # type: () -> None
         """ test parsing of architecture qualifiers from multiarch
 
         Also ensure that the archqual part makes a round-trip, see
@@ -1297,10 +1377,11 @@ class TestPkgRelations(unittest.TestCase):
 class TestVersionAccessor(unittest.TestCase):
 
     def test_get_version(self):
+        # type: () -> None
         # should not be available in most basic Deb822
         p = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
         with self.assertRaises(AttributeError):
-            p.get_version()
+            p.get_version()    # type: ignore
 
         # should be available in Packages
         p = deb822.Packages(UNPARSED_PACKAGE.splitlines())
@@ -1309,10 +1390,11 @@ class TestVersionAccessor(unittest.TestCase):
         self.assertTrue(isinstance(v, Version))
 
     def test_set_version(self):
+        # type: () -> None
         # should not be available in most basic Deb822
         p = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
         with self.assertRaises(AttributeError):
-            p.set_version()
+            p.set_version()   # type: ignore
 
         # should be available in Packages
         p = deb822.Packages(UNPARSED_PACKAGE.splitlines())
@@ -1327,8 +1409,9 @@ class TestVersionAccessor(unittest.TestCase):
 class TestGpgInfo(unittest.TestCase):
 
     def setUp(self):
-        self.data = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
-        self.data = self.data.encode()
+        # type: () -> None
+        self.datastr = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
+        self.data = self.datastr.encode()
         self.valid = {
             'GOODSIG':
                 ['D14219877A786561', 'John Wright <john.wright@hp.com>'],
@@ -1341,9 +1424,10 @@ class TestGpgInfo(unittest.TestCase):
         }
 
     def _validate_gpg_info(self, gpg_info):
+        # type: (deb822.GpgInfo) -> None
         # The second part of the GOODSIG field could change if the primary
         # uid changes, so avoid checking that.  Also, the first part of the
-        # SIG_ID field has undergone at least one algorithm changein gpg,
+        # SIG_ID field has undergone at least one algorithm change in gpg,
         # so don't bother testing that either.
         self.assertEqual(set(gpg_info.keys()), set(self.valid.keys()))
         self.assertEqual(gpg_info['GOODSIG'][0], self.valid['GOODSIG'][0])
@@ -1351,20 +1435,24 @@ class TestGpgInfo(unittest.TestCase):
         self.assertEqual(gpg_info['SIG_ID'][1:], self.valid['SIG_ID'][1:])
 
     def test_from_sequence_string(self):
+        # type: () -> None
         gpg_info = deb822.GpgInfo.from_sequence(self.data, keyrings=[KEYRING])
         self._validate_gpg_info(gpg_info)
 
     def test_from_sequence_newline_terminated(self):
+        # type: () -> None
         sequence = BytesIO(self.data)
         gpg_info = deb822.GpgInfo.from_sequence(sequence, keyrings=[KEYRING])
         self._validate_gpg_info(gpg_info)
 
     def test_from_sequence_no_newlines(self):
+        # type: () -> None
         sequence = self.data.splitlines()
         gpg_info = deb822.GpgInfo.from_sequence(sequence, keyrings=[KEYRING])
         self._validate_gpg_info(gpg_info)
 
     def test_from_file(self):
+        # type: () -> None
         fd, filename = tempfile.mkstemp()
         fp = os.fdopen(fd, 'wb')
         fp.write(self.data)
@@ -1379,6 +1467,7 @@ class TestGpgInfo(unittest.TestCase):
 
 
 def _no_space(s):
+    # type: (str) -> str
     """Returns s.  Raises ValueError if s contains any whitespace."""
     if re.search(r'\s', s):
         raise ValueError('whitespace not allowed')
@@ -1387,14 +1476,15 @@ def _no_space(s):
 
 class RestrictedWrapperTest(unittest.TestCase):
     class Wrapper(deb822.RestrictedWrapper):
-        restricted_field = deb822.RestrictedField('Restricted-Field')  # type: ignore
-        required_field = deb822.RestrictedField('Required-Field', allow_none=False)   # type: ignore
-        space_separated = deb822.RestrictedField(    # type: ignore
+        restricted_field = deb822.RestrictedField('Restricted-Field')
+        required_field = deb822.RestrictedField('Required-Field', allow_none=False)
+        space_separated = deb822.RestrictedField(
                 'Space-Separated',
                 from_str=lambda s: tuple((s or '').split()),
                 to_str=lambda seq: ' '.join(_no_space(s) for s in seq) or None)
 
     def test_unrestricted_get_and_set(self):
+        # type: () -> None
         data = deb822.Deb822()
         data['Foo'] = 'bar'
 
@@ -1415,7 +1505,8 @@ class RestrictedWrapperTest(unittest.TestCase):
         self.assertEqual(expected_data.keys(), data.keys())
         self.assertEqual(expected_data, data)
 
-    def test_trivially_restricted_get_and_set(self):
+    def test_trivially_restricted_get_and_set(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
         data = deb822.Deb822()
         data['Required-Field'] = 'some value'
 
@@ -1444,52 +1535,55 @@ class RestrictedWrapperTest(unittest.TestCase):
             del wrapper['restricted-field']
 
         with self.assertRaises(TypeError):
-            wrapper.required_field = None
+            wrapper.required_field = None           # type: ignore
 
-        wrapper.restricted_field = 'special value'
+        wrapper.restricted_field = 'special value'  # type: ignore
         self.assertEqual('special value', data['Restricted-Field'])
-        wrapper.restricted_field = None
+        wrapper.restricted_field = None             # type: ignore
         self.assertFalse('Restricted-Field' in data)
         self.assertIsNone(wrapper.restricted_field)
 
-        wrapper.required_field = 'another value'
+        wrapper.required_field = 'another value'    # type: ignore
         self.assertEqual('another value', data['Required-Field'])
 
-    def test_set_already_none_to_none(self):
+    def test_set_already_none_to_none(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
         data = deb822.Deb822()
         wrapper = self.Wrapper(data)
-        wrapper.restricted_field = 'Foo'
-        wrapper.restricted_field = None
+        wrapper.restricted_field = 'Foo'   # type: ignore
+        wrapper.restricted_field = None    # type: ignore
         self.assertFalse('restricted-field' in data)
-        wrapper.restricted_field = None
+        wrapper.restricted_field = None    # type: ignore
         self.assertFalse('restricted-field' in data)
 
-    def test_processed_get_and_set(self):
+    def test_processed_get_and_set(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
         data = deb822.Deb822()
         data['Space-Separated'] = 'foo bar baz'
 
         wrapper = self.Wrapper(data)
         self.assertEqual(('foo', 'bar', 'baz'), wrapper.space_separated)
-        wrapper.space_separated = ['bar', 'baz', 'quux']
+        wrapper.space_separated = ['bar', 'baz', 'quux']     # type: ignore
         self.assertEqual('bar baz quux', data['space-separated'])
         self.assertEqual('bar baz quux', wrapper['space-separated'])
         self.assertEqual(('bar', 'baz', 'quux'), wrapper.space_separated)
 
         with self.assertRaises(ValueError) as cm:
-            wrapper.space_separated = ('foo', 'bar baz')
+            wrapper.space_separated = ('foo', 'bar baz')    # type: ignore
         self.assertEqual(('whitespace not allowed',), cm.exception.args)
 
-        wrapper.space_separated = None
+        wrapper.space_separated = None     # type: ignore
         self.assertEqual((), wrapper.space_separated)
         self.assertFalse('space-separated' in data)
         self.assertFalse('Space-Separated' in data)
 
-        wrapper.space_separated = ()
+        wrapper.space_separated = ()     # type: ignore
         self.assertEqual((), wrapper.space_separated)
         self.assertFalse('space-separated' in data)
         self.assertFalse('Space-Separated' in data)
 
-    def test_dump(self):
+    def test_dump(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
         data = deb822.Deb822()
         data['Foo'] = 'bar'
         data['Baz'] = 'baz'
@@ -1500,8 +1594,8 @@ class RestrictedWrapperTest(unittest.TestCase):
         wrapper = self.Wrapper(data)
         self.assertEqual(data.dump(), wrapper.dump())
 
-        wrapper.restricted_field = 'another value'
-        wrapper.space_separated = ('bar', 'baz', 'quux')
+        wrapper.restricted_field = 'another value'        # type: ignore
+        wrapper.space_separated = ('bar', 'baz', 'quux')  # type: ignore
         self.assertEqual(data.dump(), wrapper.dump())
 
 
