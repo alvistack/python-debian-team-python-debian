@@ -1,8 +1,0 @@
-#!/bin/sh
-set -e -u -x
-cp -r lib/debian/tests/ "$AUTOPKGTEST_TMP"
-cd "$AUTOPKGTEST_TMP/tests/"
-export PYTHONWARNINGS=d
-# test suite requires python2.7
-LC_ALL=C python2.7 -m unittest discover --verbose
-LC_ALL=C.UTF-8 python2.7 -m unittest discover --verbose
