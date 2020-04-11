@@ -22,10 +22,34 @@ import sys
 sys.path.insert(0, 'lib')
 import debian
 
+description = """\
+This package provides Python 3 modules that abstract many formats of Debian
+related files. Currently handled are:
+  * Debtags information (debian.debtags module)
+  * debian/changelog (debian.changelog module)
+  * Packages files, pdiffs (debian.debian_support module)
+  * Control files of single or multiple RFC822-style paragraphs, e.g.
+    debian/control, .changes, .dsc, Packages, Sources, Release, etc.
+    (debian.deb822 module)
+  * Raw .deb and .ar files, with (read-only) access to contained
+    files and meta-information
+"""
+
 setup(
     name='python-debian',
     version=debian.__version__,
     description='Debian package related modules',
+    long_description=description,
+    license='GPL-2+',
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'License :: DFSG approved',
+        'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
+        'Operating System :: POSIX',
+        'Programming Language :: Python',
+    ],
+    platforms=['any'],
     url='https://salsa.debian.org/python-debian-team/python-debian',
     package_dir={'': 'lib'},
     packages=['debian', 'debian_bundle'],
