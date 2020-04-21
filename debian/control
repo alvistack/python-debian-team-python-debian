@@ -3,7 +3,6 @@ Section: python
 Priority: optional
 Maintainer: Debian python-debian Maintainers <pkg-python-debian-maint@lists.alioth.debian.org>
 Uploaders:
- Adeodato Simó <dato@net.com.org.es>,
  Enrico Zini <enrico@debian.org>,
  James Westby <jw+debian@jameswestby.net>,
  Reinhard Tartler <siretart@tauware.de>,
