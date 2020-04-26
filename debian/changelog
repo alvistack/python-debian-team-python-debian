@@ -1,3 +1,9 @@
+python-debian (0.1.38) UNRELEASED; urgency=medium
+
+  * Add a debian.watch module for parsing watch files.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 11 Apr 2020 16:11:10 +0000
+
 python-debian (0.1.37) unstable; urgency=medium
 
   [ Sandro Tosi ]
