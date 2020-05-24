@@ -108,6 +108,18 @@ class ChangelogTests(unittest.TestCase):
             self.assertEqual(clines[i], cslines[i])
         self.assertEqual(len(clines), len(cslines), "Different lengths")
 
+    def test_preserve_initial_lines(self):
+        cl_text = b"""
+THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED
+haskell-src-exts (1.8.2-3) unstable; urgency=low
+
+  * control: Use versioned Replaces: and Conflicts:
+
+ -- Somebody <nobody@debian.org>  Wed, 05 May 2010 18:01:53 -0300
+"""
+        cl = changelog.Changelog(cl_text)
+        self.assertEqual(cl_text, bytes(cl))
+
     def test_add_changelog_section(self):
         f = open(find_test_file('test_modify_changelog2'))
         c = f.read()
