@@ -304,7 +304,7 @@ class ChangeBlock(object):
         """ List of Launchpad bugs closed by the block """
         return self._get_bugs_closed_generic(closeslp)
 
-    def _format(self):
+    def _format(self, allow_missing_author=False):
         # type: () -> str
         # TODO(jsw): Switch to StringIO or a list to join at the end.
         block = ""
@@ -328,12 +328,16 @@ class ChangeBlock(object):
         for change in self.changes():
             block += change + "\n"
         if not self._no_trailer:
-            if self.author is None:
+            block += " --"
+            if self.author is not None:
+                block += " " + self.author
+            elif not allow_missing_author:
                 raise ChangelogCreateError("Author not specified")
-            if self.date is None:
+            if self.date is not None:
+                block += self._trailer_separator + self.date
+            elif not allow_missing_author:
                 raise ChangelogCreateError("Date not specified")
-            block += " -- " + self.author + self._trailer_separator \
-                + self.date + "\n"
+            block += "\n"
         for line in self._trailing:
             block += line + "\n"
         return block
@@ -760,13 +764,13 @@ These attributes cannot be assigned to."""
     def _raw_versions(self):
         return [block._raw_version for block in self._blocks]
 
-    def _format(self):
+    def _format(self, allow_missing_author=False):
         # type: () -> str
         pieces = []
         for line in self.initial_blank_lines:
             pieces.append(line + six.u('\n'))
         for block in self._blocks:
-            pieces.append(six.text_type(block))
+            pieces.append(block._format(allow_missing_author=allow_missing_author))
         return six.u('').join(pieces)
 
     if sys.version >= '3':

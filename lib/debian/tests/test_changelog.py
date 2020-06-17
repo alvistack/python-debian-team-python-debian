@@ -180,6 +180,8 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         self.assertEqual(c1.author, None)
         self.assertEqual(c1.date, None)
         self.assertEqual(c1.package, "gnutls13")
+        self.assertRaises(changelog.ChangelogCreateError, str, c1)
+        self.assertEqual(c1._format(allow_missing_author=True), cl_no_author)
         c2 = changelog.Changelog()
         self.assertRaises(changelog.ChangelogParseError, c2.parse_changelog, cl_no_author)
 
@@ -311,6 +313,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         c = changelog.Changelog(f)
         f.close()
         self.assertEqual(len(c._blocks), len(c))
+
 
 class VersionTests(unittest.TestCase):
 
