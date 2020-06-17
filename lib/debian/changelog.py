@@ -305,7 +305,7 @@ class ChangeBlock(object):
         return self._get_bugs_closed_generic(closeslp)
 
     def _format(self, allow_missing_author=False):
-        # type: () -> str
+        # type: (Optional[bool]) -> str
         # TODO(jsw): Switch to StringIO or a list to join at the end.
         block = ""
         if self.package is None:
@@ -343,14 +343,16 @@ class ChangeBlock(object):
         return block
 
     if sys.version >= '3':
-        __str__ = _format
+        def __str__(self):
+            return self._format()
 
         def __bytes__(self):
             # pylint: disable=invalid-bytes-returned
             # pylint bug https://github.com/PyCQA/pylint/issues/3599
             return str(self).encode(self._encoding)
     else:
-        __unicode__ = _format
+        def __unicode__(self):
+            return self._format()
 
         def __str__(self):
             # pylint: disable=undefined-variable
@@ -765,7 +767,7 @@ These attributes cannot be assigned to."""
         return [block._raw_version for block in self._blocks]
 
     def _format(self, allow_missing_author=False):
-        # type: () -> str
+        # type: (Optional[bool]) -> str
         pieces = []
         for line in self.initial_blank_lines:
             pieces.append(line + six.u('\n'))
@@ -774,14 +776,16 @@ These attributes cannot be assigned to."""
         return six.u('').join(pieces)
 
     if sys.version >= '3':
-        __str__ = _format
+        def __str__(self):
+            return self._format()
 
         def __bytes__(self):
             # pylint: disable=invalid-bytes-returned
             # pylint bug https://github.com/PyCQA/pylint/issues/3599
             return str(self).encode(self._encoding)
     else:
-        __unicode__ = _format
+        def __unicode__(self):
+            return self._format()
 
         def __str__(self):
             # pylint: disable=undefined-variable
