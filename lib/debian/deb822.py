@@ -293,14 +293,14 @@ except ImportError:
     # Lack of typing is not important at runtime
     TYPE_CHECKING = False
 
-
-if not TYPE_CHECKING:
-    overload = lambda f: None
-    cast = lambda t, v: v
-    IO = {
-        bytes: None,
-        str: None,
-    }
+    # Fake some definitions
+    if not TYPE_CHECKING:
+        overload = lambda f: None
+        cast = lambda t, v: v
+        IO = {
+            bytes: None,
+            str: None,
+        }
 
 
 from debian.deprecation import function_deprecated_by
