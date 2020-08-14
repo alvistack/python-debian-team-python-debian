@@ -348,6 +348,7 @@ class ChangeBlock(object):
 
     if sys.version_info[0] >= 3:
         def __str__(self):
+            # type: () -> str
             return self._format()
 
         def __bytes__(self):  # type: () -> bytes
@@ -781,6 +782,7 @@ class Changelog(object):
 
     if sys.version_info[0] >= 3:
         def __str__(self):
+            # type: () -> str
             return self._format()
 
         def __bytes__(self):  # type: () -> bytes

@@ -128,6 +128,7 @@ class ChangelogTests(unittest.TestCase):
         self.assertEqual(len(clines), len(cslines), "Different lengths")
 
     def test_preserve_initial_lines(self):
+        # type: () -> None
         cl_text = b"""
 THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED
 haskell-src-exts (1.8.2-3) unstable; urgency=low
