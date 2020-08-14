@@ -1,8 +1,11 @@
 python-debian (0.1.38) UNRELEASED; urgency=medium
 
   * Add a debian.watch module for parsing watch files.
+<<<<<<<
   * Prevent stripping of last newline in initial lines before changelog files.
+=======
   * Add a Copyright.files_excluded field.
+>>>>>>>
   * Allow specifying allow_missing_author when reserializing changelog
     entries.
 

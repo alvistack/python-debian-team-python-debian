@@ -692,6 +692,10 @@ class Header(deb822.RestrictedWrapper):
 
     copyright = deb822.RestrictedField('Copyright')      # type: ignore
 
+    files_excluded = deb822.RestrictedField(
+        'Files-Excluded', from_str=_LineBased.from_str,
+        to_str=_LineBased.to_str)  # type: ignore
+
 
 try:
     ParagraphTypes = Union[FilesParagraph, LicenseParagraph]
