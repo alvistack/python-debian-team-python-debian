@@ -670,12 +670,12 @@ class Header(deb822.RestrictedWrapper):
     def known_format(self):
         # type: () -> bool
         """Returns True iff the format is known."""
-        return self.format in _KNOWN_FORMATS
+        return self.format in _KNOWN_FORMATS   # type: ignore
 
     def current_format(self):
         # type: () -> bool
         """Returns True iff the format is the current format."""
-        return self.format == _CURRENT_FORMAT
+        return self.format == _CURRENT_FORMAT   # type: ignore
 
     # lots of type ignores due to  https://github.com/python/mypy/issues/1279
     format = deb822.RestrictedField(

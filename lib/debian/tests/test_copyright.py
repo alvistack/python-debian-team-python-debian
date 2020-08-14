@@ -530,17 +530,17 @@ class LicenseParagraphTest(unittest.TestCase):
         self.assertEqual('GPL-2', lp['License'])
         self.assertEqual(copyright.License('GPL-2'), lp.license)
         self.assertIsNone(lp.comment)
-        lp.comment = "Some comment."
+        lp.comment = "Some comment."  # type: ignore
         self.assertEqual("Some comment.", lp.comment)
         self.assertEqual("Some comment.", lp['comment'])
 
-        lp.license = copyright.License('GPL-2+', '[LICENSE TEXT]')
+        lp.license = copyright.License('GPL-2+', '[LICENSE TEXT]')  # type: ignore
         self.assertEqual(
             copyright.License('GPL-2+', '[LICENSE TEXT]'), lp.license)
         self.assertEqual('GPL-2+\n [LICENSE TEXT]', lp['license'])
 
         with self.assertRaises(TypeError) as cm:
-            lp.license = None
+            lp.license = None   # type: ignore
         self.assertEqual(('value must not be None',), cm.exception.args)
 
     def test_no_license(self):
@@ -700,16 +700,16 @@ class FilesParagraphTest(unittest.TestCase):
         fp = copyright.FilesParagraph(self.prototype)
         self.assertEqual(('*',), fp.files)
 
-        fp.files = ['debian/*']
+        fp.files = ['debian/*']   # type: ignore
         self.assertEqual(('debian/*',), fp.files)
         self.assertEqual('debian/*', fp['files'])
 
-        fp.files = ['src/foo/*', 'src/bar/*']
+        fp.files = ['src/foo/*', 'src/bar/*']   # type: ignore
         self.assertEqual(('src/foo/*', 'src/bar/*'), fp.files)
         self.assertEqual('src/foo/* src/bar/*', fp['files'])
 
         with self.assertRaises(TypeError):
-            fp.files = None
+            fp.files = None   # type: ignore
 
         self.prototype['Files'] = 'foo/*\tbar/*\n\tbaz/*\n quux/*'
         fp = copyright.FilesParagraph(self.prototype)
@@ -719,12 +719,12 @@ class FilesParagraphTest(unittest.TestCase):
         # type: () -> None
         fp = copyright.FilesParagraph(self.prototype)
         self.assertEqual(copyright.License('ISC'), fp.license)
-        fp.license = copyright.License('ISC', '[LICENSE TEXT]')
+        fp.license = copyright.License('ISC', '[LICENSE TEXT]')  # type: ignore
         self.assertEqual(copyright.License('ISC', '[LICENSE TEXT]'), fp.license)
         self.assertEqual('ISC\n [LICENSE TEXT]', fp['license'])
 
         with self.assertRaises(TypeError):
-            fp.license = None
+            fp.license = None   # type: ignore
 
     def test_matches(self):
         # type: () -> None
@@ -733,12 +733,12 @@ class FilesParagraphTest(unittest.TestCase):
         self.assertTrue(fp.matches('Makefile'))
         self.assertTrue(fp.matches('debian/rules'))
 
-        fp.files = ['debian/*']
+        fp.files = ['debian/*']   # type: ignore
         self.assertFalse(fp.matches('foo/bar.cc'))
         self.assertFalse(fp.matches('Makefile'))
         self.assertTrue(fp.matches('debian/rules'))
 
-        fp.files = ['Makefile', 'foo/*']
+        fp.files = ['Makefile', 'foo/*']   # type: ignore
         self.assertTrue(fp.matches('foo/bar.cc'))
         self.assertTrue(fp.matches('Makefile'))
         self.assertFalse(fp.matches('debian/rules'))
@@ -773,7 +773,7 @@ class HeaderTest(unittest.TestCase):
         h = copyright.Header()
         self.assertEqual(FORMAT, h.format)
         with self.assertRaises(TypeError) as cm:
-            h.format = None
+            h.format = None   # type: ignore
         self.assertEqual(('value must not be None',), cm.exception.args)
 
     def test_format_upgrade_no_header(self):
@@ -793,10 +793,10 @@ class HeaderTest(unittest.TestCase):
     def test_upstream_name_single_line(self):
         # type: () -> None
         h = copyright.Header()
-        h.upstream_name = 'Foo Bar'
+        h.upstream_name = 'Foo Bar'    # type: ignore
         self.assertEqual('Foo Bar', h.upstream_name)
         with self.assertRaises(ValueError) as cm:
-            h.upstream_name = 'Foo Bar\n Baz'
+            h.upstream_name = 'Foo Bar\n Baz'   # type: ignore
         self.assertEqual(('must be single line',), cm.exception.args)
 
     def test_upstream_contact_single_read(self):
@@ -831,14 +831,14 @@ class HeaderTest(unittest.TestCase):
     def test_upstream_contact_single_write(self):
         # type: () -> None
         h = copyright.Header()
-        h.upstream_contact = ['Foo Bar <foo@bar.com>']
+        h.upstream_contact = ['Foo Bar <foo@bar.com>']   # type: ignore
         self.assertEqual(('Foo Bar <foo@bar.com>',), h.upstream_contact)
         self.assertEqual('Foo Bar <foo@bar.com>', h['Upstream-Contact'])
 
     def test_upstream_contact_multi_write(self):
         # type: () -> None
         h = copyright.Header()
-        h.upstream_contact = ['Foo Bar <foo@bar.com>', 'http://bar.com/foo']
+        h.upstream_contact = ['Foo Bar <foo@bar.com>', 'http://bar.com/foo']   # type: ignore
         self.assertEqual(
             ('Foo Bar <foo@bar.com>', 'http://bar.com/foo'),
             h.upstream_contact)
@@ -851,13 +851,13 @@ class HeaderTest(unittest.TestCase):
         h = copyright.Header()
         self.assertIsNone(h.license)
         l = copyright.License('GPL-2+')
-        h.license = l
+        h.license = l    # type: ignore
         self.assertEqual(l, h.license)
         self.assertEqual('GPL-2+', h['license'])
 
-        h.license = None
+        h.license = None   # type: ignore
         self.assertIsNone(h.license)
-        self.assertFalse('license' in h)
+        self.assertFalse('license' in h)   # type: ignore
 
 
 if __name__ == '__main__':
