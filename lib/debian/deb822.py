@@ -236,7 +236,7 @@ import subprocess
 import sys
 import warnings
 
-import chardet  # type: ignore
+import chardet
 import six
 
 
