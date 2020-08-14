@@ -342,6 +342,8 @@ class ChangeBlock(object):
         __str__ = _format
 
         def __bytes__(self):
+            # pylint: disable=invalid-bytes-returned
+            # pylint bug https://github.com/PyCQA/pylint/issues/3599
             return str(self).encode(self._encoding)
     else:
         __unicode__ = _format
@@ -770,6 +772,8 @@ These attributes cannot be assigned to."""
         __str__ = _format
 
         def __bytes__(self):
+            # pylint: disable=invalid-bytes-returned
+            # pylint bug https://github.com/PyCQA/pylint/issues/3599
             return str(self).encode(self._encoding)
     else:
         __unicode__ = _format
