@@ -763,7 +763,8 @@ These attributes cannot be assigned to."""
     def _format(self):
         # type: () -> str
         pieces = []
-        pieces.append(six.u('\n').join(self.initial_blank_lines))
+        for line in self.initial_blank_lines:
+            pieces.append(line + six.u('\n'))
         for block in self._blocks:
             pieces.append(six.text_type(block))
         return six.u('').join(pieces)
