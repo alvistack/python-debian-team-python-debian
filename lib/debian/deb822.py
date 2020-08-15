@@ -301,6 +301,8 @@ except ImportError:
             bytes: None,
             str: None,
         }
+        Deb822Mapping = None
+        InputDataType = None
 
 
 from debian.deprecation import function_deprecated_by
