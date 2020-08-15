@@ -54,6 +54,7 @@ setup(
     url='https://salsa.debian.org/python-debian-team/python-debian',
     package_dir={'': 'lib'},
     packages=['debian', 'debian_bundle'],
+    package_data={'debian': ['py.typed']},
     py_modules=['deb822'],
     maintainer='Debian python-debian Maintainers',
     maintainer_email='pkg-python-debian-maint@lists.alioth.debian.org',
