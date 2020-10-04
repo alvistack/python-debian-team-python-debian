@@ -1,12 +1,21 @@
-python-debian (0.1.38) UNRELEASED; urgency=medium
+python-debian (0.1.38) unstable; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Add a debian.watch module for parsing watch files.
   * Prevent stripping of last newline in initial lines before changelog files.
   * Add a Copyright.files_excluded field.
   * Allow specifying allow_missing_author when reserializing changelog
     entries.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 11 Apr 2020 16:11:10 +0000
+  [ Stuart Prescott ]
+  * Fix CI error from typeshed.
+  * Add lots more type annotations to the code.
+  * Enable mypy and pylint in the CI pipeline for merge requests.
+
+  [ Dato Simó ]
+  * Remove myself from Uploaders.
+
+ -- Stuart Prescott <stuart@debian.org>  Sun, 04 Oct 2020 15:09:46 +1100
 
 python-debian (0.1.37) unstable; urgency=medium
 
