@@ -74,11 +74,12 @@ Style guide
 -----------
 
  - Code should be whitespace clean, pep8 & pylint compatible;
-   a `.pylintrc` configuration file is provided and will one day be
-   added to the CI process. (Where pep8 and pylintrc disagree about
+   a `.pylintrc` configuration file is provided is also run on
+   salsa.debian.org as part of the CI checks for merge requests.
+   (Where pep8 and pylintrc disagree about
    whitespace, follow pylint's recommendations.)
 
- - Write type annotations to help mypy understand the types and
+ - Write type annotations to help `mypy --strict` understand the types and
    ensure that mypy is happy with the code.
 
  - Write tests. For everything.
