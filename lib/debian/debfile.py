@@ -32,6 +32,7 @@ try:
     # pylint: disable=unused-import
     from typing import (
         Any,
+        BinaryIO,
         Dict,
         IO,
         Iterator,
@@ -40,10 +41,15 @@ try:
         Text,
         TypeVar,
         Union,
+        overload,
+    )
+    from typing_extensions import (
+        Literal,
     )
 except ImportError:
     # Missing types aren't important at runtime
-    pass
+    overload = lambda f: None
+
 
 from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
 from debian.changelog import Changelog
@@ -165,6 +171,16 @@ class DebPart(object):
         return (('./' + fname in names)
                 or (fname in names))  # XXX python << 2.5 TarFile compatibility
 
+    @overload
+    def get_file(self, fname, encoding=None, errors=None):
+        # type: (str, None, Optional[str]) -> IO[bytes]
+        pass
+
+    @overload
+    def get_file(self, fname, encoding, errors=None):
+        # type: (str, str, Optional[str]) -> IO[str]
+        pass
+
     def get_file(self, fname, encoding=None, errors=None):
         # type: (str, Optional[str], Optional[str]) -> Union[IO[bytes], IO[str]]
         """Return a file object corresponding to a given file name.
@@ -181,7 +197,7 @@ class DebPart(object):
         if fobj is None:
             raise DebError("File not found inside package")
         if encoding is not None:
-            if sys.version >= '3':
+            if sys.version_info[0] >= 3:
                 import io   # pylint: disable=import-outside-toplevel
                 if not hasattr(fobj, 'flush'):
                     # XXX http://bugs.python.org/issue13815
@@ -197,12 +213,30 @@ class DebPart(object):
 
         return fobj
 
+    @overload
+    def get_content(self,
+                    fname,          # type: str
+                    encoding=None,  # type: Literal[None]
+                    errors=None,    # type: Optional[str]
+                   ):
+        # type: (...) -> Optional[bytes]
+        pass
+
+    @overload
+    def get_content(self,
+                    fname,             # type: str
+                    encoding,          # type: str
+                    errors=None,       # type: Optional[str]
+                   ):
+        # type: (...) -> Optional[Text]
+        pass
+
     def get_content(self,
                     fname,          # type: str
                     encoding=None,  # type: Optional[str]
                     errors=None,    # type: Optional[str]
                    ):
-        # type: (...) -> Optional[Union[bytes, Text]]
+        # type: (...) -> Optional[Union[Text,bytes]]
         """Return the string content of a given file, or None (e.g. for
         directories).
 
@@ -227,7 +261,7 @@ class DebPart(object):
         # type: (str) -> bool
         return self.has_file(fname)
 
-    if sys.version < '3':
+    if sys.version_info[0] < 3:
         def has_key(self, fname):
             # type: (str) -> bool
             return self.has_file(fname)
@@ -249,19 +283,21 @@ class DebData(DebPart):
 class DebControl(DebPart):
 
     def scripts(self):
-        # () -> Dict[str, bytes]
+        # type: () -> Dict[str, bytes]
         """ Return a dictionary of maintainer scripts (postinst, prerm, ...)
         mapping script names to script text. """
 
-        scripts = {}
+        scripts = {}    # type: Dict[str, bytes]
         for fname in MAINT_SCRIPTS:
             if self.has_file(fname):
-                scripts[fname] = self.get_content(fname)
+                data = self.get_content(fname)
+                if data is not None:
+                    scripts[fname] = data
 
         return scripts
 
     def debcontrol(self):
-        # () -> Deb822
+        # type: () -> Deb822
         """ Return the debian/control as a Deb822 (a Debian-specific dict-like
         class) object.
 
@@ -270,8 +306,18 @@ class DebControl(DebPart):
 
         return Deb822(self.get_content(CONTROL_FILE))
 
+    @overload
     def md5sums(self, encoding=None, errors=None):
-        # type: (Optional[str], Optional[str]) -> Dict[Union[str, bytes], str]
+        # type: (Literal[None], Optional[str]) -> Dict[bytes, str]
+        pass
+
+    @overload
+    def md5sums(self, encoding, errors=None):
+        # type: (str, Optional[str]) -> Dict[str, str]
+        pass
+
+    def md5sums(self, encoding=None, errors=None):
+        # type: (Optional[str], Optional[str]) -> Union[Dict[str, str], Dict[bytes, str]]
         """ Return a dictionary mapping filenames (of the data part) to
         md5sums. Fails if the control part does not contain a 'md5sum' file.
 
@@ -296,7 +342,7 @@ class DebControl(DebPart):
         for line in md5_file.readlines():
             # we need to support spaces in filenames, .split() is not enough
             md5, fname = line.rstrip(newline).split(None, 1)  # type: ignore
-            if sys.version >= '3' and isinstance(md5, bytes):
+            if sys.version_info[0] >= 3 and isinstance(md5, bytes):
                 sums[fname] = md5.decode()
             else:
                 sums[fname] = md5  # type: ignore
@@ -321,7 +367,7 @@ class DebFile(ArFile):
     """
 
     def __init__(self, filename=None, mode='r', fileobj=None):
-        # type: (str, str, IO[bytes]) -> None
+        # type: (Optional[str], str, Optional[BinaryIO]) -> None
         ArFile.__init__(self, filename, mode, fileobj)
         actual_names = set(self.getnames())
 
@@ -361,11 +407,23 @@ class DebFile(ArFile):
         f.close()
 
     def __updatePkgName(self):
+        # type: () -> None
         self.__pkgname = self.debcontrol()['package']
 
-    version = property(lambda self: self.__version)
-    data = property(lambda self: self.__parts[DATA_PART])
-    control = property(lambda self: self.__parts[CTRL_PART])
+    @property
+    def version(self):
+        # type: () -> bytes
+        return self.__version
+
+    @property
+    def data(self):
+        # type: () -> DebData
+        return self.__parts[DATA_PART]  # type: ignore
+
+    @property
+    def control(self):
+        # type: () -> DebControl
+        return self.__parts[CTRL_PART]  # type: ignore
 
     # proxy methods for the appropriate parts
 
@@ -375,12 +433,22 @@ class DebFile(ArFile):
         return self.control.debcontrol()
 
     def scripts(self):
-        # type: () -> List[bytes]
+        # type: () -> Dict[str, bytes]
         """ See .control.scripts() """
         return self.control.scripts()
 
+    @overload
     def md5sums(self, encoding=None, errors=None):
-        # type: (Optional[str], Optional[Any]) -> Dict[str, str]
+        # type: (Literal[None], Optional[str]) -> Dict[bytes, str]
+        pass
+
+    @overload
+    def md5sums(self, encoding, errors=None):
+        # type: (str, Optional[str]) -> Dict[str, str]
+        pass
+
+    def md5sums(self, encoding=None, errors=None):
+        # type: (Optional[str], Optional[str]) -> Union[Dict[str, str], Dict[bytes, str]]
         """ See .control.md5sums() """
         return self.control.md5sums(encoding=encoding, errors=errors)
 

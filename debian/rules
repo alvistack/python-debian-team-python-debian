@@ -57,6 +57,6 @@ doc: apidoc
 
 qa: lib/debian/_version.py
 	pylint --rcfile .pylintrc lib
-	mypy lib
+	mypy --strict lib
 
 .PHONY: dist doc apidoc qa

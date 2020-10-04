@@ -34,24 +34,41 @@ import warnings
 import six
 
 from debian import changelog
+from debian import debian_support
+
+
+try:
+    # pylint: disable=unused-import
+    from typing import (
+        Any,
+        IO,
+        Optional,
+        Text,
+    )
+except ImportError:
+    # Missing types aren't important at runtime
+    pass
 
 
 def find_test_file(filename):
+    # type: (str) -> str
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
 
 
 def open_utf8(filename, mode='r'):
+    # type: (str, str) -> IO[Text]
     """Open a UTF-8 text file in text mode."""
-    if sys.version < '3':
-        return open(filename, mode=mode)
-    else:
+    if sys.version_info[0] >= 3:
         return open(filename, mode=mode, encoding='UTF-8')
+    else:
+        return open(filename, mode=mode)
 
 
 class ChangelogTests(unittest.TestCase):
 
     def test_create_changelog(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog'))
         c = f.read()
         f.close()
@@ -64,6 +81,7 @@ class ChangelogTests(unittest.TestCase):
         self.assertEqual(len(clines), len(cslines), "Different lengths")
 
     def test_create_changelog_single_block(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog'))
         c = f.read()
         f.close()
@@ -88,6 +106,7 @@ class ChangelogTests(unittest.TestCase):
 """)
 
     def test_modify_changelog(self):
+        # type: () -> None
         f = open(find_test_file('test_modify_changelog1'))
         c = f.read()
         f.close()
@@ -109,6 +128,7 @@ class ChangelogTests(unittest.TestCase):
         self.assertEqual(len(clines), len(cslines), "Different lengths")
 
     def test_preserve_initial_lines(self):
+        # type: () -> None
         cl_text = b"""
 THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED
 haskell-src-exts (1.8.2-3) unstable; urgency=low
@@ -121,12 +141,13 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         self.assertEqual(cl_text, bytes(cl))
 
     def test_add_changelog_section(self):
+        # type: () -> None
         f = open(find_test_file('test_modify_changelog2'))
         c = f.read()
         f.close()
         cl = changelog.Changelog(c)
         cl.new_block(package='gnutls14',
-                version=changelog.Version('1:1.4.1-3'),
+                version=debian_support.Version('1:1.4.1-3'),
                 distributions='experimental',
                 urgency='low',
                 author='James Westby <jw+debian@jameswestby.net>')
@@ -148,6 +169,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         self.assertEqual(len(clines), len(cslines), "Different lengths")
 
     def test_strange_changelogs(self):
+        # type: () -> None
         """ Just opens and parses a strange changelog """
         f = open(find_test_file('test_strange_changelog'))
         c = f.read()
@@ -155,13 +177,14 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         cl = changelog.Changelog(c)
 
     def test_set_version_with_string(self):
+        # type: () -> None
         f = open(find_test_file('test_modify_changelog1'))
         c1 = changelog.Changelog(f.read())
         f.seek(0)
         c2 = changelog.Changelog(f.read())
         f.close()
         c1.version = '1:2.3.5-2'
-        c2.version = changelog.Version('1:2.3.5-2')
+        c2.version = debian_support.Version('1:2.3.5-2')
         self.assertEqual(c1.version, c2.version)
         self.assertEqual((c1.full_version, c1.epoch, c1.upstream_version,
                           c1.debian_version),
@@ -169,6 +192,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
                           c2.debian_version))
 
     def test_changelog_no_author(self):
+        # type: () -> None
         cl_no_author = """gnutls13 (1:1.4.1-1) unstable; urgency=low
 
   * New upstream release.
@@ -186,6 +210,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         self.assertRaises(changelog.ChangelogParseError, c2.parse_changelog, cl_no_author)
 
     def test_magic_version_properties(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog'))
         c = changelog.Changelog(f)
         f.close()
@@ -196,6 +221,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         self.assertEqual(str(c.version), c.full_version)
 
     def test_bugs_closed(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog'))
         c = iter(changelog.Changelog(f))
         f.close()
@@ -209,6 +235,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         self.assertEqual(block.lp_bugs_closed, [])
 
     def test_allow_full_stops_in_distribution(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog_full_stops'))
         c = changelog.Changelog(f)
         f.close()
@@ -217,6 +244,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         self.assertEqual(str(c.version), c.full_version)
 
     def test_str_consistent(self):
+        # type: () -> None
         # The parsing of the changelog (including the string representation)
         # should be consistent whether we give a single string, a list of
         # lines, or a file object to the Changelog initializer
@@ -231,6 +259,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
             self.assertEqual(str(c), cl_data)
 
     def test_utf8_encoded_file_input(self):
+        # type: () -> None
         f = open_utf8(find_test_file('test_changelog_unicode'))
         c = changelog.Changelog(f)
         f.close()
@@ -251,6 +280,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         self.assertEqual(bytes(c), u.encode('utf-8'))
 
     def test_unicode_object_input(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog_unicode'), 'rb')
         c_bytes = f.read()
         f.close()
@@ -260,6 +290,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         self.assertEqual(bytes(c), c_bytes)
 
     def test_non_utf8_encoding(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog_unicode'), 'rb')
         c_bytes = f.read()
         f.close()
@@ -273,6 +304,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
                              six.text_type(block).encode('latin1'))
 
     def test_malformed_date(self):
+        # type: () -> None
         c_text = """package (1.0-1) codename; urgency=medium
 
   * minimal example reproducer of malformed date line
@@ -290,12 +322,14 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
                 self.assertEqual(len(c), 1)
 
     def test_block_iterator(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog'))
         c = changelog.Changelog(f)
         f.close()
         self.assertEqual([str(b) for b in c._blocks], [str(b) for b in c])
 
     def test_block_access(self):
+        # type: () -> None
         """ test random access to changelog entries """
         f = open(find_test_file('test_changelog'))
         c = changelog.Changelog(f)
@@ -304,77 +338,18 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
                          'access by sequence number')
         self.assertEqual(str(c['1.4.0-1'].version), '1.4.0-1',
                          'access by version string')
-        self.assertEqual(str(c[changelog.Version('1.3.5-1.1')].version),
+        self.assertEqual(str(c[debian_support.Version('1.3.5-1.1')].version),
                          '1.3.5-1.1',
                          'access by Version object')
 
     def test_len(self):
+        # type: () -> None
         f = open(find_test_file('test_changelog'))
         c = changelog.Changelog(f)
         f.close()
         self.assertEqual(len(c._blocks), len(c))
 
 
-class VersionTests(unittest.TestCase):
-
-    def _test_version(self, full_version, epoch, upstream, debian):
-        v = changelog.Version(full_version)
-        self.assertEqual(v.full_version, full_version, "Full version broken")
-        self.assertEqual(v.epoch, epoch, "Epoch broken")
-        self.assertEqual(v.upstream_version, upstream, "Upstram broken")
-        self.assertEqual(v.debian_version, debian, "Debian broken")
-
-    def testversions(self):
-        self._test_version('1:1.4.1-1', '1', '1.4.1', '1')
-        self._test_version('7.1.ds-1', None, '7.1.ds', '1')
-        self._test_version('10.11.1.3-2', None, '10.11.1.3', '2')
-        self._test_version('4.0.1.3.dfsg.1-2', None, '4.0.1.3.dfsg.1', '2')
-        self._test_version('0.4.23debian1', None, '0.4.23debian1', None)
-        self._test_version('1.2.10+cvs20060429-1', None,
-                '1.2.10+cvs20060429', '1')
-        self._test_version('0.2.0-1+b1', None, '0.2.0', '1+b1')
-        self._test_version('4.3.90.1svn-r21976-1', None,
-                '4.3.90.1svn-r21976', '1')
-        self._test_version('1.5+E-14', None, '1.5+E', '14')
-        self._test_version('20060611-0.0', None, '20060611', '0.0')
-        self._test_version('0.52.2-5.1', None, '0.52.2', '5.1')
-        self._test_version('7.0-035+1', None, '7.0', '035+1')
-        self._test_version('1.1.0+cvs20060620-1+2.6.15-8', None,
-            '1.1.0+cvs20060620-1+2.6.15', '8')
-        self._test_version('1.1.0+cvs20060620-1+1.0', None,
-                '1.1.0+cvs20060620', '1+1.0')
-        self._test_version('4.2.0a+stable-2sarge1', None, '4.2.0a+stable',
-                           '2sarge1')
-        self._test_version('1.8RC4b', None, '1.8RC4b', None)
-        self._test_version('0.9~rc1-1', None, '0.9~rc1', '1')
-        self._test_version('2:1.0.4+svn26-1ubuntu1', '2', '1.0.4+svn26',
-                           '1ubuntu1')
-        self._test_version('2:1.0.4~rc2-1', '2', '1.0.4~rc2', '1')
-        self.assertRaises(
-            ValueError, changelog.Version, 'a1:1.8.8-070403-1~priv1')
-
-    def test_version_updating(self):
-        v = changelog.Version('1:1.4.1-1')
-
-        v.debian_version = '2'
-        self.assertEqual(v.debian_version, '2')
-        self.assertEqual(v.full_version, '1:1.4.1-2')
-
-        v.upstream_version = '1.4.2'
-        self.assertEqual(v.upstream_version, '1.4.2')
-        self.assertEqual(v.full_version, '1:1.4.2-2')
-
-        v.epoch = '2'
-        self.assertEqual(v.epoch, '2')
-        self.assertEqual(v.full_version, '2:1.4.2-2')
-
-        self.assertEqual(str(v), v.full_version)
-
-        v.full_version = '1:1.4.1-1'
-        self.assertEqual(v.full_version, '1:1.4.1-1')
-        self.assertEqual(v.epoch, '1')
-        self.assertEqual(v.upstream_version, '1.4.1')
-        self.assertEqual(v.debian_version, '1')
 
 if __name__ == '__main__':
     unittest.main()

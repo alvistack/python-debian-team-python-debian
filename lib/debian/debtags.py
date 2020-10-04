@@ -106,7 +106,7 @@ readTagDatabaseReversed = function_deprecated_by(read_tag_database_reversed)
 
 def read_tag_database_both_ways(
         input_data,  # type: Iterator[Text]
-        tag_filter=None,  # type: TagFilterType
+        tag_filter=None,  # type: Optional[TagFilterType]
     ):
     # type: (...) -> Tuple[PkgTagDbType, TagPkgDbType]
     "Read the tag database, returning a pkg->tags and a tag->pkgs dictionary"
@@ -152,7 +152,7 @@ def output(db):
         print("%s:" % (pkg), ", ".join(tags))
 
 
-def relevance_index_function(full, sub):
+def relevance_index_function(full, sub):   #type: ignore
     #return (float(sub.card(tag)) / float(sub.tag_count())) / \
     #       (float(full.card(tag)) / float(full.tag_count()))
     #return sub.card(tag) * full.card(tag) / sub.tag_count()
@@ -203,7 +203,7 @@ class DB:
 
     def read(self,
              input_data,       # type: Iterator[Text]
-             tag_filter=None,  # type: TagFilterType
+             tag_filter=None,  # type: Optional[TagFilterType]
             ):
         # type: (...) -> None
         """
@@ -549,11 +549,11 @@ class DB:
         # TODO: the scoring function is quite ok, but may need more
         # tuning.  I also center it on 15 instead of 7 since we're
         # setting a starting point for the search, not a target point
-        def score_fun(x):
+        def score_fun(x): # type: (float) -> float
             return float((x-15)*(x-15))/x
 
         tagset = set()   # type: Set[str]
-        min_score = 3
+        min_score = 3.
         for i in range(len(tags)):
             pkgs = self.packages_of_tags(tags[:i+1])
             card = len(pkgs)

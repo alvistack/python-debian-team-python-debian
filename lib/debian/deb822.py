@@ -236,7 +236,7 @@ import subprocess
 import sys
 import warnings
 
-import chardet  # type: ignore
+import chardet
 import six
 
 
@@ -245,7 +245,10 @@ try:
     from typing import (
         Any,
         Callable,
+        cast,
         Dict,
+        FrozenSet,
+        Generator,
         Iterator,
         Iterable,
         IO,
@@ -253,37 +256,60 @@ try:
         Mapping,
         MutableMapping,
         Optional,
+        overload,
         #Pattern,
+        Protocol,
         Set,
         Text,
         Tuple,
+        Type,
+        TypeVar,
         Union,
-        cast,
+        TYPE_CHECKING,
     )
     IterableInputDataType = Union[
+        IO[Text],
+        IO[bytes],
+        Iterable[Text],
+        Iterable[bytes],
+    ]
+    InputDataType = Union[
         bytes,
         Text,
-        IO[Text],
-        Iterable[Text],
-        Iterable[bytes],
+        IterableInputDataType,
     ]
-    IterableDataSourceType = Union[
-        IO[Text],
-        Iterable[Text],
-        Iterable[bytes],
-    ]
+
     Deb822ValueType = Any    # this really is Union[str, List] but that is a can of worms
     Deb822Mapping = Mapping[str, Deb822ValueType]
+    Deb822MutableMapping = MutableMapping[str, Deb822ValueType]
     import builtins    # pylint: disable=unused-import
+    T_Deb822Dict = TypeVar('T_Deb822Dict', bound='Deb822Dict')
+
+    from typing_extensions import (
+        Literal,
+        TypedDict,
+    )
 except ImportError:
     # Lack of typing is not important at runtime
-    pass
+    TYPE_CHECKING = False
+
+    # Fake some definitions
+    if not TYPE_CHECKING:
+        overload = lambda f: None
+        cast = lambda t, v: v
+        IO = {
+            bytes: None,
+            str: None,
+        }
+        Deb822Mapping = None
+        InputDataType = None
+
 
 from debian.deprecation import function_deprecated_by
 import debian.debian_support
 
 try:
-    import apt_pkg    # type: ignore
+    import apt_pkg
     # This module uses apt_pkg only for its TagFile interface.
     apt_pkg.TagFile     # pylint: disable=pointless-statement
     _have_apt_pkg = True
@@ -316,7 +342,13 @@ class RestrictedFieldError(Error):
     """Raised when modifying the raw value of a field is not allowed."""
 
 
-class TagSectionWrapper(collections_abc.Mapping):
+if TYPE_CHECKING:
+    _TagSectionWrapper_base = Deb822Mapping
+else:
+    _TagSectionWrapper_base = collections_abc.Mapping
+
+
+class TagSectionWrapper(_TagSectionWrapper_base):
     """Wrap a TagSection object, using its find_raw method to get field values
 
     This allows us to pick which whitespace to strip off the beginning and end
@@ -324,7 +356,7 @@ class TagSectionWrapper(collections_abc.Mapping):
     """
 
     def __init__(self,
-                 section,           # type: apt_pkg.TagSection
+                 section,           # type: apt_pkg.TagSection[bytes]
                  decoder=None,      # type: Optional[_AutoDecoder]
                  ):
         # type: (...) -> None
@@ -339,16 +371,17 @@ class TagSectionWrapper(collections_abc.Mapping):
                 yield key
 
     def __len__(self):
+        # type: (...) -> int
         return len([key for key in self.__section.keys()
                     if not key.startswith('#')])
 
     def __getitem__(self, key):
-        # type: (_CaseInsensitiveString) -> str
+        # type: (str) -> str
         # find_raw may give str or bytes depending on how it goes with decoding
         # and how it is set up by the TagFile iterator
-        s = self.__section.find_raw(key)
+        sraw = self.__section.find_raw(key)
 
-        s = self.decoder.decode(s)
+        s = self.decoder.decode(sraw)
 
         if s is None:
             raise KeyError(key)
@@ -394,7 +427,7 @@ class OrderedSet(object):
         self.__order.remove(item)
 
     def __iter__(self):
-        # type: () -> Iterator
+        # type: () -> Iterator[str]
         # Return an iterator of items in the order they were added
         return iter(self.__order)
 
@@ -417,8 +450,13 @@ class OrderedSet(object):
             self.add(item)
     # ###
 
+if TYPE_CHECKING:
+    _Deb822Dict_base = Deb822MutableMapping
+else:
+    _Deb822Dict_base = collections_abc.MutableMapping
 
-class Deb822Dict(collections_abc.MutableMapping):
+
+class Deb822Dict(_Deb822Dict_base):
     """A dictionary-like object suitable for storing RFC822-like data.
 
     Deb822Dict behaves like a normal dict, except:
@@ -533,6 +571,7 @@ class Deb822Dict(collections_abc.MutableMapping):
     # ### END collections.abc.MutableMapping methods
 
     def __repr__(self):
+        # type: () -> str
         return '{%s}' % ', '.join(['%r: %r' % (k, v) for k, v in self.items()])
 
     def __eq__(self, other):
@@ -554,7 +593,7 @@ class Deb822Dict(collections_abc.MutableMapping):
     __hash__ = None    # type: ignore
 
     def copy(self):
-        # type: () -> Union[Deb822, Deb822Dict]
+        # type: (T_Deb822Dict) -> T_Deb822Dict
         # Use self.__class__ so this works as expected for subclasses
         copy = self.__class__(self)
         return copy
@@ -610,20 +649,20 @@ class Deb822(Deb822Dict):
     """
 
     def __init__(self,
-                 sequence=None,     # type: Optional[Union[IterableDataSourceType, Deb822Mapping]]
+                 sequence=None,     # type: Optional[Union[InputDataType, Deb822Mapping]]
                  fields=None,       # type: Optional[List[str]]
                  _parsed=None,      # type: Optional[Union[Deb822, TagSectionWrapper]]
                  encoding="utf-8",  # type: str
-                 strict=None,       # type: Optional[Dict]
+                 strict=None,       # type: Optional[Dict[str, bool]]
                  ):
         # type: (...) -> None
 
         _dict = {}      # type: Mapping[str, str]
-        iterable = None   # type: Optional[IterableDataSourceType]
+        iterable = None   # type: Optional[InputDataType]
         if hasattr(sequence, 'items'):
-            _dict = sequence    # type: ignore
+            _dict = cast(Deb822Mapping, sequence)
         else:
-            iterable = sequence
+            iterable = cast(InputDataType, sequence)
 
         Deb822Dict.__init__(self, _dict=_dict, _parsed=_parsed, _fields=fields,
                             encoding=encoding)
@@ -637,16 +676,19 @@ class Deb822(Deb822Dict):
         self.gpg_info = None  # type: Optional[GpgInfo]
         #self.raw_text = None  # type: Optional[bytes]
 
+    if TYPE_CHECKING:
+        T_Deb822 = TypeVar('T_Deb822', bound='Deb822')
+
     @classmethod
-    def iter_paragraphs(cls,
-                        sequence,                # type: IterableInputDataType
+    def iter_paragraphs(cls,                     # type: Type[T_Deb822]
+                        sequence,                # type: InputDataType
                         fields=None,             # type: Optional[List[str]]
                         use_apt_pkg=False,       # type: bool
                         shared_storage=False,    # type: bool
                         encoding="utf-8",        # type: str
-                        strict=None,             # type: Optional[Dict]
+                        strict=None,             # type: Optional[Dict[str, bool]]
                        ):
-        # type: (...) -> Iterator[Deb822]
+        # type: (...) -> Iterator[T_Deb822]
         """Generator that yields a Deb822 object for each paragraph in sequence.
 
         :param sequence: same as in __init__.
@@ -705,7 +747,7 @@ class Deb822(Deb822Dict):
         else:
             # Split this into multiple conditionals so that type checking
             # can follow the types through
-            iterable = [] # type: IterableDataSourceType
+            iterable = [] # type: IterableInputDataType
             if isinstance(sequence, six.string_types):
                 iterable = iter(sequence.splitlines())
             elif isinstance(sequence, six.binary_type):
@@ -723,7 +765,7 @@ class Deb822(Deb822Dict):
 
     @staticmethod
     def _skip_useless_lines(sequence):
-        # type: (IterableDataSourceType) -> Union[Iterator[bytes], Iterator[str]]
+        # type: (IterableInputDataType) -> Union[Iterator[bytes], Iterator[str]]
         """Yields only lines that do not begin with '#'.
 
         Also skips any blank lines at the beginning of the input.
@@ -752,10 +794,11 @@ class Deb822(Deb822Dict):
             yield line
 
     def _internal_parser(self,
-                         sequence,      # type: IterableDataSourceType
+                         sequence,      # type: InputDataType
                          fields=None,   # type: Optional[List[str]]
-                         strict=None,   # type: Optional[Dict]
+                         strict=None,   # type: Optional[Dict[str, bool]]
                          ):
+        # type: (...) -> None
         # The key is non-whitespace, non-colon characters before any colon.
         key_part = r"^(?P<key>[^: \t\n\r\f\v]+)\s*:\s*"
         single = re.compile(key_part + r"(?P<data>\S.*?)\s*$")
@@ -811,14 +854,20 @@ class Deb822(Deb822Dict):
             self[curkey] = content
 
     def __str__(self):
-        return self.dump()
+        # type: () -> str
+        d = self.dump()
+        return d if d is not None else ""
 
     def __unicode__(self):
-        return self.dump()
+        # type: () -> str
+        d = self.dump()
+        return d if d is not None else ""
 
-    if sys.version >= '3':
+    if sys.version_info[0] >= 3:
         def __bytes__(self):
-            return self.dump().encode(self.encoding)
+            # type: () -> bytes
+            d = self.dump()
+            return d.encode(self.encoding) if d is not None else b""
 
     # __repr__ is handled by Deb822Dict
 
@@ -832,10 +881,84 @@ class Deb822(Deb822Dict):
         """
         return six.text_type(self[key])
 
+    def _dump_format(self):
+        # type: () -> Generator[str, None, None]
+        for key in self:
+            value = self.get_as_string(key)
+            if not value or value[0] == '\n':
+                # Avoid trailing whitespace after "Field:" if it's on its own
+                # line or the value is empty.  We don't have to worry about the
+                # case where value == '\n', since we ensure that is not the
+                # case in __setitem__.
+                entry = '%s:%s\n' % (key, value)
+            else:
+                entry = '%s: %s\n' % (key, value)
+            yield entry
+
+    def _dump_str(self):
+        # type: () -> str
+        return "".join(self._dump_format())
+
+    def _dump_fd_b(self,
+                   fd,               # type: IO[bytes]
+                   encoding,         # type: str
+                   ):
+        # type: (...) -> None
+        for entry in self._dump_format():
+            fd.write(entry.encode(encoding))
+
+    def _dump_fd_t(self,
+                   fd,               # type: IO[str]
+                   ):
+        # type: (...) -> None
+        for entry in self._dump_format():
+            fd.write(entry)
+
+    @overload
+    def dump(self):
+        # type: () -> str
+        pass
+
+    @overload
     def dump(self,
-             fd=None,          # type: Optional[Union[IO[str], IO[bytes]]]
+             fd,               # type: IO[bytes]
              encoding=None,    # type: Optional[str]
+             text_mode=False,  # type: Literal[False]
+            ):
+        # type: (...) -> None
+        pass
+
+    @overload
+    def dump(self,
+             fd,               # type: IO[str]
+             encoding=None,    # type: Optional[str]
+             text_mode=True,   # type: Literal[True]
+            ):
+        # type: (...) -> None
+        pass
+
+    @overload
+    def dump(self,
+             fd=None,          # type: Literal[None]
+             encoding=None,    # type: Literal[None]
              text_mode=False,  # type: bool
+             ):
+        # type: (...) -> str
+        pass
+
+    @overload
+    def dump(self,
+             fd=None,             # type: Optional[Union[IO[str], IO[bytes]]]
+             encoding=None,       # type: Optional[str]
+             text_mode=False,     # type: bool
+            ):
+        # type: (...) -> Optional[str]
+        pass
+
+    def dump(self,
+             fd=None,             # type: Optional[Union[IO[str], IO[bytes]]]
+             encoding=None,       # type: Optional[str]
+             text_mode=False,     # type: bool
             ):
         # type: (...) -> Optional[str]
         """Dump the the contents in the original format
@@ -865,33 +988,17 @@ class Deb822(Deb822Dict):
         # than to introduce yet another parameter relating to encoding?
 
         if fd is None:
-            fd = io.StringIO()
-            return_string = True
+            return self._dump_str()
+
+        if text_mode:
+            self._dump_fd_t(cast(IO[str], fd))
         else:
-            return_string = False
+            if encoding is None:
+                # Use the encoding we've been using to decode strings with if none
+                # was explicitly specified
+                encoding = self.encoding
 
-        if encoding is None:
-            # Use the encoding we've been using to decode strings with if none
-            # was explicitly specified
-            encoding = self.encoding
-
-        for key in self:
-            value = self.get_as_string(key)
-            if not value or value[0] == '\n':
-                # Avoid trailing whitespace after "Field:" if it's on its own
-                # line or the value is empty.  We don't have to worry about the
-                # case where value == '\n', since we ensure that is not the
-                # case in __setitem__.
-                entry = '%s:%s\n' % (key, value)
-            else:
-                entry = '%s: %s\n' % (key, value)
-            if not return_string and not text_mode:
-                fd.write(entry.encode(encoding))     # type: ignore
-            else:
-                fd.write(entry)   # type: ignore
-        if return_string:
-            return fd.getvalue()    # type: ignore
-
+            self._dump_fd_b(cast(IO[bytes], fd), encoding)
         return None
 
     ###
@@ -990,8 +1097,8 @@ class Deb822(Deb822Dict):
     mergeFields = function_deprecated_by(merge_fields)
 
     @staticmethod
-    def split_gpg_and_payload(sequence,         # type: Iterable[bytes]
-                              strict=None,      # type: Optional[Dict]
+    def split_gpg_and_payload(sequence,         # type: Union[Iterator[bytes], Iterator[str]]
+                              strict=None,      # type: Optional[Dict[str, bool]]
                               ):
         # type: (...) -> Tuple[List[bytes], List[bytes], List[bytes]]
         """Return a (gpg_pre, payload, gpg_post) tuple
@@ -1027,13 +1134,15 @@ class Deb822(Deb822Dict):
             blank_line = re.compile(br'^$')
         first_line = True
 
-        for line in sequence:
+        for line_ in sequence:
             # Some consumers of this method require bytes (encoding
             # detection and signature checking).  However, we might have
             # been given a file opened in text mode, in which case it's
             # simplest to encode to bytes.
-            if sys.version >= '3' and isinstance(line, str):
-                line = line.encode()
+            if sys.version_info[0] >= 3 and isinstance(line_, str):
+                line = line_.encode()
+            else:
+                line = cast(bytes, line_)
 
             line = line.strip(b'\r\n')
 
@@ -1080,11 +1189,11 @@ class Deb822(Deb822Dict):
 
     @classmethod
     def gpg_stripped_paragraph(cls, sequence, strict=None):
-        # type: (Iterator, Optional[Dict]) -> List[bytes]
+        # type: (Union[Iterator[bytes], Iterator[str]], Optional[Dict[str, bool]]) -> List[bytes]
         return cls.split_gpg_and_payload(sequence, strict)[1]
 
     def get_gpg_info(self, keyrings=None):
-        # type: (List[str]) -> GpgInfo
+        # type: (Optional[Iterable[str]]) -> GpgInfo
         """Return a GpgInfo object with GPG signature information
 
         This method will raise ValueError if the signature is not available
@@ -1137,8 +1246,14 @@ class Deb822(Deb822Dict):
         Deb822Dict.__setitem__(self, key, value)
 
 
+if TYPE_CHECKING:
+    _BaseGpgInfo = Dict[str, List[str]]
+else:
+    _BaseGpgInfo = dict
+
+
 # XXX check what happens if input contains more that one signature
-class GpgInfo(dict):
+class GpgInfo(_BaseGpgInfo):
     """A wrapper around gnupg parsable output obtained via --status-fd
 
     This class is really a dictionary containing parsed output from gnupg plus
@@ -1163,11 +1278,12 @@ class GpgInfo(dict):
 # XXX implement as a property?
 # XXX handle utf-8 %-encoding
     def uid(self):
+        # type: () -> None
         """Return the primary ID of the signee key, None is not available"""
 
     @classmethod
     def from_output(cls, out, err=None):
-        # type: (Union[str, List[str]], Union[str, List[str]]) -> GpgInfo
+        # type: (Union[str, List[str]], Optional[Union[str, List[str]]]) -> GpgInfo
         """ Create a GpgInfo object based on the gpg or gpgv output
 
         Create a new GpgInfo object from gpg(v) --status-fd output (out) and
@@ -1219,7 +1335,7 @@ class GpgInfo(dict):
     @classmethod
     def from_sequence(cls,
                       sequence,        # type: Union[bytes, Iterable[bytes]]
-                      keyrings=None,   # type: Iterable[str]
+                      keyrings=None,   # type: Optional[Iterable[str]]
                       executable=None  # type: Optional[Iterable[str]]
                      ):
         # type: (...) -> GpgInfo
@@ -1323,9 +1439,21 @@ class PkgRelation(object):
     BuildRestriction = collections.namedtuple('BuildRestriction',
                                               ['enabled', 'profile'])
 
+    if TYPE_CHECKING:
+        ParsedRelation = TypedDict(
+            'ParsedRelation',
+            {
+                'name': str,
+                'archqual': Optional[str],
+                'version': Optional[Tuple[str, str]],
+                'arch': Optional[List['PkgRelation.ArchRestriction']],
+                'restrictions': Optional[List[List['PkgRelation.BuildRestriction']]],
+            }
+        )
+
     @classmethod
     def parse_relations(cls, raw):
-        # type: (str) -> List[List[Dict[str, Optional[Union[str, list, Tuple[str, str]]]]]]
+        # type: (str) -> List[List[PkgRelation.ParsedRelation]]
         """Parse a package relationship string (i.e. the value of a field like
         Depends, Recommends, Build-Depends ...)
         """
@@ -1369,7 +1497,7 @@ class PkgRelation(object):
             return restrictions
 
         def parse_rel(raw):
-            # type: (str) -> Dict[str, Optional[Union[str, list, Tuple[str, str]]]]
+            # type: (str) -> PkgRelation.ParsedRelation
             match = cls.__dep_RE.match(raw)
             if match:
                 parts = match.groupdict()
@@ -1379,7 +1507,7 @@ class PkgRelation(object):
                     'version': None,
                     'arch': None,
                     'restrictions': None,
-                }  # type: Dict[str, Optional[Union[str, list, Tuple[str, str]]]]
+                }  # type: PkgRelation.ParsedRelation
                 if parts['relop'] or parts['version']:
                     d['version'] = (parts['relop'], parts['version'])
                 if parts['archs']:
@@ -1394,8 +1522,10 @@ class PkgRelation(object):
                 ' relationship "%s", returning it raw' % raw)
             return {
                 'name': raw,
+                'archqual': None,
                 'version': None,
-                'arch': None
+                'arch': None,
+                'restrictions': None,
             }
 
         tl_deps = cls.__comma_sep_RE.split(raw.strip())   # top-level deps
@@ -1404,7 +1534,7 @@ class PkgRelation(object):
 
     @staticmethod
     def str(rels):
-        # type: (List[List[Dict[builtins.str, Any]]]) -> builtins.str
+        # type: (List[List[PkgRelation.ParsedRelation]]) -> builtins.str
         """Format to string structured inter-package relationships
 
         Perform the inverse operation of parse_relations, returning a string
@@ -1430,37 +1560,62 @@ class PkgRelation(object):
             return '<%s>' % ' '.join(s)
 
         def pp_atomic_dep(dep):
-            # type: (Dict[str, Any]) -> str
-            s = dep['name']
+            # type: (PkgRelation.ParsedRelation) -> str
+            s = dep['name']  # type: str
             if dep.get('archqual') is not None:
                 s += ':%s' % dep['archqual']
-            if dep.get('version') is not None:
-                s += ' (%s %s)' % dep['version']
-            if dep.get('arch') is not None:
-                s += ' [%s]' % ' '.join(map(pp_arch, dep['arch']))
-            if dep.get('restrictions') is not None:
-                s += ' %s' % ' '.join(map(pp_restrictions,
-                                          dep['restrictions']))
+
+            v = dep.get('version')
+            if v is not None:
+                s += ' (%s %s)' % v
+
+            a = dep.get('arch')
+            if a is not None:
+                s += ' [%s]' % ' '.join(map(pp_arch, a))
+
+            r = dep.get('restrictions')
+            if r is not None:
+                s += ' %s' % ' '.join(map(pp_restrictions, r))
             return s
 
         return ', '.join(
             map(lambda deps: ' | '.join(map(pp_atomic_dep, deps)), rels))
 
 
-class _lowercase_dict(dict):
+if TYPE_CHECKING:
+    _lowercase_dict_base = Dict[str, Any]
+else:
+    _lowercase_dict_base = dict
+
+
+class _lowercase_dict(_lowercase_dict_base):
     """Dictionary wrapper which lowercase keys upon lookup."""
 
     def __getitem__(self, key):
-        # type: (str) -> Optional[List]
+        # type: (str) -> Optional[Any]
         return dict.__getitem__(self, key.lower())
+
+
+if TYPE_CHECKING:
+    class _HasVersionFieldProtocol(Protocol):
+
+        def __getitem__(self, s):
+            # type: (str) -> str
+            pass
+
+        def __setitem__(self, s, v):
+            # type: (str, str) -> None
+            pass
 
 
 class _VersionAccessorMixin(object):
     """Give access to Version keys as debian_support.Version objects."""
     def get_version(self):
+        # type: (_HasVersionFieldProtocol) -> debian.debian_support.Version
         return debian.debian_support.Version(self['Version'])
 
     def set_version(self, version):
+        # type: (_HasVersionFieldProtocol, debian.debian_support.Version) -> None
         self['Version'] = str(version)
 
 
@@ -1782,6 +1937,7 @@ class Changes(_gpg_multivalued, _VersionAccessorMixin):
     }
 
     def get_pool_path(self):
+        # type: () -> str
         """Return the path in the pool where the files would be installed"""
 
         # This is based on the section listed for the first file.  While
@@ -1819,7 +1975,8 @@ class PdiffIndex(_multivalued):
 
     @property
     def _fixed_field_lengths(self):
-        fixed_field_lengths = {}
+        # type: () -> Dict[str, Dict[str, int]]
+        fixed_field_lengths = {}   # type: Dict[str, Dict[str, int]]
         for key in self._multivalued_fields:
             if hasattr(self[key], 'keys'):
                 # Not multi-line -- don't need to compute the field length for
@@ -1830,6 +1987,7 @@ class PdiffIndex(_multivalued):
         return fixed_field_lengths
 
     def _get_size_field_length(self, key):
+        # type: (str) -> int
         lengths = [len(str(item['size'])) for item in self[key]]
         return max(lengths)
 
@@ -1856,6 +2014,7 @@ class Release(_multivalued):
     __size_field_behavior = "apt-ftparchive"
 
     def set_size_field_behavior(self, value):
+        # type: (str) -> None
         if value not in ["apt-ftparchive", "dak"]:
             raise ValueError("size_field_behavior must be either "
                              "'apt-ftparchive' or 'dak'")
@@ -1867,7 +2026,8 @@ class Release(_multivalued):
 
     @property
     def _fixed_field_lengths(self):
-        fixed_field_lengths = {}
+        # type: () -> Dict[str, Dict[str, int]]
+        fixed_field_lengths = {}  # type: Dict[str, Dict[str, int]]
         for key in self._multivalued_fields:
             length = self._get_size_field_length(key)
             fixed_field_lengths[key] = {"size": length}
@@ -1902,14 +2062,14 @@ class Sources(Dsc, _PkgRelationMixin):
 
     @classmethod
     def iter_paragraphs(cls,
-                        sequence,                # type: IterableInputDataType
+                        sequence,                # type: InputDataType
                         fields=None,             # type: Optional[List[str]]
                         use_apt_pkg=True,        # type: bool
                         shared_storage=False,    # type: bool
                         encoding="utf-8",        # type: str
-                        strict=None,             # type: Optional[Dict]
+                        strict=None,             # type: Optional[Dict[str, bool]]
                        ):
-        # type: (...) -> Iterator
+        # type: (...) -> Iterator[Sources]
         """Generator that yields a Deb822 object for each paragraph in Sources.
 
         Note that this overloaded form of the generator uses apt_pkg (a strict
@@ -1944,14 +2104,14 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
 
     @classmethod
     def iter_paragraphs(cls,
-                        sequence,              # type: IterableInputDataType
+                        sequence,              # type: InputDataType
                         fields=None,           # type: Optional[List[str]]
                         use_apt_pkg=True,      # type: bool
                         shared_storage=False,  # type: bool
                         encoding="utf-8",      # type: str
-                        strict=None,           # type: Optional[Dict]
+                        strict=None,           # type: Optional[Dict[str, bool]]
                        ):
-        # type: (...) -> Iterator
+        # type: (...) -> Iterator[Packages]
         """Generator that yields a Deb822 object for each paragraph in Packages.
 
         Note that this overloaded form of the generator uses apt_pkg (a strict
@@ -1981,7 +2141,12 @@ class _ClassInitMeta(type):
     containing the attributes added in the definition of the class.
     """
 
-    def __init__(cls, name, bases, attrs):
+    def __init__(cls,          # type: Any
+                 name,         # type: Any
+                 bases,        # type: Any
+                 attrs,        # type: Any
+                 ):
+        # type (...) -> None
         super(_ClassInitMeta, cls).__init__(name, bases, attrs)
         cls._class_init(attrs)
 
@@ -1995,7 +2160,13 @@ class RestrictedField(collections.namedtuple(
     documentation for an example.
     """
 
-    def __new__(cls, name, from_str=None, to_str=None, allow_none=True):
+    def __new__(cls,
+                name,              # type: str
+                from_str=None,     # type: Optional[Callable[[str], Any]]
+                to_str=None,       # type: Optional[Callable[[Any], Optional[str]]]
+                allow_none=True,   # type: Optional[bool]
+                ):
+        # type: (...) -> RestrictedField
         """Create a new RestrictedField placeholder.
 
         The getter that will replace this returns (or applies the given to_str
@@ -2062,28 +2233,28 @@ class RestrictedWrapper(object):
         d['Foo'] # returns string representation of foo
     """
 
-    __restricted_fields = frozenset()    # type: frozenset
+    __restricted_fields = frozenset()    # type: FrozenSet[str]
 
     @classmethod
-    def _class_init(cls, new_attrs):
+    def _class_init(cls, new_attrs): # type: ignore
         restricted_fields = []
         for attr_name, val in new_attrs.items():
             if isinstance(val, RestrictedField):
                 restricted_fields.append(val.name.lower())
-                cls.__init_restricted_field(attr_name, val)
+                cls.__init_restricted_field(attr_name, val)  # type: ignore
         cls.__restricted_fields = frozenset(restricted_fields)
 
     @classmethod
-    def __init_restricted_field(cls, attr_name, field):
+    def __init_restricted_field(cls, attr_name, field):  # type: ignore
         def getter(self):
-            # type: (RestrictedWrapper) -> Union[None, Tuple[str], str]
+            # type: (RestrictedWrapper) -> Deb822ValueType
             val = self.__data.get(field.name)
             if field.from_str is not None:
                 return field.from_str(val)
             return val
 
         def setter(self, val):
-            # type: (RestrictedWrapper, Any) -> None
+            # type: (RestrictedWrapper, Deb822ValueType) -> None
             if val is not None and field.to_str is not None:
                 val = field.to_str(val)
             if val is None:
@@ -2101,14 +2272,14 @@ class RestrictedWrapper(object):
         # type: (Deb822) -> None
         """Initializes the wrapper over 'data', a Deb822 object."""
         super(RestrictedWrapper, self).__init__()
-        self.__data = data
+        self.__data = data    # type: Deb822
 
     def __getitem__(self, key):
-        # type: (str) -> str
+        # type: (str) -> Deb822ValueType
         return self.__data[key]
 
     def __setitem__(self, key, value):
-        # type: (str, str) -> None
+        # type: (str, Deb822ValueType) -> None
         if key.lower() in self.__restricted_fields:
             raise RestrictedFieldError(
                 '%s may not be modified directly; use the associated'
@@ -2124,18 +2295,24 @@ class RestrictedWrapper(object):
         del self.__data[key]
 
     def __iter__(self):
+        # type: () -> Iterable[str]
         return iter(self.__data)
 
     def __len__(self):
+        # type: () -> int
         return len(self.__data)
 
-    def dump(self, *args, **kwargs):
-        # type: (*Any, **Any) -> Optional[str]
+    def dump(self,
+             fd=None,             # type: Optional[Union[IO[str], IO[bytes]]]
+             encoding=None,       # type: Optional[str]
+             text_mode=False,     # type: bool
+             ):
+        # type: (...) -> Optional[str]
         """Calls dump() on the underlying data object.
 
         See Deb822.dump for more information.
         """
-        return self.__data.dump(*args, **kwargs)
+        return self.__data.dump(fd, encoding, text_mode)
 
 
 class Removals(Deb822):
@@ -2166,8 +2343,8 @@ class Removals(Deb822):
     def __init__(self, *args, **kwargs):
         # type: (*Any, **Any) -> None
         super(Removals, self).__init__(*args, **kwargs)
-        self._sources = None  # type: Optional[List[Dict[str, Iterable]]]
-        self._binaries = None  # type: Optional[List[Dict[str, Iterable]]]
+        self._sources = None  # type: Optional[List[Dict[str, str]]]
+        self._binaries = None  # type: Optional[List[Dict[str, Union[str, Iterable[str]]]]]
 
     @property
     def date(self):
@@ -2220,7 +2397,7 @@ class Removals(Deb822):
 
     @property
     def sources(self):
-        # type: () -> List[Dict[str, Iterable]]
+        # type: () -> List[Dict[str, str]]
         """ list of source packages that were removed
 
         A list of dicts is returned, each dict has the form::
@@ -2236,7 +2413,7 @@ class Removals(Deb822):
         if self._sources is not None:
             return self._sources
 
-        s = []  # type: List[Dict[str, Iterable]]
+        s = []  # type: List[Dict[str, str]]
         if 'sources' in self:
             for line in self['sources'].splitlines():
                 matches = self.__sources_line_re.match(line)
@@ -2251,7 +2428,7 @@ class Removals(Deb822):
 
     @property
     def binaries(self):
-        # type: () -> List[Dict[str, Iterable]]
+        # type: () -> List[Dict[str, Union[str, Iterable[str]]]]
         """ list of binary packages that were removed
 
         A list of dicts is returned, each dict has the form::
@@ -2265,7 +2442,7 @@ class Removals(Deb822):
         if self._binaries is not None:
             return self._binaries
 
-        b = []   # type: List[Dict[str, Iterable]]
+        b = []   # type: List[Dict[str, Union[str, Iterable[str]]]]
         if 'binaries' in self:
             for line in self['binaries'].splitlines():
                 matches = self.__binaries_line_re.match(line)
@@ -2288,8 +2465,8 @@ class _CaseInsensitiveString(str):
     str_lower = ''
     str_lower_hash = 0
 
-    def __new__(cls, str_):
-        s = str.__new__(cls, str_)
+    def __new__(cls, str_): # type: ignore
+        s = str.__new__(cls, str_)    # type: ignore
         s.str_lower = str_.lower()
         s.str_lower_hash = hash(s.str_lower)
         return s
@@ -2299,7 +2476,7 @@ class _CaseInsensitiveString(str):
         return self.str_lower_hash
 
     def __eq__(self, other):
-        # type: (Any) -> bool
+        # type: (Any) -> Any
         try:
             return self.str_lower == other.lower()
         except AttributeError:
@@ -2310,7 +2487,7 @@ class _CaseInsensitiveString(str):
         return self.str_lower
 
 
-_strI = _CaseInsensitiveString
+_strI = _CaseInsensitiveString   # type: Callable[[str], _CaseInsensitiveString]
 
 
 class _AutoDecoder(object):

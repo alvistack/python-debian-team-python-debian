@@ -165,7 +165,7 @@ class VersionError(_base_exception_class):
         self._version = version
         super(VersionError, self).__init__()
 
-    def __str__(self):
+    def __str__(self):  # type: () -> str
         return "Could not parse version: " + self._version
 
 
@@ -203,7 +203,7 @@ class ChangeBlock(object):
                  changes=None,          # type: Optional[List[Text]]
                  author=None,           # type: Optional[Text]
                  date=None,             # type: Optional[str]
-                 other_pairs=None,      # type: Dict[str, str]
+                 other_pairs=None,      # type: Optional[Dict[str, str]]
                  encoding='utf-8',      # type: str
                 ):
         # type: (...) -> None
@@ -222,21 +222,25 @@ class ChangeBlock(object):
         self._no_trailer = False
         self._trailer_separator = "  "
 
-    def _set_version(self, version):
-        # type: (Optional[Union[Version, str]]) -> None
-        if version is not None:
-            self._raw_version = str(version)
-
     def _get_version(self):
         # type: () -> Optional[Version]
         if self._raw_version is None:
             return None
         return Version(self._raw_version)
 
+    def _set_version(self, version):
+        # type: (Optional[Union[Version, str]]) -> None
+        if version is not None:
+            self._raw_version = str(version)
+        else:
+            self._raw_version = None
+
+    # need old property() syntax until mypy can type check getters and setters
+    # properly https://github.com/python/mypy/issues/3004
     version = property(
         _get_version, _set_version,
         doc="The package version that this block pertains to"
-        )
+    )
 
     def other_keys_normalised(self):
         # type: () -> Dict[str, str]
@@ -283,7 +287,7 @@ class ChangeBlock(object):
             self._changes = changes
 
     def _get_bugs_closed_generic(self, type_re):
-        # type: (Pattern) -> List[int]
+        # type: (Pattern[Text]) -> List[int]
         changes = six.u(' ').join(self._changes)
         bugs = []
         for match in type_re.finditer(changes):
@@ -342,11 +346,12 @@ class ChangeBlock(object):
             block += line + "\n"
         return block
 
-    if sys.version >= '3':
+    if sys.version_info[0] >= 3:
         def __str__(self):
+            # type: () -> str
             return self._format()
 
-        def __bytes__(self):
+        def __bytes__(self):  # type: () -> bytes
             # pylint: disable=invalid-bytes-returned
             # pylint bug https://github.com/PyCQA/pylint/issues/3599
             return str(self).encode(self._encoding)
@@ -467,7 +472,7 @@ class Changelog(object):
 
     # TODO(jsw): Avoid masking the 'file' built-in.
     def __init__(self,
-                 file=None,                 # type: IterableDataSource
+                 file=None,                 # type: Optional[IterableDataSource]
                  max_blocks=None,           # type: Optional[int]
                  allow_empty_author=False,  # type: bool
                  strict=False,              # type: bool
@@ -692,12 +697,12 @@ class Changelog(object):
             current_block._no_trailer = True
             self._blocks.append(current_block)
 
-    def get_version(self):
-        # type: () -> Version
+    def _get_version(self):
+        # type: () -> Optional[Version]
         """Return a Version object for the last version"""
-        return self._blocks[0].version
+        return self._blocks[0].version   # type: ignore
 
-    def set_version(self, version):
+    def _set_version(self, version):
         # type: (Union[Version, str]) -> None
         """Set the version of the last changelog block
 
@@ -705,8 +710,10 @@ class Changelog(object):
         """
         self._blocks[0].version = Version(version)
 
+    # Use old property() syntax until mypy can separately type getter and
+    # setter. https://github.com/python/mypy/issues/3004
     version = property(
-        get_version, set_version,
+        _get_version, _set_version,
         doc="""Version object for latest changelog block.
             (Property that can both get and set the version.)"""
     )
@@ -751,19 +758,17 @@ class Changelog(object):
 
     def get_versions(self):
         # type: () -> List[Version]
-        """Returns a list of version objects that the package went through."""
+        return self.versions
+
+    @property
+    def versions(self):
+        # type: () -> List[Version]
+        """Returns a list of :class:`debian.debian_support.Version` objects
+        that are listed in the changelog."""
         return [block.version for block in self._blocks]
 
-    versions = property(
-        get_versions,
-        doc="""\
-A list of :class:`debian.debian_support.Version` objects that the package
-went through. These version objects provide all version attributes such as
-`epoch`, `debian_revision`, `upstream_version`.
-These attributes cannot be assigned to."""
-    )
-
     def _raw_versions(self):
+        # type: () -> List[Optional[str]]
         return [block._raw_version for block in self._blocks]
 
     def _format(self, allow_missing_author=False):
@@ -775,11 +780,12 @@ These attributes cannot be assigned to."""
             pieces.append(block._format(allow_missing_author=allow_missing_author))
         return six.u('').join(pieces)
 
-    if sys.version >= '3':
+    if sys.version_info[0] >= 3:
         def __str__(self):
+            # type: () -> str
             return self._format()
 
-        def __bytes__(self):
+        def __bytes__(self):  # type: () -> bytes
             # pylint: disable=invalid-bytes-returned
             # pylint bug https://github.com/PyCQA/pylint/issues/3599
             return str(self).encode(self._encoding)
@@ -793,7 +799,7 @@ These attributes cannot be assigned to."""
             return unicode(self).encode(self._encoding)
 
     def __iter__(self):
-        # type: () -> Iterator
+        # type: () -> Iterator[ChangeBlock]
         return iter(self._blocks)
 
     def __getitem__(self, n):
@@ -802,11 +808,13 @@ These attributes cannot be assigned to."""
 
         :param n: integer or str representing a version or Version object
         """
-        if isinstance(n, int):
-            return self._blocks[n]
         if isinstance(n, six.string_types):
             return self[Version(n)]
-        return self._blocks[self.versions.index(n)]
+        if isinstance(n, int):
+            idx = n
+        else:   # a Version object
+            idx = self.versions.index(n)
+        return self._blocks[idx]
 
     def __len__(self):
         # type: () -> int
@@ -885,7 +893,7 @@ be uploaded."""
                   changes=None,          # type: Optional[List[Text]]
                   author=None,           # type: Optional[Text]
                   date=None,             # type: Optional[str]
-                  other_pairs=None,      # type: Dict[str, str]
+                  other_pairs=None,      # type: Optional[Dict[str, str]]
                   encoding=None,         # type: Optional[str]
                   ):
         # type: (...) -> None
@@ -906,6 +914,7 @@ be uploaded."""
         self._blocks.insert(0, block)
 
     def write_to_open_file(self, filehandle):
+        # type: (IO[Text]) -> None
         """ Write the changelog entry to a filehandle
 
         Write the changelog out to the filehandle passed. The file argument

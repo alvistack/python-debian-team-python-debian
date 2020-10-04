@@ -26,18 +26,21 @@ from debian import debtags
 
 
 def find_test_file(filename):
+    # type: (str) -> str
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
 
 
 class TestDebtags(unittest.TestCase):
     def mkdb(self):
+        # type: () -> debtags.DB
         db = debtags.DB()
         with open(find_test_file("test_tagdb"), "r") as f:
             db.read(f)
         return db
 
     def test_insert(self):
+        # type: () -> None
         db = debtags.DB()
         db.insert("test", set(("a", "b")));
         assert db.has_package("test")
@@ -53,6 +56,7 @@ class TestDebtags(unittest.TestCase):
         self.assertEqual(db.tag_count(), 2)
 
     def test_reverse(self):
+        # type: () -> None
         db = debtags.DB()
         db.insert("test", set(("a", "b")));
         db = db.reverse()
@@ -69,6 +73,7 @@ class TestDebtags(unittest.TestCase):
         self.assertEqual(db.tag_count(), 1)
 
     def test_read(self):
+        # type: () -> None
         db = self.mkdb()
         self.assertEqual(db.tags_of_package("polygen"), set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text")))
         assert "polygen" in db.packages_of_tag("interface::commandline")
