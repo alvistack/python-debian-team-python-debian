@@ -51,7 +51,11 @@ try:
     )
 except ImportError:
     # Missing types aren't important at runtime
-    TypeVar = lambda t: None
+    TYPE_CHECKING = False
+
+    # Fake some definitions
+    if not TYPE_CHECKING:
+        TypeVar = lambda t: None
 
 
 def find_test_file(filename):

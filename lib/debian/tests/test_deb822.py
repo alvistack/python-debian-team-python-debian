@@ -63,8 +63,11 @@ try:
     )
 except ImportError:
     # Missing types aren't important at runtime
-    TypeVar = lambda t: None
-    pass
+    TYPE_CHECKING = False
+
+    # Fake some definitions
+    if not TYPE_CHECKING:
+        TypeVar = lambda t: None
 
 
 UNPARSED_PACKAGE = '''\
