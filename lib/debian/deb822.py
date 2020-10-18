@@ -793,17 +793,19 @@ class Deb822(Deb822Dict):
                 at_beginning = False
             yield line
 
+    # regexps for parsing the Deb822 data
+    # The key is non-whitespace, non-colon characters before any colon.
+    _key_part = r"^(?P<key>[^: \t\n\r\f\v]+)\s*:\s*"
+    _single = re.compile(_key_part + r"(?P<data>\S.*?)\s*$")
+    _multi = re.compile(_key_part + r"$")
+    _multidata = re.compile(r"^\s(?P<data>.+?)\s*$")
+
     def _internal_parser(self,
                          sequence,      # type: InputDataType
                          fields=None,   # type: Optional[List[str]]
                          strict=None,   # type: Optional[Dict[str, bool]]
                          ):
         # type: (...) -> None
-        # The key is non-whitespace, non-colon characters before any colon.
-        key_part = r"^(?P<key>[^: \t\n\r\f\v]+)\s*:\s*"
-        single = re.compile(key_part + r"(?P<data>\S.*?)\s*$")
-        multi = re.compile(key_part + r"$")
-        multidata = re.compile(r"^\s(?P<data>.+?)\s*$")
 
         def wanted_field(f):
             # type: (str) -> bool
@@ -819,7 +821,7 @@ class Deb822(Deb822Dict):
                 self._skip_useless_lines(sequence), strict):
             line = self.decoder.decode(linebytes)
 
-            m = single.match(line)
+            m = self._single.match(line)
             if m:
                 if curkey:
                     self[curkey] = content
@@ -832,7 +834,7 @@ class Deb822(Deb822Dict):
                 content = m.group('data')
                 continue
 
-            m = multi.match(line)
+            m = self._multi.match(line)
             if m:
                 if curkey:
                     self[curkey] = content
@@ -845,7 +847,7 @@ class Deb822(Deb822Dict):
                 content = ""
                 continue
 
-            m = multidata.match(line)
+            m = self._multidata.match(line)
             if m:
                 content += '\n' + line   # XXX not m.group('data')?
                 continue
@@ -1096,6 +1098,13 @@ class Deb822(Deb822Dict):
 
     mergeFields = function_deprecated_by(merge_fields)
 
+    # regexps for finding the gpg header around signed data
+    _gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
+                        br'PGP (?P<what>[^-]+)-----[\r\t ]*$')
+    _initial_blank_line = re.compile(br'^\s*$')
+    _blank_line_whitespace = re.compile(br'^\s*$')
+    _blank_line_no_whitespace = re.compile(br'^$')
+
     @staticmethod
     def split_gpg_and_payload(sequence,         # type: Union[Iterator[bytes], Iterator[str]]
                               strict=None,      # type: Optional[Dict[str, bool]]
@@ -1122,16 +1131,13 @@ class Deb822(Deb822Dict):
         lines = []   # type: List[bytes]
         gpg_post_lines = []   # type: List[bytes]
         state = b'SAFE'
-        gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
-                           br'PGP (?P<what>[^-]+)-----[\r\t ]*$')
-        initial_blank_line = re.compile(br'^\s*$')
 
         # Include whitespace-only lines in blank lines to split paragraphs.
         # (see #715558)
         if strict.get('whitespace-separates-paragraphs', True):
-            blank_line = re.compile(br'^\s*$')
+            blank_line = Deb822._blank_line_whitespace
         else:
-            blank_line = re.compile(br'^$')
+            blank_line = Deb822._blank_line_no_whitespace
         first_line = True
 
         for line_ in sequence:
@@ -1148,11 +1154,11 @@ class Deb822(Deb822Dict):
 
             # skip initial blank lines, if any
             if first_line:
-                if initial_blank_line.match(line):
+                if Deb822._initial_blank_line.match(line):
                     continue
                 first_line = False
 
-            m = gpgre.match(line)
+            m = Deb822._gpgre.match(line)
 
             if not m:
                 if state == b'SAFE':

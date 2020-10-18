@@ -506,6 +506,8 @@ class FilesParagraph(deb822.RestrictedWrapper):
     particular set of files in the package.
     """
 
+    _default_re = re.compile('')
+
     def __init__(self, data, _internal_validate=True, strict=True):
         # type: (deb822.Deb822, bool, bool) -> None
         super(FilesParagraph, self).__init__(data)
@@ -521,7 +523,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
             if not self.files:
                 _complain('Files paragraph has empty Files field', strict)
 
-        self.__cached_files_pat = ('', re.compile(''))  # type: Tuple[str, Pattern[str]]
+        self.__cached_files_pat = ('', self._default_re)  # type: Tuple[str, Pattern[str]]
 
     @classmethod
     def create(cls,

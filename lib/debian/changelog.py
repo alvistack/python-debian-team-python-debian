@@ -379,6 +379,7 @@ endline_nodetails = re.compile(
     r'^ --(?: (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}'
     r'\s+\w+\s+\d{4}\s+\d{1,2}:\d\d:\d\d\s+[-+]\d{4}'
     r'))?\s*$')
+maintainerre = re.compile(r"^(.*)\s+<(.*)>$")
 keyvalue = re.compile(r'^([-0-9a-z]+)=\s*(.*\S)$', re.IGNORECASE)
 value_re = re.compile(r'^([-0-9a-z]+)((\s+.*)?)$', re.IGNORECASE)
 xbcs_re = re.compile('^X[BCS]+-', re.IGNORECASE)
@@ -939,18 +940,17 @@ def get_maintainer():
         be determined.
     """
     env = os.environ
-    regex = re.compile(r"^(.*)\s+<(.*)>$")
 
     # Split email and name
     if 'DEBEMAIL' in env:
-        match_obj = regex.match(env['DEBEMAIL'])
+        match_obj = maintainerre.match(env['DEBEMAIL'])
         if match_obj:
             if 'DEBFULLNAME' not in env:
                 env['DEBFULLNAME'] = match_obj.group(1)
             env['DEBEMAIL'] = match_obj.group(2)
     if 'DEBEMAIL' not in env or 'DEBFULLNAME' not in env:
         if 'EMAIL' in env:
-            match_obj = regex.match(env['EMAIL'])
+            match_obj = maintainerre.match(env['EMAIL'])
             if match_obj:
                 if 'DEBFULLNAME' not in env:
                     env['DEBFULLNAME'] = match_obj.group(1)
