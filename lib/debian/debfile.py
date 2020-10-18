@@ -202,8 +202,7 @@ class DebPart(object):
                 if not hasattr(fobj, 'flush'):
                     # XXX http://bugs.python.org/issue13815
                     fobj.flush = lambda: None   # type: ignore
-                return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)  # type: ignore
-                ## https://github.com/python/typeshed/issues/4349
+                return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)
 
             # CRUFT: Python 2 only
             import codecs     # pylint: disable=import-outside-toplevel
