@@ -1088,6 +1088,36 @@ Description: python modules to work with Debian-related data formats
             UNPARSED_PARAGRAPHS_WITH_COMMENTS, use_apt_pkg=False))
         self._test_iter_paragraphs_comments(paragraphs)
 
+    def test_explicit_source_field(self):
+        # type: () -> None
+        """Test handling of explicit Source field in Packages """
+
+        # implicit source and version
+        pkg = next(deb822.Packages.iter_paragraphs(
+            UNPARSED_PACKAGE,
+            use_apt_pkg=False,
+        ))
+        self.assertEqual('mutt', pkg.source)
+        self.assertEqual('1.5.12-1', str(pkg.source_version))
+        self.assertTrue(isinstance(pkg.source_version, Version))
+
+        # explicit source, implicit version
+        pkg = next(deb822.Packages.iter_paragraphs(
+            UNPARSED_PACKAGE + "Source: mutt-dummy\n",
+            use_apt_pkg=False,
+        ))
+        self.assertEqual('mutt-dummy', pkg.source)
+        self.assertEqual('1.5.12-1', str(pkg.source_version))
+        self.assertTrue(isinstance(pkg.source_version, Version))
+
+        pkg = next(deb822.Packages.iter_paragraphs(
+            UNPARSED_PACKAGE + "Source: mutt-dummy (1.2.3-1)\n",
+            use_apt_pkg=False,
+        ))
+        self.assertEqual('mutt-dummy', pkg.source)
+        self.assertEqual('1.2.3-1', str(pkg.source_version))
+        self.assertTrue(isinstance(pkg.source_version, Version))
+
     def test_release(self):
         # type: () -> None
         with open(find_test_file('test_Release')) as f:

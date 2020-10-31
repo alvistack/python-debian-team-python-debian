@@ -2132,6 +2132,50 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
         return super(Packages, cls).iter_paragraphs(
             sequence, fields, use_apt_pkg, shared_storage, encoding, strict)
 
+    # Explicit source entries in the file can be either:
+    #   Source: source_package
+    #   Source: source_package (1.2.3-1)
+    _explicit_source_re = re.compile(
+        r"(?P<source>[^ ]+)"
+        r"( \((?P<version>.+)\))?"
+    )
+
+    @property
+    def source(self):
+        # type: () -> Optional[str]
+        """ source package that generates the binary package
+
+        If the source package and source package version are the same as the
+        binary package, an explicit "Source" field will not be within the
+        paragraph.
+        """
+        if 'source' not in self:
+            return self['package']   # type: ignore
+
+        matches = self._explicit_source_re.match(self['source'])
+        if matches:
+            return matches.group('source')
+        return None
+
+    @property
+    def source_version(self):
+        # type: () -> debian.debian_support.Version
+        """ source package that generates the binary package
+
+        If the source package and source package version are the same as the
+        binary package, an explicit "Source" field will not be within the
+        paragraph.
+        """
+        if 'source' not in self:
+            return self.get_version()
+
+        matches = self._explicit_source_re.match(self['source'])
+        if matches and matches.group('version'):
+            version = matches.group('version')
+        else:
+            version = self['Version']
+        return debian.debian_support.Version(version)
+
 
 class _ClassInitMeta(type):
     """Metaclass for classes that can be initialized at creation time.
