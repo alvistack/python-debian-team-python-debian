@@ -307,6 +307,8 @@ except ImportError:
 
 from debian.deprecation import function_deprecated_by
 import debian.debian_support
+import debian.changelog
+
 
 try:
     import apt_pkg
@@ -1965,6 +1967,163 @@ class Changes(_gpg_multivalued, _VersionAccessorMixin):
             subdir = self['source'][0]
 
         return 'pool/%s/%s/%s' % (section, subdir, self['source'])
+
+
+class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
+    """ Representation of a .buildinfo (build environment description) file
+
+    This class is a thin wrapper around the transparent GPG handling
+    of :class:`_gpg_multivalued`, the field parsing of
+    :class:`_PkgRelationMixin`,
+    and the format parsing of :class:`Deb822`.
+    """
+    _multivalued_fields = {
+        "files": ["md5sum", "size", "section", "priority", "name"],
+        "checksums-sha1": ["sha1", "size", "name"],
+        "checksums-sha256": ["sha256", "size", "name"],
+        "checksums-sha512": ["sha512", "size", "name"],
+    }
+    _relationship_fields = [
+        'installed-build-depends',
+        'binary',
+    ]
+
+    def __init__(self, *args, **kwargs):
+        # type: (*Any, **Any) -> None
+        _gpg_multivalued.__init__(self, *args, **kwargs)
+        _PkgRelationMixin.__init__(self, *args, **kwargs)
+
+    def get_environment(self):
+        # type: () -> Dict[str, str]
+        """Return the build environment that was recorded
+
+        The environment is returned as a dict in the style of `os.environ`.
+        The backslash quoting of values described in deb-buildinfo(5) is
+        removed.
+        """
+
+        #if 'Environment' not in self:
+            #return {}
+
+        return dict(BuildInfo._env_deserialise(self.get('Environment', '')))
+
+    def get_changelog(self):
+        # type: () -> Optional[debian.changelog.Changelog]
+        """Return the changelog entry from the buildinfo (for binNMUs)
+
+        If no "Binary-Only-Changes" field is present in the buildinfo file
+        then `None` is returned.
+        """
+
+        if 'Binary-Only-Changes' not in self:
+            return None
+
+        # remove the indentation and . that is applied to the changelog
+        chlines = self['Binary-Only-Changes'].splitlines()
+        chlines = ['' if s == ' .' else s[1:] for s in chlines]
+        return debian.changelog.Changelog(chlines)
+
+    class _EnvParserState():
+        # trivial enum for the deserialiser
+        IGNORE_WHITESPACE = 0
+        VAR_NAME = 1
+        START_VALUE_QUOTE = 2
+        VALUE = 3
+        VALUE_BACKSLASH_ESCAPE = 4
+
+    @staticmethod
+    def _env_deserialise(serialised):
+        # type: (str) -> Generator[Tuple[str, str], None, None]
+        """ extract the environment variables and values from the text
+
+        Format is:
+            VAR_NAME="value"
+
+        with ignorable whitespace around the construct (and separating each
+        item). Quote characters within the value are backslash escaped.
+
+        When producing the buildinfo file, dpkg only includes specifically
+        allowed environment variables and thus there is no defined quoting
+        rules for the variable names.
+
+        The format is described by deb-buildinfo(5) and implemented in
+        dpkg source scripts/dpkg-genbuildinfo.pl:cleansed_environment(),
+        while the environment variables that are included in the output are
+        listed in dpkg source scripts/Dpkg/Build/Info.pm
+        """
+        # The deserialiser is implemented as a state machine with the
+        # states listed in _EnvParserState.
+        state = BuildInfo._EnvParserState.IGNORE_WHITESPACE
+        name = ""
+        value = None  # type: Optional[str]
+
+        for ch in serialised:
+            if state == BuildInfo._EnvParserState.IGNORE_WHITESPACE:
+                if not ch.isspace():
+                    state = BuildInfo._EnvParserState.VAR_NAME
+                    name = ch
+                continue
+
+            if state == BuildInfo._EnvParserState.VAR_NAME:
+                if ch != "=":
+                    name += ch
+                else:
+                    state = BuildInfo._EnvParserState.START_VALUE_QUOTE
+                    value = ""
+                continue
+
+            if state == BuildInfo._EnvParserState.START_VALUE_QUOTE:
+                if ch == '"':
+                    state = BuildInfo._EnvParserState.VALUE
+                else:
+                    raise ValueError(
+                        "Improper quoting in Environment: "
+                        "begin quote not found"
+                    )
+                continue
+
+            if state == BuildInfo._EnvParserState.VALUE:
+                if ch == "\\":
+                    state = BuildInfo._EnvParserState.VALUE_BACKSLASH_ESCAPE
+                elif ch == '"':
+                    if name == "":
+                        raise ValueError(
+                            "Improper formatting in Environment: "
+                            "variable name not found"
+                        )
+                    if value is None:
+                        raise ValueError(
+                            "Improper formatting in Environment: "
+                            "variable value not found"
+                        )
+
+                    yield name, value
+
+                    state = BuildInfo._EnvParserState.IGNORE_WHITESPACE
+                    name = ""
+                    value = None
+                else:
+                    assert value is not None
+                    value += ch
+                continue
+
+            if state == BuildInfo._EnvParserState.VALUE_BACKSLASH_ESCAPE:
+                if ch == '"':
+                    assert value is not None
+                    value += ch
+                    state = BuildInfo._EnvParserState.VALUE
+                else:
+                    raise ValueError(
+                        "Improper formatting in Environment: "
+                        "couldn't interpret backslash sequence"
+                    )
+                continue
+
+        if state != BuildInfo._EnvParserState.IGNORE_WHITESPACE:
+            ValueError(
+                "Improper quoting in Environment: "
+                "end quote not found"
+            )
 
 
 class PdiffIndex(_multivalued):
