@@ -2705,9 +2705,7 @@ class Removals(Deb822):
 class _CaseInsensitiveString(str):
     """Case insensitive string.
     """
-    # Fake definitions because mypy doesn't find them in __new__ ## CRUFT
-    # https://github.com/python/mypy/issues/1021
-    str_lower = ''
+    __slots__ = 'str_lower'
 
     def __new__(cls, str_): # type: ignore
         s = str.__new__(cls, str_)    # type: ignore
