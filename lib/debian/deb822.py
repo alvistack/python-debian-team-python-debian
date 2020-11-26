@@ -2708,17 +2708,15 @@ class _CaseInsensitiveString(str):
     # Fake definitions because mypy doesn't find them in __new__ ## CRUFT
     # https://github.com/python/mypy/issues/1021
     str_lower = ''
-    str_lower_hash = 0
 
     def __new__(cls, str_): # type: ignore
         s = str.__new__(cls, str_)    # type: ignore
         s.str_lower = str_.lower()
-        s.str_lower_hash = hash(s.str_lower)
         return s
 
     def __hash__(self):
         # type: () -> int
-        return self.str_lower_hash
+        return hash(self.str_lower)
 
     def __eq__(self, other):
         # type: (Any) -> Any
