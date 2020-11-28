@@ -23,6 +23,7 @@ disable=
     too-many-nested-blocks,
     too-many-public-methods,
     too-many-statements,
+    unsubscriptable-object,
     useless-object-inheritance,
 
 [REPORTS]
