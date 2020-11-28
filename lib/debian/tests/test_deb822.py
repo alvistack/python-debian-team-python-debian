@@ -1128,6 +1128,53 @@ Description: python modules to work with Debian-related data formats
         self.assertEqual(len(release['SHA512']), 61)
         self.assertEqual(release['SHA512'][0]['size'], '113433')
 
+    def test_buildinfo(self):
+        # type: () -> None
+        with open(find_test_file('test_BuildInfo')) as f:
+            buildinfo = deb822.BuildInfo(f)
+        self.assertEqual(buildinfo['Build-Origin'], 'Debian')
+        self.assertIn('build-essential', buildinfo['Installed-Build-Depends'])
+        ibd = buildinfo.relations['installed-build-depends']
+        self.assertEqual(len(ibd), 207)  # type: ignore
+
+        benv = buildinfo.get_environment()
+        self.assertEqual(len(benv), 3)
+        self.assertEqual(benv['DEB_BUILD_OPTIONS'], 'parallel=4')
+
+        ch = buildinfo.get_changelog()
+        ch = not_none(ch)
+        self.assertEqual(ch.version, '4.5.2-1+b1')
+        self.assertEqual(ch.package, 'lxml')
+        self.assertEqual(ch.urgency, 'low')
+        self.assertIn('Daemon', ch.author)
+
+        del buildinfo['Binary-Only-Changes']
+        ch = buildinfo.get_changelog()
+        self.assertIsNone(ch)
+
+    def test_buildinfo_env_deserialise(self):
+        # type: () -> None
+        data = r"""
+ DEB_BUILD_OPTIONS="parallel=4"
+ LANG="en_AU.UTF-8"
+ LC_ALL="C
+UTF-8"
+ LC_TIME="en_GB.UTF-8"
+ LD_LIBRARY_PATH="/usr/lib/libeatmy\"data"
+ SOURCE_DATE_EPOCH="1601784586"
+"""
+        benv = dict(deb822.BuildInfo._env_deserialise(data))
+
+        self.assertEqual(len(benv), 6)
+        self.assertEqual(benv['DEB_BUILD_OPTIONS'], 'parallel=4')
+        self.assertIn('\n', benv['LC_ALL'])
+        self.assertIn('"', benv['LD_LIBRARY_PATH'])
+        self.assertEqual(benv['LD_LIBRARY_PATH'], '/usr/lib/libeatmy"data')
+
+        benv = dict(deb822.BuildInfo._env_deserialise(""))
+
+        self.assertEqual(len(benv), 0)
+
     def test_changes_binary_mode(self):
         # type: () -> None
         """Trivial parse test for a signed file in binary mode"""
