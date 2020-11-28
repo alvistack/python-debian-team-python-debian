@@ -1976,6 +1976,42 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
     of :class:`_gpg_multivalued`, the field parsing of
     :class:`_PkgRelationMixin`,
     and the format parsing of :class:`Deb822`.
+
+    Note that the 'relations' structure returned by the `relations` method
+    is identical to that produced by other classes in this module.
+    Consequently, existing code to consume this structure can be used here,
+    although it means that there are redundant lists and tuples within the
+    structure.
+
+    Example::
+
+        >>> from debian.deb822 import BuildInfo
+        >>> filename = 'package.buildinfo'
+        >>> with open(filename) as fh:
+        ...     info = BuildInfo(fh)
+        >>> print(info.get_environment())
+        {'DEB_BUILD_OPTIONS': 'parallel=4',
+        'LANG': 'en_AU.UTF-8',
+        'LC_ALL': 'C.UTF-8',
+        'LC_TIME': 'en_GB.UTF-8',
+        'LD_LIBRARY_PATH': '/usr/lib/libeatmydata',
+        'SOURCE_DATE_EPOCH': '1601784586'}
+        >>> installed = info.relations['installed-build-depends']
+        >>> for dep in installed:
+        ...     print("Installed %s/%s" % (dep[0]['name'], dep[0]['version'][1]))
+        Installed autoconf/2.69-11.1
+        Installed automake/1:1.16.2-4
+        Installed autopoint/0.19.8.1-10
+        Installed autotools-dev/20180224.1
+        ... etc ...
+        >>> changelog = info.get_changelog()
+        >>> print(changelog.author)
+        'xyz Build Daemon (xyz-01) <buildd_xyz-01@buildd.debian.org>'
+        >>> print(changlog[0].changes())
+        ['',
+        '  * Binary-only non-maintainer upload for amd64; no source changes.',
+        '  * Add Python 3.9 as supported version',
+        '']
     """
     _multivalued_fields = {
         "files": ["md5sum", "size", "section", "priority", "name"],
