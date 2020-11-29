@@ -698,12 +698,12 @@ class Changelog(object):
             current_block._no_trailer = True
             self._blocks.append(current_block)
 
-    def _get_version(self):
+    def get_version(self):
         # type: () -> Optional[Version]
         """Return a Version object for the last version"""
         return self._blocks[0].version   # type: ignore
 
-    def _set_version(self, version):
+    def set_version(self, version):
         # type: (Union[Version, str]) -> None
         """Set the version of the last changelog block
 
@@ -714,7 +714,7 @@ class Changelog(object):
     # Use old property() syntax until mypy can separately type getter and
     # setter. https://github.com/python/mypy/issues/3004
     version = property(
-        _get_version, _set_version,
+        get_version, set_version,
         doc="""Version object for latest changelog block.
             (Property that can both get and set the version.)"""
     )
