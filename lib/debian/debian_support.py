@@ -399,7 +399,7 @@ class PackageFile:
 
     def __init__(self,
                  name,              # type: str
-                 file_obj=None,     # type: Optional[BinaryIO]
+                 file_obj=None,     # type: Optional[Union[TextIO, BinaryIO]]
                  encoding="utf-8",  # type: str
                  ):
         # type: (...) -> None
@@ -417,8 +417,8 @@ class PackageFile:
         self.encoding = encoding
 
     def __iter__(self):
-        # type: () -> Generator[Iterable[Tuple[str, str]], None, None]
-        line = self.file.readline().decode(self.encoding)
+        # type: () -> Generator[List[Tuple[str, str]], None, None]
+        line = self._aux_read_line()
         self.lineno += 1
         pkg = []   # type: List[Tuple[str, str]]
         while line:
@@ -427,7 +427,7 @@ class PackageFile:
                     self.raise_syntax_error('expected package record')
                 yield pkg
                 pkg = []
-                line = self.file.readline().decode(self.encoding)
+                line = self._aux_read_line()
                 self.lineno += 1
                 continue
 
@@ -438,7 +438,7 @@ class PackageFile:
             contents = contents or ''
 
             while True:
-                line = self.file.readline().decode(self.encoding)
+                line = self._aux_read_line()
                 self.lineno += 1
                 match = self.re_continuation.match(line)
                 if match:
@@ -451,6 +451,15 @@ class PackageFile:
             pkg.append((name, contents))
         if pkg:
             yield pkg
+
+    def _aux_read_line(self):
+        # type: () -> str
+        # Not always readline returns a byte object, also str
+        # can be returned (i.e: StringIO)
+        line = self.file.readline()
+        if isinstance(line, bytes):
+            return line.decode(self.encoding)
+        return line
 
     def raise_syntax_error(self, msg, lineno=None):
         # type: (str, Optional[int]) -> NoReturn

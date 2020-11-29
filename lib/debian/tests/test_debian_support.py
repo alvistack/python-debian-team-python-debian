@@ -23,6 +23,7 @@ from __future__ import absolute_import
 import gzip
 import os
 import os.path
+import six
 import sys
 import tempfile
 
@@ -274,6 +275,12 @@ class PdiffTests(unittest.TestCase):
 class PackageFileTests(unittest.TestCase):
     """ Tests for functions dealing with Packages and Sources """
 
+    def assertType(self, var_, type_):
+        # type: (Any, Any) -> None
+        """Check that the type is as expected
+        """
+        self.assert_(isinstance(var_, type_))
+
     def test_read_file(self):
         # type: () -> None
         # test_Packages is ASCII
@@ -290,6 +297,20 @@ class PackageFileTests(unittest.TestCase):
         pflist = list(pf)
         self.assertEqual(len(pflist), 4)
         pf.file.close()
+
+    def test_read_fileobj(self):
+        # type: () -> None
+        packfile = find_test_file('test_Packages')
+        with open(packfile, 'rb') as fhbin:
+            pf = debian_support.PackageFile('ignored', file_obj=fhbin)
+            pflist = list(pf)
+            self.assertEqual(len(pflist), 3)
+            self.assertType(pflist[0][0][1], six.string_types)
+        with open(packfile, 'rt') as fhtext:
+            pf = debian_support.PackageFile('ignored', file_obj=fhtext)
+            pflist = list(pf)
+            self.assertEqual(len(pflist), 3)
+            self.assertType(pflist[0][0][1], six.string_types)
 
 
 if __name__ == "__main__":
