@@ -2705,7 +2705,15 @@ class Removals(Deb822):
 class _CaseInsensitiveString(str):
     """Case insensitive string.
     """
-    __slots__ = 'str_lower'
+    if six.PY3:   # CRUFT: can't use __slots__ with str type in py2.7
+        __slots__ = ['str_lower']
+
+    if TYPE_CHECKING:
+        # neither pylint nor mypy cope with str_lower being defined in __new__
+        def __init__(self, s):
+            # type: (str) -> None
+            super(_CaseInsensitiveString, self).__init__(s)
+            self.str_lower = ''
 
     def __new__(cls, str_): # type: ignore
         s = str.__new__(cls, str_)    # type: ignore
@@ -2728,7 +2736,7 @@ class _CaseInsensitiveString(str):
         return self.str_lower
 
 
-_strI = _CaseInsensitiveString   # type: Callable[[str], _CaseInsensitiveString]
+_strI = _CaseInsensitiveString
 
 
 class _AutoDecoder(object):
