@@ -23,7 +23,9 @@ import email.utils
 import io
 import os
 import os.path
+import pickle
 import re
+import subprocess
 import sys
 import tempfile
 if sys.version_info[0] >= 3:
@@ -433,6 +435,41 @@ class TestDeb822(unittest.TestCase):
         # type: () -> None
         deb822_ = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
         self.assertWellParsed(deb822_, PARSED_PACKAGE)
+
+    def test_pickling(self):
+        # type: () -> None
+        # Ensure that the Deb822 objects can be serialised
+        # See https://bugs.debian.org/975915
+        env = os.environ.copy()
+
+        env['PYTHONHASHSEED'] = 'random'
+        env['PYTHONPATH'] = ":".join(sys.path)
+        args = [
+            sys.executable,
+            '-c',
+            '''\
+from debian import deb822
+import pickle
+d = deb822.Deb822("Field: value")
+with open("test_deb822.pickle", "wb") as fh:
+    pickle.dump(d, fh)
+        '''
+        ]
+
+        try:
+            # make the pickle in a different subprocess which will
+            # seed the hashes differently
+            subprocess.check_call(args, env=env)
+
+            # now read it back
+            with open("test_deb822.pickle", "rb") as fh:
+                deb822_u = pickle.load(fh)
+
+        finally:
+            os.remove("test_deb822.pickle")
+
+        # test that the field could do a round-trip
+        self.assertEqual(deb822_u['Field'], 'value')
 
     def test_parser_with_newlines(self):
         # type: () -> None
