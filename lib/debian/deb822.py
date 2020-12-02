@@ -2705,20 +2705,24 @@ class Removals(Deb822):
 class _CaseInsensitiveString(str):
     """Case insensitive string.
     """
-    # Fake definitions because mypy doesn't find them in __new__ ## CRUFT
-    # https://github.com/python/mypy/issues/1021
-    str_lower = ''
-    str_lower_hash = 0
+    if six.PY3:   # CRUFT: can't use __slots__ with str type in py2.7
+        __slots__ = ['str_lower']
+
+    if TYPE_CHECKING:
+        # neither pylint nor mypy cope with str_lower being defined in __new__
+        def __init__(self, s):
+            # type: (str) -> None
+            super(_CaseInsensitiveString, self).__init__(s)
+            self.str_lower = ''
 
     def __new__(cls, str_): # type: ignore
         s = str.__new__(cls, str_)    # type: ignore
         s.str_lower = str_.lower()
-        s.str_lower_hash = hash(s.str_lower)
         return s
 
     def __hash__(self):
         # type: () -> int
-        return self.str_lower_hash
+        return hash(self.str_lower)
 
     def __eq__(self, other):
         # type: (Any) -> Any
@@ -2732,7 +2736,7 @@ class _CaseInsensitiveString(str):
         return self.str_lower
 
 
-_strI = _CaseInsensitiveString   # type: Callable[[str], _CaseInsensitiveString]
+_strI = _CaseInsensitiveString
 
 
 class _AutoDecoder(object):
