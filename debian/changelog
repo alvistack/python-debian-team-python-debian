@@ -5,6 +5,8 @@ python-debian (0.1.39) UNRELEASED; urgency=medium
   * Revert unintended renaming of Changelog.get_version/set_version
     (Closes: #975910).
   * Add a type for .buildinfo files (deb822.BuildInfo) (Closes: #875306).
+  * Add support for SHA1-Download and SHA256-* variants in PdiffIndex class
+    for .diff/Index files (Closes: #970824).
 
   [ Jose Luis Rivero ]
   * Allow debian_support.PackageFile to accept StringIO as well as BytesIO.
