@@ -99,6 +99,11 @@ Classes that deb822 provides:
       * SHA1-Current: SHA1, size
       * SHA1-History: SHA1, size, date
       * SHA1-Patches: SHA1, size, date
+      * SHA1-Download: SHA1, size, filename
+      * SHA256-Current: SHA256, size
+      * SHA256-History: SHA256, size, date
+      * SHA256-Patches: SHA256, size, date
+      * SHA256-Download: SHA256, size, filename
 
   * :class:`Removals` represents the ftp-master removals file listing when
     and why source and binary packages are removed from the archive.
@@ -2172,6 +2177,11 @@ class PdiffIndex(_multivalued):
         "sha1-current": ["SHA1", "size"],
         "sha1-history": ["SHA1", "size", "date"],
         "sha1-patches": ["SHA1", "size", "date"],
+        "sha1-download": ["SHA1", "size", "filename"],
+        "sha256-current": ["SHA256", "size"],
+        "sha256-history": ["SHA256", "size", "date"],
+        "sha256-patches": ["SHA256", "size", "date"],
+        "sha256-download": ["SHA256", "size", "filename"],
     }
 
     @property
