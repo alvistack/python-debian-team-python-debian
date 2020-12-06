@@ -15,6 +15,9 @@ python-debian (0.1.39) UNRELEASED; urgency=medium
   * Change handling of case-insensitive field names to allow Deb822 objects
     to be serialised  (Closes: #975915).
 
+  [ Jelmer Vernooĳ ]
+  * Add myself to uploaders.
+
  -- Stuart Prescott <stuart@debian.org>  Sun, 11 Oct 2020 14:21:54 +1100
 
 python-debian (0.1.38) unstable; urgency=medium

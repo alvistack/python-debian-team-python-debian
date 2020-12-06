@@ -8,7 +8,8 @@ Uploaders:
  Reinhard Tartler <siretart@tauware.de>,
  Stefano Zacchiroli <zack@debian.org>,
  John Wright <jsw@debian.org>,
- Stuart Prescott <stuart@debian.org>
+ Stuart Prescott <stuart@debian.org>,
+ Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends:
  binutils (>= 2.23),
  debhelper-compat (= 12),
