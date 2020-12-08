@@ -26,6 +26,7 @@ import os.path
 import six
 import sys
 import tempfile
+import re
 
 import unittest
 
@@ -233,6 +234,19 @@ class HelperRoutineTests(unittest.TestCase):
                  '0\n', '.\n']
         patch_lines(file_a, patches_from_ed_script(patch))
         self.assertEqual(''.join(file_b), ''.join(file_a))
+
+    def test_patch_lines_bytes(self):
+        # type: () -> None
+        file_a = [b"%d\n" % x for x in range(1, 18)]
+        file_b = [b'0\n', b'1\n', b'<2>\n', b'<3>\n', b'4\n', b'5\n', b'7\n', b'8\n',
+                  b'11\n', b'12\n', b'<13>\n', b'14\n', b'15\n', b'A\n', b'B\n',
+                  b'C\n', b'16\n', b'17\n',]
+        patch = [b'15a\n', b'A\n', b'B\n', b'C\n', b'.\n', b'13c\n', b'<13>\n', b'.\n',
+                 b'9,10d\n', b'6d\n', b'2,3c\n', b'<2>\n', b'<3>\n', b'.\n', b'0a\n',
+                 b'0\n', b'.\n']
+        patch_re_bytes = re.compile(b"^(\\d+)(?:,(\\d+))?([acd])$")
+        patch_lines(file_a, patches_from_ed_script(patch, re_cmd=patch_re_bytes))
+        self.assertEqual(b''.join(file_b), b''.join(file_a))
 
 
 class PdiffTests(unittest.TestCase):

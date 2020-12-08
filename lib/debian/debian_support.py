@@ -614,14 +614,15 @@ def patches_from_ed_script(source, re_cmd=None):
         first = int(first_)
         last = None if last_ is None else int(last_)
 
-        if cmd == 'd':
+        # using ord() makes this work for str and bytes objects
+        if ord(cmd) == 100: # cmd == d
             first = first - 1
             if last is None:
                 last = first + 1
             yield (first, last, [])
             continue
 
-        if cmd == 'a':
+        if ord(cmd) == 97: # cmd == a
             if last is not None:
                 raise ValueError("invalid patch argument: %r" % line)
             last = first
@@ -632,13 +633,12 @@ def patches_from_ed_script(source, re_cmd=None):
 
         lines = []
         for c in i:
-            if c == '':
+            if c in ('', b''):
                 raise ValueError("end of stream in command: %r" % line)
-            if c in ('.\n', '.'):
+            if c in ('.\n', '.', b'.\n', b'.'):
                 break
             lines.append(c)
         yield (first, last, lines)
-
 
 patchesFromEdScript = function_deprecated_by(patches_from_ed_script)
 
