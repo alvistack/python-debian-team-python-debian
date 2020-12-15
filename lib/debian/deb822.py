@@ -2032,7 +2032,6 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
     }
     _relationship_fields = [
         'installed-build-depends',
-        'binary',
     ]
 
     def __init__(self, *args, **kwargs):
