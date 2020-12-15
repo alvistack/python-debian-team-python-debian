@@ -7,6 +7,10 @@ python-debian (0.1.39) UNRELEASED; urgency=medium
   * Add a type for .buildinfo files (deb822.BuildInfo) (Closes: #875306).
   * Add support for SHA1-Download and SHA256-* variants in PdiffIndex class
     for .diff/Index files (Closes: #970824).
+  * Permit single-character package names in dependency relationship
+    specifications (Closes: #977355).
+  * Silence deprecation warnings in the test suite.
+  * Test that UserWarning is emitted in tests where it should be.
 
   [ Jose Luis Rivero ]
   * Allow debian_support.PackageFile to accept StringIO as well as BytesIO.
@@ -17,6 +21,10 @@ python-debian (0.1.39) UNRELEASED; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * Add myself to uploaders.
+
+  [ Johannes 'josch' Schauer ]
+  * Add SHA265 support to handling of pdiffs.
+  * Add support for additional headers for merged pdiffs to PDiffIndex.
 
  -- Stuart Prescott <stuart@debian.org>  Sun, 11 Oct 2020 14:21:54 +1100
 
