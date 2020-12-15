@@ -28,7 +28,10 @@ from __future__ import absolute_import
 
 import os.path
 import sys
-import unittest
+if sys.version_info[0] >= 3:
+    import unittest
+else:
+    import unittest2 as unittest
 import warnings
 
 import six
@@ -133,7 +136,8 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
 
  -- Somebody <nobody@debian.org>  Wed, 05 May 2010 18:01:53 -0300
 """
-        cl = changelog.Changelog(cl_text)
+        with self.assertWarns(UserWarning):
+            cl = changelog.Changelog(cl_text)
         self.assertEqual(cl_text, bytes(cl))
 
     def test_add_changelog_section(self):
@@ -302,11 +306,9 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         with self.assertRaises(changelog.ChangelogParseError):
             c = changelog.Changelog(c_text, strict=True)
         # In non-strict mode, warnings should be emitted by the malformed entry
-        # (but assertWarns is python 3.2+ only)
-        if not six.PY2:
-            with self.assertWarns(Warning):
-                c = changelog.Changelog(c_text, strict=False)
-                self.assertEqual(len(c), 1)
+        with self.assertWarns(Warning):
+            c = changelog.Changelog(c_text, strict=False)
+            self.assertEqual(len(c), 1)
 
     def test_block_iterator(self):
         # type: () -> None

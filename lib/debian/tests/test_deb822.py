@@ -1385,8 +1385,8 @@ class TestPkgRelations(unittest.TestCase):
             self.assertEqual(src_rel,
                     deb822.PkgRelation.str(deb822.PkgRelation.parse_relations( \
                             src_rel)))
-        self.assertWarns(UserWarning, deb822.PkgRelation.parse_relations,
-                    "foo bar")
+        with self.assertWarns(UserWarning):
+            deb822.PkgRelation.parse_relations("foo bar")
 
     def test_sources(self):
         # type: () -> None
