@@ -279,7 +279,7 @@ class PackageFileTests(unittest.TestCase):
         # type: (Any, Any) -> None
         """Check that the type is as expected
         """
-        self.assert_(isinstance(var_, type_))
+        self.assertTrue(isinstance(var_, type_))
 
     def test_read_file(self):
         # type: () -> None
