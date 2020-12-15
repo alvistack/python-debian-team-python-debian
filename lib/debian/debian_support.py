@@ -76,6 +76,21 @@ except ImportError:
                 " incompatibilities")
 
 
+# Use the built-in _sha256 extension instead of hashlib to avoid a dependency on
+# OpenSSL, which is incompatible with the GPL.
+try:
+    import _sha256    # type: ignore
+    new_sha256 = _sha256.sha256
+except ImportError:
+    def new_sha256(*args):    # pylint: disable=unused-argument
+        # type: (bytes) -> str
+        raise NotImplementedError(
+            "Built-in sha1 implementation not found; cannot use hashlib"
+            " implementation because it depends on OpenSSL, which"
+            " may not be linked with this library due to license"
+            " incompatibilities")
+
+
 class ParseError(Exception):
     """An exception which is used to signal a parse failure.
 
@@ -568,6 +583,17 @@ del listReleases
 del list_releases
 
 
+def read_lines_sha256(lines):
+    # type: (Union[List[bytes], List[str]]) -> str
+    m = new_sha256()
+    for l in lines:
+        if isinstance(l, bytes):
+            m.update(l)
+        else:
+            m.update(l.encode("UTF-8"))
+    return m.hexdigest()   # type: ignore
+
+
 def read_lines_sha1(lines):
     # type: (Union[List[bytes], List[str]]) -> str
     m = new_sha1()
@@ -733,7 +759,6 @@ def update_file(remote, local, verbose=False):
 
     lines = local_file.readlines()
     local_file.close()
-    local_hash = read_lines_sha1(lines)
     patches_to_apply = []    # type: List[str]
     patch_hashes = {}        # type: Dict[str, str]
 
@@ -759,9 +784,22 @@ def update_file(remote, local, verbose=False):
             print("update_file: could not download patch index file")
         return download_file(remote, local)
 
+    if 'SHA256-Current' in [k for fields in index_fields for k,v in fields]:
+        if verbose:
+            print("update_file: using sha256")
+        prefix = 'SHA256'
+        local_hash = read_lines_sha256(lines)
+        read_lines = read_lines_sha256
+    else:
+        if verbose:
+            print("update_file: using sha1")
+        prefix = 'SHA1'
+        local_hash = read_lines_sha1(lines)
+        read_lines = read_lines_sha1
+
     for fields in index_fields:
         for (field, value) in fields:
-            if field == 'SHA1-Current':
+            if field == prefix+'-Current':
                 (remote_hash, _) = re_whitespace.split(value)
                 if local_hash == remote_hash:
                     if verbose:
@@ -769,7 +807,7 @@ def update_file(remote, local, verbose=False):
                     return lines
                 continue
 
-            if field == 'SHA1-History':
+            if field == prefix+'-History':
                 for entry in value.splitlines():
                     if entry == '':
                         continue
@@ -782,7 +820,7 @@ def update_file(remote, local, verbose=False):
 
                 continue
 
-            if field == 'SHA1-Patches':
+            if field == prefix+'-Patches':
                 for entry in value.splitlines():
                     if entry == '':
                         continue
@@ -803,12 +841,12 @@ def update_file(remote, local, verbose=False):
             print("update_file: downloading patch %r" % patch_name)
         patch_contents = download_gunzip_lines(
             remote + '.diff/' + patch_name + '.gz')
-        if read_lines_sha1(patch_contents) != patch_hashes[patch_name]:
+        if read_lines(patch_contents) != patch_hashes[patch_name]:
             raise ValueError("patch %r was garbled" % patch_name)
         patch_contents_unicode = list(patch_contents)
         patch_lines(lines, patches_from_ed_script(patch_contents_unicode))
 
-    new_hash = read_lines_sha1(lines)
+    new_hash = read_lines(lines)
     if new_hash != remote_hash:
         raise ValueError("patch failed, got %s instead of %s"
                          % (new_hash, remote_hash))
