@@ -27,6 +27,7 @@ try:
     # pylint: disable=unused-import
     from typing import (
         Any,
+        AnyStr,
         BinaryIO,
         Dict,
         Iterable,
@@ -582,11 +583,16 @@ def read_lines_sha1(lines):
 readLinesSHA1 = function_deprecated_by(read_lines_sha1)
 
 
-_patch_re = re.compile(r'^(\d+)(?:,(\d+))?([acd])$')
+_patch_re_raw = r'^(\d+)(?:,(\d+))?([acd])$'
+_patch_re = re.compile(_patch_re_raw)  # type: Pattern[str]
+_patch_re_b = re.compile(_patch_re_raw.encode('UTF-8'))   # type: Pattern[bytes]
 
 
-def patches_from_ed_script(source, re_cmd=None):
-    # type: (List[Text], Optional[Pattern[Text]]) -> Iterator[Any]
+def patches_from_ed_script(
+        source,       # type: Iterable[AnyStr]
+        re_cmd=None,  # type: Optional[Pattern[AnyStr]]
+    ):
+    # type: (...) -> Iterator[Tuple[int, int, List[AnyStr]]]
     """Converts source to a stream of patches.
 
     Patches are triples of line indexes:
@@ -600,13 +606,14 @@ def patches_from_ed_script(source, re_cmd=None):
     """
 
     i = iter(source)
-    if re_cmd is None:
-        re_cmd = _patch_re
+
+    patch_re = re_cmd
 
     for line in i:
-        # str/unicode broken for Pattern
-        # https://github.com/python/typeshed/issues/1892
-        match = re_cmd.match(line)
+        if not patch_re:
+            patch_re = _patch_re_b if isinstance(line, bytes) else _patch_re
+
+        match = patch_re.match(line)
         if match is None:
             raise ValueError("invalid patch command: %r" % line)
 
@@ -643,8 +650,11 @@ def patches_from_ed_script(source, re_cmd=None):
 patchesFromEdScript = function_deprecated_by(patches_from_ed_script)
 
 
-def patch_lines(lines, patches):
-    # type: (List[str], Iterable[Tuple[int, int, str]]) -> None
+def patch_lines(
+        lines,        # type: List[AnyStr]
+        patches,      # type: Iterable[Tuple[int, int, List[AnyStr]]]
+    ):
+    # type: (...) -> None
     """Applies patches to lines.  Updates lines in place."""
     for (first, last, args) in patches:
         lines[first:last] = args
