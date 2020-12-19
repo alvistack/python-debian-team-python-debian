@@ -1,4 +1,4 @@
-python-debian (0.1.39) UNRELEASED; urgency=medium
+python-debian (0.1.39) unstable; urgency=medium
 
   [ Stuart Prescott ]
   * Move re.compile calls out of functions (Closes: #971960).
@@ -11,6 +11,10 @@ python-debian (0.1.39) UNRELEASED; urgency=medium
     specifications (Closes: #977355).
   * Silence deprecation warnings in the test suite.
   * Test that UserWarning is emitted in tests where it should be.
+  * Update Standards-Version to 4.5.1 (no changes required).
+  * Update to debhelper-compat (= 13).
+  * Update examples to use #!/usr/bin/python3.
+  * Fix tabs vs spaces in examples.
 
   [ Jose Luis Rivero ]
   * Allow debian_support.PackageFile to accept StringIO as well as BytesIO.
@@ -25,8 +29,9 @@ python-debian (0.1.39) UNRELEASED; urgency=medium
   [ Johannes 'josch' Schauer ]
   * Add SHA265 support to handling of pdiffs.
   * Add support for additional headers for merged pdiffs to PDiffIndex.
+  * Allow debian_support.patches_from_ed_script to consume both bytes and str.
 
- -- Stuart Prescott <stuart@debian.org>  Sun, 11 Oct 2020 14:21:54 +1100
+ -- Stuart Prescott <stuart@debian.org>  Sat, 19 Dec 2020 11:59:40 +1100
 
 python-debian (0.1.38) unstable; urgency=medium
 
