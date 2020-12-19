@@ -22,7 +22,7 @@ from debian import debtags
 
 input = sys.stdin
 if len(sys.argv) > 1:
-	input = open(sys.argv[1],"r")
+    input = open(sys.argv[1],"r")
 
 #db = read_tag_database(input)
 #db = reverse(db)
@@ -30,6 +30,6 @@ db = debtags.read_tag_database_reversed(input)
 #dummy, db = debtags.read_tag_database_both_ways(input)
 
 for pkg, tags in db.items():
-	# Using % here seems awkward to me, but if I use calls to
-	# sys.stdout.write it becomes a bit slower
-	print("%s:" % (pkg), ", ".join(tags))
+    # Using % here seems awkward to me, but if I use calls to
+    # sys.stdout.write it becomes a bit slower
+    print("%s:" % (pkg), ", ".join(tags))

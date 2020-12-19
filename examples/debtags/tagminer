@@ -127,7 +127,7 @@ if __name__ == '__main__':
     if len(args) == 0:
         parser.error("Please provide the name of a file to scan")
 
-    # Read full database 
+    # Read full database
     fullcoll = debtags.DB()
     tag_filter = re.compile(r"^special::.+$|^.+::TODO$")
     fullcoll.read(open(options.tagdb, "r"), lambda x: not tag_filter.match(x))

@@ -26,17 +26,17 @@ sys.path.insert(0, os.path.join(sys.path[0], os.pardir))
 from debian import debtags
 
 def print_indented (spaces, string):
-	for line in string.split("\n"):
-		for i in range(1,spaces):
-			sys.stdout.write(" ")
-		sys.stdout.write(line)
-		sys.stdout.write("\n")
+    for line in string.split("\n"):
+        for i in range(1,spaces):
+            sys.stdout.write(" ")
+        sys.stdout.write(line)
+        sys.stdout.write("\n")
 
 def document (callable):
-	if callable.__doc__ != None:
-		print_indented(2, callable.__name__)
-		print_indented(4, inspect.getdoc(callable))
-		print()
+    if callable.__doc__ != None:
+        print_indented(2, callable.__name__)
+        print_indented(4, inspect.getdoc(callable))
+        print()
 
 
 print("""debtags.py README
@@ -71,8 +71,8 @@ The methods of debtags.DB are:
 """)
 
 for m in dir(debtags.DB):
-	if m[0:2] != '__' and callable(getattr(debtags.DB, m)):
-		document(getattr(debtags.DB, m))
+    if m[0:2] != '__' and callable(getattr(debtags.DB, m)):
+        document(getattr(debtags.DB, m))
 
 print("""Iteration
 =========
@@ -100,7 +100,7 @@ search::
     print(db.package_count(), "packages in the database")
     print("Image editors:")
     for pkg in db.packages_of_tags(set(("use::editing", "works-with::image:raster"))):
-    	print(" *", pkg)
+        print(" *", pkg)
 
 This example computes the set of tags that belong to all the packages in a
 list, then shows all the other packages that have those tags:
@@ -112,8 +112,8 @@ list, then shows all the other packages that have those tags:
     tags = db.tags_of_packages(("gimp", "krita"))
     print("Common tags:")
     for tag in tags:
-	print(" *", tag)
+        print(" *", tag)
     print("Packages similar to gimp and krita:")
     for pkg in db.packages_of_tags(tags):
-	print(" *", pkg)
+        print(" *", pkg)
 """)

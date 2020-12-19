@@ -28,7 +28,7 @@ from debian import deb822
 from markdown import markdown
 from optparse import OptionParser
 
-options = None		# global, for cmdline options
+options = None        # global, for cmdline options
 
 css = """
 body { font-family: sans-serif; }
@@ -81,8 +81,8 @@ html_trailer = """  </body>
 </html>
 """
 
-mdwn_list_line = re.compile(r'^(\s*)[\*\+\-]')	# Markdown list item line
-# mdwn_head_line = re.compile(r'^(\s*)#')	# Markdown header
+mdwn_list_line = re.compile(r'^(\s*)[\*\+\-]')    # Markdown list item line
+# mdwn_head_line = re.compile(r'^(\s*)#')    # Markdown header
 padding = re.compile(r'^(\s*)')
 
 def get_indent(s):
@@ -94,29 +94,29 @@ def get_indent(s):
 
 def render_longdesc(lines):
     print('<div class="longdesc">')
-    lines = map(lambda s: s[1:], lines)	# strip 822 heading space
+    lines = map(lambda s: s[1:], lines)    # strip 822 heading space
     curpara, paragraphs = [], []
     inlist, listindent = False, 0
     store_para = lambda: paragraphs.append(string.join(curpara, '\n') + '\n')
     add_indent = lambda n, s: string.expandtabs('\t', n) + s
 
-    for l in lines:	# recognize Markdown paragraphs
-        if l.rstrip() == '.':	# RULE 1: split paragraphs at Debian's "."
+    for l in lines:    # recognize Markdown paragraphs
+        if l.rstrip() == '.':    # RULE 1: split paragraphs at Debian's "."
             store_para()            
             curpara, inlist, listindent = [], False, 0
         else:
-            if inlist:	# currently in a list
-                if get_indent(l) <= listindent:	# RULE 3: leave list on underflow
+            if inlist:    # currently in a list
+                if get_indent(l) <= listindent:    # RULE 3: leave list on underflow
                     store_para()
                     curpara, inlinst, linstindent = [l], False, 0
-                else:	# the list goes on ...
+                else:    # the list goes on ...
                     curpara.append(l)
-            else:	# currently not in a list
-                if mdwn_list_line.match(l):	# new list start
-                    if curpara:	# RULE 2: handle list item *not* at para start
+            else:    # currently not in a list
+                if mdwn_list_line.match(l):    # new list start
+                    if curpara:    # RULE 2: handle list item *not* at para start
                         store_para()
                     curpara, inlist, listindent = [l], True, get_indent(l)
-                elif get_indent(l) >= 1:	# RULE 4: hande non-list verbatim
+                elif get_indent(l) >= 1:    # RULE 4: hande non-list verbatim
                     if curpara and get_indent(curpara[-1]) < 4:
                         store_para()
                         curpara = []
@@ -126,7 +126,7 @@ def render_longdesc(lines):
     if curpara:
         store_para()
 
-    for p in paragraphs:	# render paragraphs
+    for p in paragraphs:    # render paragraphs
         print(markdown(p))
     print('</div>')
 
@@ -141,7 +141,7 @@ def render_field(field, val):
     elif field == 'package':
         print('<a href="#%s" class="uid">id</a>' % val)
         print('<span id="%s" class="package">%s</span>' % (val, val))
-    elif field in []:	# fields not to be typeset as "raw"
+    elif field in []:    # fields not to be typeset as "raw"
         print('<span class="%s">%s</span>' % (field, val))
     else:
         print('<span class="raw">%s</span>' % val)
