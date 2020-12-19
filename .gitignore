@@ -16,3 +16,4 @@ lib/debian/_version.py
 docs/api
 .mypy_cache/
 *~
+.coverage

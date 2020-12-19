@@ -5,3 +5,5 @@ docs/_static/
 lib/debian/__pycache__/
 build/sphinx/
 .mypy_cache/
+lib/debian/.mypy_cache/
+.coverage
