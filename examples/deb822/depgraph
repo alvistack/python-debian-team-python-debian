@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # depgraph
 # Copyright (C) 2008 Stefano Zacchiroli <zack@debian.org>
@@ -15,8 +15,6 @@ Only consider Depends fields. Versioned dependencies are considered as they
 were not versioned. The graph is returned in output as a (non normalized)
 graphviz graph suitable to be processed by dot (for an unstable/main Packages
 file, generating the final graph will take a while ...)."""
-
-from __future__ import print_function
 
 import sys
 from debian import deb822

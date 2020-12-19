@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # render-dctrl
 # Copyright (C) 2009 Stefano Zacchiroli <zack@debian.org>
@@ -9,8 +9,6 @@
 # (at your option) any later version.
 
 # Requirements (Debian packages): python-debian python-markdown
-
-from __future__ import print_function
 
 usage = """Usage: render-dctrl [OPTION ...] [FILE ...]
 
