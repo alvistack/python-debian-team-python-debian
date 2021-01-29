@@ -1,7 +1,14 @@
 python-debian (0.1.40) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * In debian.changelog.get_maintainer, cope with unknown UIDs. Closes:
     #980385
+
+  [ Stuart Prescott ]
+  * Update annotations for mypy 0.8.00.
+  * Include portability patch for pwd module on Windows from MR!38, with
+    thanks to Ryan Pavlik for the report and Carmen Bianca Bakker for the
+    implementation.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 Jan 2021 03:12:37 +0000
 
