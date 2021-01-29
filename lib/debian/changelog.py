@@ -90,13 +90,19 @@ from __future__ import absolute_import
 
 import email.utils
 import os
-import pwd
 import re
 import socket
 import warnings
 import sys
 
 import six
+
+# pwd is only available on Unix platforms.
+try:
+    import pwd
+except ImportError:
+    pass
+
 
 try:
     # pylint: disable=unused-import
@@ -966,7 +972,8 @@ def get_maintainer():
         # Use password database if no data in environment variables
         try:
             maintainer = re.sub(r',.*', '', pwd.getpwuid(os.getuid()).pw_gecos)
-        except (KeyError, AttributeError):
+        # pwd might not be imported giving a NameError
+        except (KeyError, AttributeError, NameError):
             pass
 
     # Get maintainer's mail address
@@ -988,7 +995,8 @@ def get_maintainer():
         if addr:
             try:
                 user = pwd.getpwuid(os.getuid()).pw_name
-            except KeyError:
+            # pwd might not be imported giving a NameError
+            except (AttributeError, NameError):
                 addr = None
             else:
                 if not user:
