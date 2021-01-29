@@ -1,3 +1,10 @@
+python-debian (0.1.40) UNRELEASED; urgency=medium
+
+  * In debian.changelog.get_maintainer, cope with unknown UIDs. Closes:
+    #980385
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 Jan 2021 03:12:37 +0000
+
 python-debian (0.1.39) unstable; urgency=medium
 
   [ Stuart Prescott ]

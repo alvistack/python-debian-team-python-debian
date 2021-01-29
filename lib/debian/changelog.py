@@ -986,11 +986,15 @@ def get_maintainer():
         if not addr:
             addr = socket.getfqdn()
         if addr:
-            user = pwd.getpwuid(os.getuid()).pw_name
-            if not user:
+            try:
+                user = pwd.getpwuid(os.getuid()).pw_name
+            except KeyError:
                 addr = None
             else:
-                addr = "%s@%s" % (user, addr)
+                if not user:
+                    addr = None
+                else:
+                    addr = "%s@%s" % (user, addr)
 
         if addr:
             email_address = addr
