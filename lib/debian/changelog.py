@@ -930,9 +930,9 @@ def get_maintainer():
 
     This function gets the information about the current user for
     the maintainer field using environment variables of gecos
-    informations as approriate.
+    information as appropriate.
 
-    It uses the same methods as dch to get the information, namely
+    It uses the same algorithm as dch to get the information, namely
     DEBEMAIL, DEBFULLNAME, EMAIL, NAME, /etc/mailname and gecos.
 
     :returns: a tuple of the full name, email pair as strings.
