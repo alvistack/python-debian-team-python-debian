@@ -15,6 +15,8 @@ python-debian (0.1.39) unstable; urgency=medium
   * Update to debhelper-compat (= 13).
   * Update examples to use #!/usr/bin/python3.
   * Fix tabs vs spaces in examples.
+  * Provide accessor for source package version for binary packages
+    (Closes: #934273).
 
   [ Jose Luis Rivero ]
   * Allow debian_support.PackageFile to accept StringIO as well as BytesIO.
