@@ -2733,11 +2733,11 @@ class _CaseInsensitiveString(str):
         # neither pylint nor mypy cope with str_lower being defined in __new__
         def __init__(self, s):
             # type: (str) -> None
-            super(_CaseInsensitiveString, self).__init__(s)
+            super(_CaseInsensitiveString, self).__init__(s)   # type: ignore
             self.str_lower = ''
 
     def __new__(cls, str_): # type: ignore
-        s = str.__new__(cls, str_)    # type: ignore
+        s = str.__new__(cls, str_)
         s.str_lower = str_.lower()
         return s
 
