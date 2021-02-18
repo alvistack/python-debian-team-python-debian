@@ -2082,6 +2082,16 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         chlines = ['' if s == ' .' else s[1:] for s in chlines]
         return debian.changelog.Changelog(chlines)
 
+    def get_source(self):
+        # type: () -> str
+        # In case of broken buildinfo
+        if 'source' not in self:
+            return ""
+        matches = self._explicit_source_re.match(self['source'])
+        if matches:
+            return matches.group('source')
+        return ""
+
     class _EnvParserState():
         # trivial enum for the deserialiser
         IGNORE_WHITESPACE = 0
