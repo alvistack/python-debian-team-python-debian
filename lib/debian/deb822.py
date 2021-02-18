@@ -2092,6 +2092,12 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
             return matches.group('source')
         return ""
 
+    def get_binary(self):
+        # type: () -> Optional[Any]
+        if 'Binary' not in self:
+            return []
+        return self['Binary'].replace('\n', '').strip().split()
+
     class _EnvParserState():
         # trivial enum for the deserialiser
         IGNORE_WHITESPACE = 0
