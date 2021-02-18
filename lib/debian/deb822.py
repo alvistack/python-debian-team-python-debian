@@ -818,6 +818,14 @@ class Deb822(Deb822Dict):
     _multi = re.compile(_key_part + r"$")
     _multidata = re.compile(r"^\s(?P<data>.+?)\s*$")
 
+    # Explicit source entries in the file can be either:
+    #   Source: source_package
+    #   Source: source_package (1.2.3-1)
+    _explicit_source_re = re.compile(
+        r"(?P<source>[^ ]+)"
+        r"( \((?P<version>.+)\))?"
+    )
+
     def _internal_parser(self,
                          sequence,      # type: InputDataType
                          fields=None,   # type: Optional[List[str]]
@@ -2352,14 +2360,6 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
             }
         return super(Packages, cls).iter_paragraphs(
             sequence, fields, use_apt_pkg, shared_storage, encoding, strict)
-
-    # Explicit source entries in the file can be either:
-    #   Source: source_package
-    #   Source: source_package (1.2.3-1)
-    _explicit_source_re = re.compile(
-        r"(?P<source>[^ ]+)"
-        r"( \((?P<version>.+)\))?"
-    )
 
     @property
     def source(self):
