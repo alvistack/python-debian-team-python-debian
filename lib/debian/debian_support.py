@@ -538,29 +538,39 @@ class PseudoEnum:
 class Release(PseudoEnum):
     releases = {}    # type: Dict[str, Release]
 
+    def __init__(self,
+                 name,         # type: str
+                 order,        # type: Any
+                 version=""    # type: str
+                 ):
+        super(Release, self).__init__(name, order)
+        self.version = version
+
 
 def list_releases():
     # type: () -> Dict[str, Release]
     releases = {}
-    rels = ("buzz",
-            "rex",
-            "bo",
-            "hamm",
-            "slink",
-            "potato",
-            "woody",
-            "sarge",
-            "etch",
-            "lenny",
-            "squeeze",
-            "wheezy",
-            "jessie",
-            "stretch",
-            "buster",
-            "bullseye",
-            "sid")
+    rels = (("buzz", ""),
+            ("rex", ""),
+            ("bo", ""),
+            ("hamm", "2.0"),
+            ("slink", "2.1"),
+            ("potato", "2.2"),
+            ("woody", "3.0"),
+            ("sarge", "3.1"),
+            ("etch", "4.0"),
+            ("lenny", "5.0"),
+            ("squeeze", "6.0"),
+            ("wheezy", "7"),
+            ("jessie", "8"),
+            ("stretch", "9"),
+            ("buster", "10"),
+            ("bullseye", "11"),
+            ("bookworm", "12"),
+            ("sid", ""))
     for idx, rel in enumerate(rels):
-        releases[rel] = Release(rel, idx)
+        name, version = rel
+        releases[name] = Release(name, idx, version)
     Release.releases = releases
     return releases
 
