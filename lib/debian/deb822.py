@@ -2098,6 +2098,18 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
             return []
         return self['Binary'].replace('\n', '').strip().split()
 
+    def get_debian_suite(self):
+        # type: () -> str
+        debian_suite = 'sid'
+        for pkg in self.relations['installed-build-depends']:  # type: ignore
+            if pkg[0]['name'] == "base-files":
+                _, version = pkg[0]['version']
+                for rel in debian.debian_support._release_list.values():
+                    if rel and rel.version == version:
+                        debian_suite = str(rel)
+                        break
+        return debian_suite
+
     class _EnvParserState():
         # trivial enum for the deserialiser
         IGNORE_WHITESPACE = 0
