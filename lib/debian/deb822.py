@@ -315,6 +315,7 @@ except ImportError:
         Deb822Mapping = None
         InputDataType = None
 
+from dateutil.parser import parse as parsedate
 
 from debian.deprecation import function_deprecated_by
 import debian.debian_support
@@ -2113,6 +2114,10 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
                         debian_suite = str(rel)
                         break
         return debian_suite
+
+    def get_build_date(self):
+        # type: () -> str
+        return parsedate(self['Build-Date']).strftime("%Y%m%dT%H%M%SZ")
 
     def get_architecture(self):
         # type: () -> Optional[List[str]]
