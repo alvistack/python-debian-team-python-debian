@@ -2114,6 +2114,28 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
                         break
         return debian_suite
 
+    def get_architecture(self):
+        # type: () -> Optional[List[str]]
+        return self._get_array_value('Architecture')
+
+    def is_build_source(self):
+        # type: () -> bool
+        arches = [arch for arch in self.get_architecture()  # type: ignore
+                  if arch == "source"]
+        return len(arches) == 1
+
+    def is_build_arch_all(self):
+        # type: () -> bool
+        arches = [arch for arch in self.get_architecture()  # type: ignore
+                  if arch == "all"]
+        return len(arches) == 1
+
+    def is_build_arch_any(self):
+        # type: () -> bool
+        arches = [arch for arch in self.get_architecture()  # type: ignore
+                  if arch not in ("all", "source")]
+        return len(arches) == 1
+
     class _EnvParserState():
         # trivial enum for the deserialiser
         IGNORE_WHITESPACE = 0
