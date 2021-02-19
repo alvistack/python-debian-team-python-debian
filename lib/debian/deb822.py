@@ -2130,9 +2130,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
 
     def is_build_arch_all(self):
         # type: () -> bool
-        arches = [arch for arch in self.get_architecture()  # type: ignore
-                  if arch == "all"]
-        return len(arches) == 1
+        return 'all' in self.get_architecture()  # type: ignore
 
     def is_build_arch_any(self):
         # type: () -> bool
