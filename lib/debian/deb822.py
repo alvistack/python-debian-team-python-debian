@@ -2052,6 +2052,12 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         _gpg_multivalued.__init__(self, *args, **kwargs)
         _PkgRelationMixin.__init__(self, *args, **kwargs)
 
+    def _get_array_value(self, field):
+        # type: (str) -> Optional[List[str]]
+        if field not in self:
+            return []
+        return list(self[field].replace('\n', '').strip().split())
+
     def get_environment(self):
         # type: () -> Dict[str, str]
         """Return the build environment that was recorded
@@ -2093,10 +2099,8 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         return ""
 
     def get_binary(self):
-        # type: () -> Optional[Any]
-        if 'Binary' not in self:
-            return []
-        return self['Binary'].replace('\n', '').strip().split()
+        # type: () -> Optional[List[str]]
+        return self._get_array_value('Binary')
 
     def get_debian_suite(self):
         # type: () -> str
