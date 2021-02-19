@@ -2091,13 +2091,12 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
 
     def get_source(self):
         # type: () -> str
-        # In case of broken buildinfo
         if 'source' not in self:
-            return ""
+            raise ValueError("'Source' field not found in buildinfo")
         matches = self._explicit_source_re.match(self['source'])
-        if matches:
-            return matches.group('source')
-        return ""
+        if not matches:
+            raise ValueError("Invalid 'Source' field specified")
+        return matches.group('source')
 
     def get_binary(self):
         # type: () -> Optional[List[str]]
