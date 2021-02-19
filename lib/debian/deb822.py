@@ -315,8 +315,6 @@ except ImportError:
         Deb822Mapping = None
         InputDataType = None
 
-from dateutil.parser import parse as parsedate
-
 from debian.deprecation import function_deprecated_by
 import debian.debian_support
 import debian.changelog
@@ -2115,8 +2113,14 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         return debian_suite
 
     def get_build_date(self):
-        # type: () -> str
-        return parsedate(self['Build-Date']).strftime("%Y%m%dT%H%M%SZ")
+        # type: () -> datetime.datetime
+        if 'build-date' not in self:
+            raise ValueError("'Build-Date' field not found in buildinfo")
+        timearray = email.utils.parsedate_tz(self['build-date'])
+        if timearray is None:
+            raise ValueError("Invalid 'Build-Date' field specified")
+        ts = email.utils.mktime_tz(timearray)
+        return datetime.datetime.fromtimestamp(ts)
 
     def get_architecture(self):
         # type: () -> Optional[List[str]]
