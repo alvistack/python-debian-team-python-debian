@@ -2054,7 +2054,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
     def _get_array_value(self, field):
         # type: (str) -> Optional[List[str]]
         if field not in self:
-            return []
+            raise ValueError("'{}' not found in buildinfo".format(field))
         return list(self[field].replace('\n', '').strip().split())
 
     def get_environment(self):
