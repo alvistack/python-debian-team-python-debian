@@ -2037,7 +2037,6 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         '']
     """
     _multivalued_fields = {
-        "files": ["md5sum", "size", "section", "priority", "name"],
         "checksums-md5": ["md5", "size", "name"],
         "checksums-sha1": ["sha1", "size", "name"],
         "checksums-sha256": ["sha256", "size", "name"],
