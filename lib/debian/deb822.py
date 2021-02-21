@@ -2088,13 +2088,13 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         return debian.changelog.Changelog(chlines)
 
     def get_source(self):
-        # type: () -> str
+        # type: () -> Tuple[str, str]
         if 'source' not in self:
             raise ValueError("'Source' field not found in buildinfo")
         matches = self._explicit_source_re.match(self['source'])
         if not matches:
             raise ValueError("Invalid 'Source' field specified")
-        return matches.group('source')
+        return matches.group('source'), matches.group('version')
 
     def get_binary(self):
         # type: () -> Optional[List[str]]
