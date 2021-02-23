@@ -2106,6 +2106,10 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         for pkg in self.relations['installed-build-depends']:  # type: ignore
             if pkg[0]['name'] == "base-files":
                 _, version = pkg[0]['version']
+                try:
+                    version = str(int(float(version)))
+                except ValueError:
+                    break
                 for rel in debian.debian_support._release_list.values():
                     if rel and rel.version == version:
                         debian_suite = str(rel)
