@@ -2018,7 +2018,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         >>> changelog = info.get_changelog()
         >>> print(changelog.author)
         'xyz Build Daemon (xyz-01) <buildd_xyz-01@buildd.debian.org>'
-        >>> print(changlog[0].changes())
+        >>> print(changelog[0].changes())
         ['',
         '  * Binary-only non-maintainer upload for amd64; no source changes.',
         '  * Add Python 3.9 as supported version',
