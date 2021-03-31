@@ -4,7 +4,8 @@ import re
 import sys
 import typing
 import weakref
-from typing import Iterable, List, Union, Dict, Optional, TypeVar, Callable, Any
+from abc import ABC
+from typing import Iterable, List, Union, Dict, Optional, TypeVar, Callable, Any, Generic
 from weakref import ReferenceType
 
 from .deb822 import _strI, OrderedSet
@@ -12,6 +13,110 @@ from .deb822 import _strI, OrderedSet
 
 T = TypeVar('T')
 TokenOrElement = Union['Deb822Element', 'Deb822Token']
+ParagraphKeyBase = Union['Deb822FieldNameToken', str]
+ParagraphKey = Union[ParagraphKeyBase, typing.Tuple[str, int]]
+
+
+
+class _LinkedListNode(Generic[T]):
+
+    __slots__ = ('_previous_node', 'value', 'next_node', '__weakref__')
+
+    def __init__(self, value: T):
+        self._previous_node: 'Optional[ReferenceType[_LinkedListNode[T]]]' = None
+        self.next_node: 'Optional[_LinkedListNode[T]]' = None
+        self.value = value
+
+    @property
+    def previous_node(self) -> 'Optional[_LinkedListNode[T]]':
+        return _resolve_ref(self._previous_node)
+
+    @previous_node.setter
+    def previous_node(self, node: '_LinkedListNode[T]') -> None:
+        self._previous_node = weakref.ref(node) if node is not None else None
+
+    def remove(self) -> T:
+        _LinkedListNode._link_nodes(self.previous_node, self.next_node)
+        self.previous_node = None
+        self.next_node = None
+        return self.value
+
+    @staticmethod
+    def _link_nodes(previous_node: Optional['_LinkedListNode[T]'],
+                    next_node: Optional['_LinkedListNode[T]']) -> None:
+        if next_node:
+            next_node.previous_node = previous_node
+        if previous_node:
+            previous_node.next_node = next_node
+
+    @staticmethod
+    def _insert_link(first_node: Optional['_LinkedListNode[T]'],
+                     new_node: '_LinkedListNode[T]',
+                     last_node: Optional['_LinkedListNode[T]']
+                     ) -> None:
+        _LinkedListNode._link_nodes(first_node, new_node)
+        _LinkedListNode._link_nodes(new_node, last_node)
+
+    def insert_after(self, new_node: '_LinkedListNode[T]') -> None:
+        _LinkedListNode._insert_link(self, new_node, self.next_node)
+
+
+class _LinkedList(Generic[T]):
+    """Specialized linked list implementation to support the deb822 parser needs
+
+    We deliberately trade "encapsulation" for features needed by the by this library
+    to facilitate their implementation.  Notably, we allow nodes to leak and assume
+    well-behaved calls to remove_node - because that makes it easier to implement
+    components like Deb822InvalidParagraphElement.
+    """
+
+    __slots__ = ('_head', '_tail')
+
+    def __init__(self) -> None:
+        self._head: Optional[_LinkedListNode[T]] = None
+        self._tail: Optional[_LinkedListNode[T]] = None
+
+    def __bool__(self) -> bool:
+        return self._head is not None
+
+    def _iter_nodes(self) -> typing.Iterator[_LinkedListNode[T]]:
+        node = self._head
+        while node:
+            yield node
+            node = node.next_node
+
+    def __iter__(self) -> typing.Iterator[T]:
+        yield from (node.value for node in self._iter_nodes())
+
+    def __reversed__(self) -> typing.Iterator[T]:
+        node = self._tail
+        while node:
+            yield node.value
+            node = node.previous_node
+
+    def remove_node(self, node: _LinkedListNode[T]) -> None:
+        if node is self._head:
+            self._head = node.next_node
+            if self._head is None:
+                self._tail = None
+        elif node is self._tail:
+            self._tail = node.previous_node
+            # That case should have happened in the "if node is self._head"
+            # part
+            assert self._tail is not None
+        node.remove()
+
+    def append(self, value: T) -> _LinkedListNode[T]:
+        node = _LinkedListNode(value)
+        if self._head is None:
+            self._head = node
+            self._tail = node
+        else:
+            # Primarily as a hint to mypy
+            assert self._tail is not None
+            self._tail.insert_after(node)
+            self._tail = node
+        return node
 
 
 _RE_WHITESPACE_LINE = re.compile(r'^\s+$')
@@ -463,54 +568,65 @@ def _format_comment(c: str) -> str:
     return c
 
 
-class Deb822ParagraphElement(Deb822Element):
+def _unpack_key(item: ParagraphKey,
+                resolve_field_name: bool = False,
+                raise_if_indexed: bool = False
+                ) -> typing.Tuple[ParagraphKeyBase, Optional[int]]:
+    index: Optional[int]
+    key: ParagraphKeyBase
+    if isinstance(item, tuple):
+        key, index = item
+        if raise_if_indexed:
+            # Fudge "(key, 0)" into a "key" callers to defensively support
+            # both paragraph styles with the same key.
+            if index != 0:
+                raise KeyError(f'Cannot resolve key "{key}" with index {index}.'
+                               f' The key is not indexed')
+            index = None
+        if resolve_field_name:
+            key = _strI(key)
+    else:
+        key = item
+        index = None
+        if resolve_field_name:
+            if isinstance(key, Deb822FieldNameToken):
+                key = key.text
+            else:
+                key = _strI(key)
+    return key, index
 
-    def __init__(self, kvpair_elements: List[Deb822KeyValuePairElement]) -> None:
-        super().__init__()
-        self._kvpair_elements = {kv.field_name: kv for kv in kvpair_elements}
-        self._kvpair_order = OrderedSet(kv.field_name for kv in kvpair_elements)
-        self._init_parent_of_parts()
 
-    def __getitem__(self, item: Union[Deb822FieldNameToken, str]) -> Deb822KeyValuePairElement:
-        if isinstance(item, Deb822FieldNameToken):
-            item = item.text
-        else:
-            item = _strI(item)
-        return self._kvpair_elements[item]
+class Deb822ParagraphElement(Deb822Element, ABC):
 
-    def __setitem__(self, key: Union[Deb822FieldNameToken, str],
-                    value: Deb822KeyValuePairElement) -> None:
-        if isinstance(key, Deb822FieldNameToken):
-            if key is not value.field_token:
-                raise ValueError("Key is a Deb822FieldNameToken, but not *the* Deb822FieldNameToken"
-                                 " for the value")
-            key = value.field_name
-        else:
-            if key != value.field_name:
-                raise ValueError("Cannot insert value under a different field value than field name"
-                                 " from its Deb822FieldNameToken implies")
-            # Use the string from the Deb822FieldNameToken as it is a _strI
-            key = value.field_name
-        original_value = self._kvpair_elements.get(key)
-        self._kvpair_elements[key] = value
-        self._kvpair_order.append(key)
-        if original_value is not None:
-            original_value.parent_element = None
-        value.parent_element = self
+    @classmethod
+    def from_kvpairs(cls, kvpair_elements: List[Deb822KeyValuePairElement]
+                     ) -> 'Deb822ParagraphElement':
+        if not kvpair_elements:
+            raise ValueError("A paragraph must consist of at least one field/value pair")
+        kvpair_order = OrderedSet(kv.field_name for kv in kvpair_elements)
+        if len(kvpair_order) == len(kvpair_elements):
+            # Each field occurs at most once, which is good because that
+            # means it is a valid paragraph and we can use the optimized
+            # implementation.
+            return Deb822ValidParagraphElement(kvpair_elements, kvpair_order)
+        # Fallback implementation, that can cope with the repeated field names
+        # at the cost of complexity.
+        return Deb822InvalidParagraphElement(kvpair_elements)
+
+    def __contains__(self, item: ParagraphKey) -> bool:
+        raise NotImplementedError  # pragma: no cover
+
+    def __getitem__(self, item: ParagraphKey) -> Deb822KeyValuePairElement:
+        raise NotImplementedError  # pragma: no cover
+
+    def __setitem__(self, key: ParagraphKey, value: Deb822KeyValuePairElement) -> None:
+        raise NotImplementedError  # pragma: no cover
 
     def __delitem__(self, key: Union[Deb822FieldNameToken, str]) -> None:
-        if isinstance(key, Deb822FieldNameToken):
-            key = key.text
-        else:
-            key = _strI(key)
-        del self._kvpair_elements[key]
+        raise NotImplementedError  # pragma: no cover
 
-    def get(self, key: Union[Deb822FieldNameToken, str]) -> Optional[Deb822KeyValuePairElement]:
-        if isinstance(key, Deb822FieldNameToken):
-            key = key.text
-        else:
-            key = _strI(key)
-        return self._kvpair_elements.get(key)
+    def get(self, key: ParagraphKey) -> Optional[Deb822KeyValuePairElement]:
+        raise NotImplementedError  # pragma: no cover
 
     def set_field_to_simple_value(self, field_name: str, simple_value: str, *,
                                   preserve_original_field_comment: Optional[bool] = None,
@@ -655,6 +771,7 @@ class Deb822ParagraphElement(Deb822Element):
         if error_token:
             raise ValueError(f"Syntax error in new field value for {field_name}")
         paragraph = next(iter(deb822_file.paragraphs))
+        assert isinstance(paragraph, Deb822ValidParagraphElement)
         value = paragraph[field_name]
         if preserve_original_field_comment:
             original = self.get(value.field_name)
@@ -664,12 +781,195 @@ class Deb822ParagraphElement(Deb822Element):
 
         self[value.field_name] = value
 
+
+class Deb822ValidParagraphElement(Deb822ParagraphElement):
+    """Paragraph implementation optimized for valid deb822 files
+
+    When there are no duplicated fields, we can use simpler and faster
+    datastructures for common operations.
+    """
+
+    def __init__(self, kvpair_elements: List[Deb822KeyValuePairElement],
+                 kvpair_order: OrderedSet
+                 ) -> None:
+        super().__init__()
+        self._kvpair_elements = {kv.field_name: kv for kv in kvpair_elements}
+        self._kvpair_order = kvpair_order
+        self._init_parent_of_parts()
+
+    def __contains__(self, item: ParagraphKey) -> bool:
+        key, _ = _unpack_key(item, resolve_field_name=True, raise_if_indexed=True)
+        key = typing.cast('_strI', key)
+        return key in self._kvpair_elements
+
+    def __getitem__(self, item: ParagraphKey) -> Deb822KeyValuePairElement:
+        key, _ = _unpack_key(item, resolve_field_name=True, raise_if_indexed=True)
+        key = typing.cast('_strI', key)
+        return self._kvpair_elements[key]
+
+    def __setitem__(self, key: ParagraphKey,
+                    value: Deb822KeyValuePairElement) -> None:
+        key, _ = _unpack_key(key, raise_if_indexed=True)
+        if isinstance(key, Deb822FieldNameToken):
+            if key is not value.field_token:
+                raise ValueError("Key is a Deb822FieldNameToken, but not *the* Deb822FieldNameToken"
+                                 " for the value")
+            key = value.field_name
+        else:
+            if key != value.field_name:
+                raise ValueError("Cannot insert value under a different field value than field name"
+                                 " from its Deb822FieldNameToken implies")
+            # Use the string from the Deb822FieldNameToken as it is a _strI
+            key = value.field_name
+        original_value = self._kvpair_elements.get(key)
+        self._kvpair_elements[key] = value
+        self._kvpair_order.append(key)
+        if original_value is not None:
+            original_value.parent_element = None
+        value.parent_element = self
+
+    def __delitem__(self, key: Union[Deb822FieldNameToken, str]) -> None:
+        key, _ = _unpack_key(key, resolve_field_name=True, raise_if_indexed=True)
+        key = typing.cast('_strI', key)
+        del self._kvpair_elements[key]
+
+    def get(self, key: ParagraphKey) -> Optional[Deb822KeyValuePairElement]:
+        key, _ = _unpack_key(key, resolve_field_name=True, raise_if_indexed=True)
+        key = typing.cast('_strI', key)
+        return self._kvpair_elements.get(key)
+
     def sort_fields(self, key: Optional[Callable[[str], Any]] = None) -> None:
         self._kvpair_order = OrderedSet(sorted(self._kvpair_order, key=key))
 
     def iter_parts(self) -> Iterable[TokenOrElement]:
         yield from (self._kvpair_elements[x]
                     for x in typing.cast('Iterable[_strI]', self._kvpair_order))
+
+
+class Deb822InvalidParagraphElement(Deb822ParagraphElement):
+
+    def __init__(self, kvpair_elements: List[Deb822KeyValuePairElement]) -> None:
+        super().__init__()
+        self._kvpair_order: _LinkedList[Deb822KeyValuePairElement] = _LinkedList()
+        self._kvpair_elements: Dict[_strI, List[_LinkedListNode[Deb822KeyValuePairElement]]] = {}
+        for kv in kvpair_elements:
+            field_name = kv.field_name
+            node = self._kvpair_order.append(kv)
+            if field_name not in self._kvpair_elements:
+                self._kvpair_elements[field_name] = [node]
+            else:
+                self._kvpair_elements[field_name].append(node)
+        self._init_parent_of_parts()
+
+    def iter_parts(self) -> Iterable[TokenOrElement]:
+        yield from self._kvpair_order
+
+    def _get_item(self, item: ParagraphKey,
+                  use_get: bool = False) -> Optional[Deb822KeyValuePairElement]:
+        name_token: Optional[Deb822FieldNameToken]
+        key, index = _unpack_key(item)
+        if isinstance(key, Deb822FieldNameToken):
+            name_token = key
+            key = name_token.text
+        else:
+            name_token = None
+            key = _strI(key)
+        if use_get:
+            res = self._kvpair_elements.get(key)
+            if res is None:
+                return None
+        else:
+            res = self._kvpair_elements[key]
+        if index is None:
+            if len(res) != 1:
+                if name_token is not None:
+                    # if we are given a name token, then it is non-ambiguous if we have exactly
+                    # that name token in our list of nodes.  It will be an O(n) lookup but we
+                    # probably do not have that many duplicate fields (and even if do, it is not
+                    # exactly a valid file, so there little reason to optimize for it)
+                    for node in res:
+                        if name_token is node.value.field_token:
+                            return node.value
+
+                raise KeyError(f"Ambiguous key {key} - the field appears {len(res)} times. "
+                               f"Use ({key}, index) to denote which instance of the"
+                               f" field you want.  (Index can be 0..{len(res) - 1} or e.g. -1 to"
+                               " denote the last field)")
+            index = 0
+        return res[index].value
+
+    def __contains__(self, item: ParagraphKey) -> bool:
+        key, _ = _unpack_key(item, resolve_field_name=True)
+        key = typing.cast('_strI', key)
+        return key in self._kvpair_elements
+
+    def __getitem__(self, item: ParagraphKey) -> Deb822KeyValuePairElement:
+        v = self._get_item(item)
+        # Primarily as a hint to mypy
+        assert v is not None
+        return v
+
+    def __setitem__(self, key: ParagraphKey, value: Deb822KeyValuePairElement) -> None:
+        key, index = _unpack_key(key)
+        if isinstance(key, Deb822FieldNameToken):
+            if key is not value.field_token:
+                raise ValueError("Key is a Deb822FieldNameToken, but not *the* Deb822FieldNameToken"
+                                 " for the value")
+            key = value.field_name
+        else:
+            if key != value.field_name:
+                raise ValueError("Cannot insert value under a different field value than field name"
+                                 " from its Deb822FieldNameToken implies")
+            # Use the string from the Deb822FieldNameToken as it is a _strI
+            key = value.field_name
+        original_nodes = self._kvpair_elements.get(key)
+        if original_nodes is None or not original_nodes:
+            if index is not None and index != 0:
+                raise KeyError(f"Cannot replace field ({key}, {index}) as the field does not exist"
+                               f" in the first place.  Please index-less key or ({key}, 0) if you"
+                               " want to add the field.")
+            node = self._kvpair_order.append(value)
+            if key not in self._kvpair_elements:
+                self._kvpair_elements[key] = [node]
+            else:
+                self._kvpair_elements[key].append(node)
+            return
+
+        replace_all = False
+        if index is None:
+            replace_all = True
+            node = original_nodes[0]
+            if len(original_nodes) != 1:
+                self._kvpair_elements[key] = [node]
+        else:
+            # We insist on there being an original node, which as a side effect ensures
+            # you cannot add additional copies of the field.  This means that you cannot
+            # make the problem worse.
+            node = original_nodes[index]
+
+        # Replace the value of the existing node plus do a little dance
+        # for the parent element part.
+        node.value.parent_element = None
+        value.parent_element = self
+        node.value = value
+
+        if replace_all and len(original_nodes) != 1:
+            # If we were in a replace-all mode, discard any remaining nodes
+            for n in original_nodes[1:]:
+                n.value.parent_element = None
+                self._kvpair_order.remove_node(n)
+
+    def __delitem__(self, key: Union[Deb822FieldNameToken, str]) -> None:
+        key, _ = _unpack_key(key, resolve_field_name=True, raise_if_indexed=True)
+        key = typing.cast('_strI', key)
+        res = self._kvpair_elements[key]
+        for node in res:
+            node.value.parent_element = None
+            self._kvpair_order.remove_node(node)
+        del self._kvpair_elements[key]
+
+    def get(self, key: ParagraphKey) -> Optional[Deb822KeyValuePairElement]:
+        return self._get_item(key, use_get=True)
 
 
 class Deb822FileElement(Deb822Element):
@@ -681,9 +981,19 @@ class Deb822FileElement(Deb822Element):
         self._init_parent_of_parts()
 
     @property
-    def contains_error_elements(self) -> bool:
-        """Returns true if the file contains any error elements"""
-        return self.find_first_error_element() is not None
+    def is_valid_file(self) -> bool:
+        """Returns true if the file is valid
+
+        Invalid elements include error elements (Deb822ErrorElement) but also
+        issues such as paragraphs with duplicate fields or "empty" files
+        (a valid deb822 file contains at least one paragraph).
+        """
+        paragraphs = list(self.paragraphs)
+        if not paragraphs:
+            return False
+        if any(p for p in paragraphs if not isinstance(p, Deb822ValidParagraphElement)):
+            return False
+        return self.find_first_error_element() is None
 
     def find_first_error_element(self) -> Optional[Deb822ErrorElement]:
         """Returns the first Deb822ErrorToken (or None) in the file"""
@@ -949,8 +1259,11 @@ _combine_error_tokens_into_elements = _combine_parts(Deb822ErrorToken, Deb822Err
 _combine_comment_tokens_into_elements = _combine_parts(Deb822CommentToken, Deb822CommentElement)
 _combine_vl_elements_into_value_elements = _combine_parts(Deb822ValueLineElement,
                                                           Deb822ValueElement)
-_combine_kvp_elements_into_paragraphs = _combine_parts(Deb822KeyValuePairElement,
-                                                       Deb822ParagraphElement)
+_combine_kvp_elements_into_paragraphs = _combine_parts(
+    Deb822KeyValuePairElement,
+    Deb822ParagraphElement,
+    constructor=Deb822ParagraphElement.from_kvpairs
+    )
 
 
 def _non_end_of_line_token(v: TokenOrElement) -> bool:

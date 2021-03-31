@@ -30,7 +30,11 @@ else:
     Deb822ErrorToken = None
 
 RoundTripParseCase = collections.namedtuple('RoundTripParseCase',
-                                            ['input', 'error_element_count', 'paragraph_count'])
+                                            ['input',
+                                             'is_valid_file',
+                                             'error_element_count',
+                                             'paragraph_count',
+                                             ])
 
 # We use ¶ as "end of line" marker for two reasons in cases with optional whitespace:
 # - to show that we have it when you debug the test case
@@ -42,8 +46,16 @@ RoundTripParseCase = collections.namedtuple('RoundTripParseCase',
 # NB: As a side-effect of the implementation, the tests strips '¶' unconditionally.
 # Please another fancy glyph if you need to test non-standard characters.
 ROUND_TRIP_CASES = [
-    RoundTripParseCase(input='', error_element_count=0, paragraph_count=0),
-    RoundTripParseCase(input='A: b', error_element_count=0, paragraph_count=1),
+    RoundTripParseCase(input='',
+                       is_valid_file=False,
+                       error_element_count=0,
+                       paragraph_count=0
+                       ),
+    RoundTripParseCase(input='A: b',
+                       is_valid_file=True,
+                       error_element_count=0,
+                       paragraph_count=1
+                       ),
     RoundTripParseCase(input=textwrap.dedent('''\
                         Source: debhelper
                         # Trailing-whitespace
@@ -85,7 +97,9 @@ ROUND_TRIP_CASES = [
                         # Field that ends without a newline¶
                         Architecture: all¶'''),
                        paragraph_count=3,
-                       error_element_count=0),
+                       is_valid_file=True,
+                       error_element_count=0,
+                       ),
     RoundTripParseCase(input=textwrap.dedent('''\
                         Source: debhelper
                         # Missing colon
@@ -108,8 +122,38 @@ ROUND_TRIP_CASES = [
                         Package: libdebhelper-perl
                         '''),
                        paragraph_count=3,
-                       error_element_count=2),
-    # TODO: Add duplicate field to this
+                       is_valid_file=False,
+                       error_element_count=2,
+                       ),
+    RoundTripParseCase(input=textwrap.dedent('''\
+                        A: b
+                        B: c
+                        # Duplicate field
+                        A: b
+                        '''),
+                       is_valid_file=False,
+                       error_element_count=0,
+                       paragraph_count=1
+                       ),
+    RoundTripParseCase(input=textwrap.dedent('''\
+                    Is-Valid-Paragraph: yes
+
+                    Is-Valid-Paragraph: Definitely not
+                    Package: foo
+                    Package: bar
+                    Something-Else:
+                    # Some comment
+                     asd
+                    Package: baz
+                    Another-Field: foo
+                    Package: again
+                    I-Can-Haz-Package: ?
+                    Package: yes
+                    '''),
+                       is_valid_file=False,
+                       error_element_count=0,
+                       paragraph_count=2
+                       ),
 ]
 
 
@@ -145,6 +189,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
                              "Correct number of error tokens for case " + c)
             self.assertEqual(parse_case.paragraph_count, paragraphs,
                              "Correct number of paragraphs parsed for case " + c)
-            self.assertEqual(True if parse_case.error_element_count > 0 else False, deb822_file.contains_error_elements,
-                             "Verify deb822_file correctly determines whether there are errors for case " + c)
-            self.assertEqual(case_input, deb822_file.convert_to_text(), "Input of case " + c + " is round trip safe")
+            self.assertEqual(parse_case.is_valid_file, deb822_file.is_valid_file,
+                             "Verify deb822_file correctly determines whether the field is invalid"
+                             " for case " + c)
+            self.assertEqual(case_input, deb822_file.convert_to_text(),
+                             "Input of case " + c + " is round trip safe")
+            print("Successfully passed case " + c)
