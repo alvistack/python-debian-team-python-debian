@@ -15,7 +15,80 @@ T = TypeVar('T')
 TokenOrElement = Union['Deb822Element', 'Deb822Token']
 ParagraphKeyBase = Union['Deb822FieldNameToken', str]
 ParagraphKey = Union[ParagraphKeyBase, typing.Tuple[str, int]]
+Commentish = Union[List[str], 'Deb822CommentElement']
 
+
+_RE_WHITESPACE_LINE = re.compile(r'^\s+$')
+_RE_WHITESPACE = re.compile(r'\s+')
+# Consume whitespace and a single word.
+_RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
+    (?P<space_before>\s*)                # Consume any whitespace before the word
+                                         # The space only occurs in practise if the line starts
+                                         # with space.
+
+                                         # Optionally consume a word (needed to handle the case
+                                         # when there are no words left and someone applies this
+                                         # pattern to the remaining text). This is mostly here as
+                                         # a fail-safe.
+
+    (?P<word>\S+)                        # Consume the word (if present)
+    (?P<trailing_whitespace>\s*)         # Consume trailing whitespace
+''', re.VERBOSE)
+_RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
+    # This regex is slightly complicated by the fact that it should work with
+    # finditer and comsume the entire value.
+    #
+    # To do this, we structure the regex so it always starts on a comma (except
+    # for the first iteration, where we permit the absence of a comma)
+
+    (?:                                      # Optional space followed by a mandatory comma unless
+                                             # it is the start of the "line" (in which case, we
+                                             # allow the comma to be omitted)
+        ^
+        |
+        (?:
+            (?P<space_before_comma>\s*)      # This space only occurs in practise if the line
+                                             # starts with space + comma.
+            (?P<comma> ,)
+        )
+    )
+
+    # From here it is "optional space, maybe a word and then optional space" again.  One reason why
+    # all of it is optional is to gracefully cope with trailing commas.
+    (?P<space_before_word>\s*)
+    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma separated list.
+                                             # But surrounding whitespace is ignored
+    (?P<space_after_word>\s*)
+''', re.VERBOSE)
+
+# From Policy 5.1:
+#
+#    The field name is composed of US-ASCII characters excluding control
+#    characters, space, and colon (i.e., characters in the ranges U+0021
+#    (!) through U+0039 (9), and U+003B (;) through U+007E (~),
+#    inclusive). Field names must not begin with the comment character
+#    (U+0023 #), nor with the hyphen character (U+002D -).
+#
+# That combines to this regex of questionable readability
+_RE_FIELD_LINE = re.compile(r'''
+    ^                                          # Start of line
+    (?P<field_name>                            # Capture group for the field name
+        [\x21\x22\x24-\x2C\x2F-\x39\x3B-\x7F]  # First character
+        [\x21-\x39\x3B-\x7F]*                  # Subsequent characters (if any)
+    )
+    (?P<separator> : )
+    (?P<space_before_value> \s* )
+    (?:                                        # Field values are not mandatory on the same line
+                                               # as the field name.
+
+      (?P<value>  \S(?:.*\S)?  )               # Values must start and end on a "non-space"
+      (?P<space_after_value> \s* )             # We can have optional space after the value
+    )?
+''', re.VERBOSE)
+
+
+def _resolve_ref(ref: Optional[ReferenceType[T]]) -> Optional[T]:
+    return ref() if ref is not None else None
 
 
 class _LinkedListNode(Generic[T]):
@@ -117,79 +190,6 @@ class _LinkedList(Generic[T]):
             self._tail.insert_after(node)
             self._tail = node
         return node
-
-
-_RE_WHITESPACE_LINE = re.compile(r'^\s+$')
-_RE_WHITESPACE = re.compile(r'\s+')
-# Consume whitespace and a single word.
-_RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
-    (?P<space_before>\s*)                # Consume any whitespace before the word
-                                         # The space only occurs in practise if the line starts
-                                         # with space.
-
-                                         # Optionally consume a word (needed to handle the case
-                                         # when there are no words left and someone applies this
-                                         # pattern to the remaining text). This is mostly here as
-                                         # a fail-safe.
-
-    (?P<word>\S+)                        # Consume the word (if present)
-    (?P<trailing_whitespace>\s*)         # Consume trailing whitespace
-''', re.VERBOSE)
-_RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
-    # This regex is slightly complicated by the fact that it should work with
-    # finditer and comsume the entire value.
-    #
-    # To do this, we structure the regex so it always starts on a comma (except
-    # for the first iteration, where we permit the absence of a comma)
-
-    (?:                                      # Optional space followed by a mandatory comma unless
-                                             # it is the start of the "line" (in which case, we
-                                             # allow the comma to be omitted)
-        ^
-        |
-        (?:
-            (?P<space_before_comma>\s*)      # This space only occurs in practise if the line
-                                             # starts with space + comma.
-            (?P<comma> ,)
-        )
-    )
-
-    # From here it is "optional space, maybe a word and then optional space" again.  One reason why
-    # all of it is optional is to gracefully cope with trailing commas.
-    (?P<space_before_word>\s*)
-    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma separated list.
-                                             # But surrounding whitespace is ignored
-    (?P<space_after_word>\s*)
-''', re.VERBOSE)
-
-# From Policy 5.1:
-#
-#    The field name is composed of US-ASCII characters excluding control
-#    characters, space, and colon (i.e., characters in the ranges U+0021
-#    (!) through U+0039 (9), and U+003B (;) through U+007E (~),
-#    inclusive). Field names must not begin with the comment character
-#    (U+0023 #), nor with the hyphen character (U+002D -).
-#
-# That combines to this regex of questionable readability
-_RE_FIELD_LINE = re.compile(r'''
-    ^                                          # Start of line
-    (?P<field_name>                            # Capture group for the field name
-        [\x21\x22\x24-\x2C\x2F-\x39\x3B-\x7F]  # First character
-        [\x21-\x39\x3B-\x7F]*                  # Subsequent characters (if any)
-    )
-    (?P<separator> : )
-    (?P<space_before_value> \s* )
-    (?:                                        # Field values are not mandatory on the same line
-                                               # as the field name.
-
-      (?P<value>  \S(?:.*\S)?  )               # Values must start and end on a "non-space"
-      (?P<space_after_value> \s* )             # We can have optional space after the value
-    )?
-''', re.VERBOSE)
-
-
-def _resolve_ref(ref: Optional[ReferenceType[T]]) -> Optional[T]:
-    return ref() if ref is not None else None
 
 
 class Deb822Token:
@@ -596,6 +596,116 @@ def _unpack_key(item: ParagraphKey,
     return key, index
 
 
+def _convert_value_lines_to_lines(value_lines: Iterable[Deb822ValueLineElement],
+                                  strip_comments: bool
+                                  ) -> Iterable[str]:
+    if not strip_comments:
+        yield from (v.convert_to_text() for v in value_lines)
+    else:
+        for element in value_lines:
+            yield ''.join(x.text for x in element.iter_tokens()
+                          if not x.is_comment)
+
+
+class Deb822DictishParagraphWrapper:
+
+    def __init__(self,
+                 paragraph: 'Deb822ParagraphElement',
+                 *,
+                 discard_comments_on_read: bool = True,
+                 auto_map_initial_line_whitespace: bool = True,
+                 auto_resolve_ambiguous_fields: bool = False,
+                 preserve_field_comments_on_field_updates: bool = True
+                 ):
+        self._paragraph = paragraph
+        self.discard_comments_on_read = discard_comments_on_read
+        self.auto_map_initial_line_whitespace = auto_map_initial_line_whitespace
+        self.auto_resolve_ambiguous_fields = auto_resolve_ambiguous_fields
+        self.preserve_field_comments_on_field_updates = preserve_field_comments_on_field_updates
+
+    def __contains__(self, item: str) -> bool:
+        return item in self._paragraph
+
+    def _convert_value_to_str(self, kvpair_element: Deb822KeyValuePairElement) -> str:
+        value_element = kvpair_element.value_element
+        value_entries = value_element.value_lines
+        if len(value_entries) == 1:
+            # Special case single line entry (e.g. "Package: foo") as they never
+            # have comments and we can do some parts more efficient.
+            value_entry = value_entries[0]
+            t = value_entry.convert_to_text()
+            if self.auto_map_initial_line_whitespace:
+                t = t.strip()
+            return t
+
+        if not self.auto_map_initial_line_whitespace and not self.discard_comments_on_read:
+            # No rewrite necessary.
+            return value_element.convert_to_text()
+
+        converter = _convert_value_lines_to_lines(value_entries,
+                                                  self.discard_comments_on_read,
+                                                  )
+
+        auto_map_space = self.auto_map_initial_line_whitespace
+
+        # Because we know there are more than one line, we can unconditionally inject
+        # the newline after the first line
+        return ''.join(line.strip() + "\n" if auto_map_space and i == 1 else line
+                       for i, line in enumerate(converter, start=1)
+                       )
+
+    def get(self, item: str) -> Optional[str]:
+        if self.auto_resolve_ambiguous_fields:
+            v = self._paragraph.get((item, 0))
+        else:
+            v = self._paragraph.get(item)
+        if v is None:
+            return None
+        return self._convert_value_to_str(v)
+
+    def __getitem__(self, item: str) -> str:
+        if self.auto_resolve_ambiguous_fields:
+            v = self._paragraph[(item, 0)]
+        else:
+            v = self._paragraph[item]
+        return self._convert_value_to_str(v)
+
+    def __setitem__(self, field_name: str, value: str) -> None:
+        keep_comments: Optional[bool] = self.preserve_field_comments_on_field_updates
+        comment = None
+        if keep_comments and self.auto_resolve_ambiguous_fields:
+            # For ambiguous fields, we have to resolve the original field as
+            # the set_field_* methods do not cope with ambiguous fields.  This
+            # means we might as well clear the keep_comments flag as we have
+            # resolved the comment.
+            keep_comments = None
+            orig_kvpair = self._paragraph.get((field_name, 0))
+            if orig_kvpair is not None:
+                comment = orig_kvpair.comment_element
+
+        if self.auto_map_initial_line_whitespace:
+            if '\n' not in value and not value[0].isspace():
+                self._paragraph.set_field_to_simple_value(
+                    field_name,
+                    value,
+                    preserve_original_field_comment=keep_comments,
+                    field_comment=comment,
+                )
+                return
+        if not value.endswith("\n"):
+            raise ValueError("Values must end with a newline (or be single line"
+                             " values and use the auto whitespace mapping feature)")
+        self._paragraph.set_field_from_raw_string(
+            field_name,
+            value,
+            preserve_original_field_comment=keep_comments,
+            field_comment=comment,
+        )
+
+    def __delitem__(self, item: str) -> None:
+        del self._paragraph[item]
+
+
 class Deb822ParagraphElement(Deb822Element, ABC):
 
     @classmethod
@@ -612,6 +722,124 @@ class Deb822ParagraphElement(Deb822Element, ABC):
         # Fallback implementation, that can cope with the repeated field names
         # at the cost of complexity.
         return Deb822InvalidParagraphElement(kvpair_elements)
+
+    def as_dict_view(self,
+                     *,
+                     discard_comments_on_read: bool = True,
+                     auto_map_initial_line_whitespace: bool = True,
+                     auto_resolve_ambiguous_fields: bool = False,
+                     preserve_field_comments_on_field_updates: bool = True,
+                     ) -> Deb822DictishParagraphWrapper:
+        r"""Provide a Dict[str, str] like-view of this paragraph
+
+        This method returns a dict-like object representing this paragraph,
+        which attempts to hide most of the complexity of the
+        Deb822ParagraphElement at the expense of flexibility.
+
+            >>> example_deb822_paragraph = '''
+            ... Package: foo
+            ... # Field comment (because it becomes just before a field)
+            ... Depends: libfoo,
+            ... # Inline comment (associated with the next line)
+            ...          libbar,
+            ... '''
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> paragraph = next(iter(dfile.paragraphs))
+            >>> dictview = paragraph.as_dict_view()
+            >>> # With the defaults, you only deal with the semantic values
+            >>> # - no leading or trailing whitespace on the first part of the value
+            >>> dictview["Package"]
+            'foo'
+            >>> # - no inline comments in multiline values (but whitespace will be present
+            >>> #   subsequent lines.)
+            >>> print(dictview["Depends"], end='')
+            libfoo,
+                     libbar,
+            >>> dictview['Foo'] = 'bar'
+            >>> dictview.get('Foo')
+            'bar'
+            >>> dictview.get('Unknown-Field') is None
+            True
+            >>> # But you get asymmetric behaviour with set vs. get
+            >>> dictview['Foo'] = ' bar\n'
+            >>> dictview['Foo']
+            'bar'
+            >>> dictview['Bar'] = '     bar\n#Comment\n another value\n'
+            >>> dictview['Bar']
+            'bar\n another value\n'
+            >>> # The comment is present (in case you where wondering)
+            >>> print(paragraph['Bar'].convert_to_text(), end='')
+            Bar:     bar
+            #Comment
+             another value
+            >>> # On the other hand, you can choose to see the values as they are
+            >>> # - We will just reset the paragraph as a "nothing up my sleeve"
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> paragraph = next(iter(dfile.paragraphs))
+            >>> dictview = paragraph.as_dict_view()
+            >>> nonstd_dictview = paragraph.as_dict_view(
+            ...     discard_comments_on_read=False,
+            ...     auto_map_initial_line_whitespace=False,
+            ...     # For paragraphs with duplicate fields, this makes you always get the first
+            ...     # field
+            ...     auto_resolve_ambiguous_fields=True,
+            ... )
+            >>> # Because we have reset the state, Foo and Bar are no longer there.
+            >>> 'Bar' not in dictview and 'Foo' not in dictview
+            True
+            >>> # We can now see the comments (discard_comments_on_read=False)
+            >>> print(nonstd_dictview["Depends"], end="")
+             libfoo,
+            # Inline comment (associated with the next line)
+                     libbar,
+            >>> # And all the optional whitespace on the first value line
+            >>> # (auto_map_initial_line_whitespace=False)
+            >>> nonstd_dictview["Package"] == ' foo\n'
+            True
+            >>> # ... which will give you symmetric behaviour with set vs. get
+            >>> nonstd_dictview['Foo'] = '  bar \n'
+            >>> nonstd_dictview['Foo']
+            '  bar \n'
+            >>> nonstd_dictview['Bar'] = '  bar \n#Comment\n another value\n'
+            >>> nonstd_dictview['Bar']
+            '  bar \n#Comment\n another value\n'
+            >>> # But then you get no help either.
+            >>> try:
+            ...     nonstd_dictview["Baz"] = "foo"
+            ... except ValueError:
+            ...     print("Rejected")
+            Rejected
+            >>> # With auto_map_initial_line_whitespace=False, you have to include minimum a newline
+            >>> nonstd_dictview["Baz"] = "foo\n"
+            >>> # The absence of leading whitespace gives you the terse variant at the expensive
+            >>> # readability
+            >>> paragraph['Baz'].convert_to_text()
+            'Baz:foo\n'
+            >>> # But because they are views, changes performed via one view is visible in the other
+            >>> dictview['Foo']
+            'bar'
+            >>> 'Baz' in dictview and nonstd_dictview.get('Baz') is not None
+            True
+            >>> # Deletion also works
+            >>> del dictview['Baz']
+            >>> 'Baz' not in dictview and nonstd_dictview.get('Baz') is None
+            True
+
+
+        :param discard_comments_on_read: When getting a field value from the dict,
+          this parameter decides how in-line comments are handled.
+        :param auto_map_initial_line_whitespace:
+        :param preserve_field_comments_on_field_updates: Whether to preserve the field
+          comments when mutating the field.
+        :param auto_resolve_ambiguous_fields:
+        """
+        return Deb822DictishParagraphWrapper(
+            self,
+            discard_comments_on_read=discard_comments_on_read,
+            auto_map_initial_line_whitespace=auto_map_initial_line_whitespace,
+            auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields,
+            preserve_field_comments_on_field_updates=preserve_field_comments_on_field_updates,
+        )
 
     def __contains__(self, item: ParagraphKey) -> bool:
         raise NotImplementedError  # pragma: no cover
@@ -630,7 +858,7 @@ class Deb822ParagraphElement(Deb822Element, ABC):
 
     def set_field_to_simple_value(self, field_name: str, simple_value: str, *,
                                   preserve_original_field_comment: Optional[bool] = None,
-                                  field_comment: Optional[List[str]] = None,
+                                  field_comment: Optional[Commentish] = None,
                                   ) -> None:
         r"""Sets a field in this paragraph to a simple "word" or "phrase"
 
@@ -687,7 +915,7 @@ class Deb822ParagraphElement(Deb822Element, ABC):
 
     def set_field_from_raw_string(self, field_name: str, raw_string_value: str, *,
                                   preserve_original_field_comment: Optional[bool] = None,
-                                  field_comment: Optional[List[str]] = None,
+                                  field_comment: Optional[Commentish] = None,
                                   ) -> None:
         """Sets a field in this paragraph to a given text value
 
@@ -748,7 +976,9 @@ class Deb822ParagraphElement(Deb822Element, ABC):
                 raise ValueError('The "preserve_original_field_comment" conflicts with'
                                  ' "field_comment" parameter')
         elif field_comment is not None:
-            new_content.extend(_format_comment(x) for x in field_comment)
+            if not isinstance(field_comment, Deb822CommentElement):
+                new_content.extend(_format_comment(x) for x in field_comment)
+                field_comment = None
         else:
             preserve_original_field_comment = True
 
@@ -778,7 +1008,8 @@ class Deb822ParagraphElement(Deb822Element, ABC):
             if original:
                 value.comment_element = original.comment_element
                 original.comment_element = None
-
+        elif field_comment is not None:
+            value.comment_element = field_comment
         self[value.field_name] = value
 
 
