@@ -26,7 +26,7 @@ file if there are some entries, or ``None`` to create an empty changelog::
     ...     date=debian.changelog.format_date()
     ... )
     >>> ch.add_change('')
-    >>> print(ch)
+    >>> print(ch)   # doctest: +SKIP
     example (0.1) unstable; urgency=low
 
     -- Stuart Prescott <stuart@debian.org>  Sun, 08 Apr 2018 13:03:01 +1000
@@ -45,7 +45,7 @@ If you are only interested in the most recent version of the package then pass
     >>> print('''
     ...     Package: %s
     ...     Version: %s
-    ...     Urgency: %s''' % (ch.package, ch.version, ch.urgency))
+    ...     Urgency: %s''' % (ch.package, ch.version, ch.urgency))  # doctest: +SKIP
         Package: dpkg
         Version: 1.18.24
         Urgency: medium
