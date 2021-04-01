@@ -19,14 +19,24 @@
 
 """Tests for format preserving deb822"""
 import collections
+import contextlib
 import sys
 import textwrap
+from typing import Iterator
 from unittest import TestCase, SkipTest
 
 if sys.version_info >= (3, 9):
     from debian._deb822_repro import (parse_deb822_file,
                                       Deb822ErrorToken,
                                       AmbiguousDeb822FieldKeyError,
+                                      LIST_SPACE_SEPARATED_INTERPRETATION,
+                                      LIST_COMMA_SEPARATED_INTERPRETATION,
+                                      Interpretation,
+                                      Deb822KeyValuePairElement,
+                                      _print_ast,
+                                      Deb822ParsedTokenList,
+                                      VT,
+                                      ST,
                                       )
 else:
     parse_deb822_file = None
@@ -261,3 +271,233 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ''')
         self.assertEqual(expected, deb822_file.convert_to_text(),
                          "Fixed version should only have one Rules-Requires-Root field")
+
+    def test_interpretation(self):
+        # type: () -> None
+
+        if sys.version_info < (3, 9):
+            raise SkipTest('The format preserving parser assume python 3.9')
+
+        original = textwrap.dedent('''\
+        Package: foo
+        Architecture: amd64  i386
+        # Also on kfreebsd
+          kfreebsd-amd64  kfreebsd-i386
+        # With leading comma :)
+        Some-Comma-List: , a,  b , c
+        ''')
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file.paragraphs))
+
+        @contextlib.contextmanager
+        def _field_mutation_test(
+                kvpair,           # type: Deb822KeyValuePairElement
+                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VT, ST]]
+                expected_output,  # type: str
+                ):
+            # type: (...) -> Iterator[Deb822ParsedTokenList[VT, ST]]
+            original_value_element = kvpair.value_element
+            with kvpair.interpret_as(interpretation) as value_list:
+                yield value_list
+
+            # We always match without the field comment to keep things simple.
+            actual = kvpair.field_name + ":" + kvpair.value_element.convert_to_text()
+            try:
+                self.assertEqual(expected_output, actual)
+            except AssertionError:
+                print(" -- Debugging aid - START of AST for generated value --")
+                _print_ast(kvpair)
+                print(" -- Debugging aid - END of AST for generated value --")
+                raise
+            # Reset of value
+            kvpair.value_element = original_value_element
+            self.assertEqual(original, deb822_file.convert_to_text())
+
+        arch_kvpair = source_paragraph['Architecture']
+        comma_list_kvpair = source_paragraph['Some-Comma-List']
+        archs = arch_kvpair.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
+        comma_list_misread = comma_list_kvpair.interpret_as(
+            LIST_SPACE_SEPARATED_INTERPRETATION
+        )
+        self.assertEqual(['amd64', 'i386', 'kfreebsd-amd64', 'kfreebsd-i386'],
+                         [x.text for x in archs])
+        self.assertEqual([',', 'a,', 'b', ',', 'c'],
+                         [x.text for x in comma_list_misread])
+
+        comma_list_correctly_read = comma_list_kvpair.interpret_as(
+            LIST_COMMA_SEPARATED_INTERPRETATION
+        )
+
+        self.assertEqual(['a', 'b', 'c'],
+                         [x.text for x in comma_list_correctly_read])
+
+        # Interpretation must not change the content
+        self.assertEqual(original, deb822_file.convert_to_text())
+
+        # But we can choose to modify the content
+        expected_result = 'Some-Comma-List: , a,  b , c, d,e,\n'
+        with _field_mutation_test(comma_list_kvpair,
+                                  LIST_COMMA_SEPARATED_INTERPRETATION,
+                                  expected_result) as comma_list:
+            comma_list.no_reformatting_when_finished()
+            comma_list.append('d')
+            # We can also omit the space after a separator
+            comma_list.append_separator(space_after_separator=False)
+            comma_list.append('e')
+            comma_list.append_separator(space_after_separator=False)
+
+        # ... and this time we reformat to make it look nicer
+        expected_result = textwrap.dedent('''\
+            Some-Comma-List: a,
+                             c,
+            # Something important about "d"
+            #
+            # ... that spans multiple lines    ¶
+                             d,
+        ''').replace('¶', '')
+        with _field_mutation_test(comma_list_kvpair,
+                                  LIST_COMMA_SEPARATED_INTERPRETATION,
+                                  expected_result) as comma_list:
+            comma_list.reformat_when_finished()
+            comma_list.append_comment('Something important about "d"')
+            comma_list.append_comment('')
+            # We can control spacing by explicitly using "#" and "\n"
+            comma_list.append_comment('# ... that spans multiple lines    \n')
+            comma_list.append('d')
+            comma_list.remove('b')
+
+        # If we choose the wrong type of interpretation, the result should still be a valid Deb822 file
+        # (even if the contents gets a bit wrong).
+        expected_result = textwrap.dedent('''\
+             Some-Comma-List: ,
+                              a,
+                              b
+                              ,
+                              c
+                              d
+             ''')
+        with _field_mutation_test(comma_list_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as comma_list_misread:
+            comma_list_misread.reformat_when_finished()
+            comma_list_misread.append('d')
+
+        # This method also preserves existing comments
+        expected_result = textwrap.dedent('''\
+             Architecture: amd64  i386
+             # Also on kfreebsd
+               kfreebsd-amd64  kfreebsd-i386
+             # And now on hurd
+              hurd-amd64
+              hurd-i386
+             ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.no_reformatting_when_finished()
+            arch_list.append_comment("And now on hurd")
+            arch_list.append('hurd-amd64')
+            arch_list.append_newline()
+            arch_list.append('hurd-i386')
+
+        # ... removals and comments
+        expected_result = textwrap.dedent('''\
+             Architecture: amd64  linux-x32
+             # And now on hurd
+              hurd-amd64
+                 ''')
+
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.no_reformatting_when_finished()
+            arch_list.append_comment("And now on hurd")
+            arch_list.append('hurd-amd64')
+            arch_list.remove('kfreebsd-amd64')
+            arch_list.remove('kfreebsd-i386')
+            arch_list.replace('i386', 'linux-x32')
+
+        # Reformatting will also preserve comments
+        expected_result = textwrap.dedent('''\
+             Architecture: amd64
+                           i386
+             # Also on kfreebsd
+                           kfreebsd-amd64
+                           kfreebsd-i386
+             # And now on hurd
+                           hurd-amd64
+                           hurd-i386
+             ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.reformat_when_finished()
+            arch_list.append_newline()
+            arch_list.append_comment("And now on hurd")
+            arch_list.append('hurd-amd64')
+            arch_list.append('hurd-i386')
+
+        # Test removals of first and last value
+        expected_result = textwrap.dedent('''\
+            Architecture: i386
+            # Also on kfreebsd
+              kfreebsd-amd64¶
+                 ''').replace('¶', '')
+
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.no_reformatting_when_finished()
+            arch_list.remove('amd64')
+            arch_list.remove('kfreebsd-i386')
+
+        # Test removal of first line without comment will hoist up the next line
+        # - note eventually we might support keeping the comment by doing a
+        #   "\n# ...\n value".
+        expected_result = textwrap.dedent('''\
+            Architecture: kfreebsd-amd64  kfreebsd-i386
+                 ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.no_reformatting_when_finished()
+            arch_list.remove('amd64')
+            arch_list.remove('i386')
+
+        # Test removal of first line without comment will hoist up the next line
+        # This is only similar to the previous test case because we have not
+        # made the previous case preserve comments
+        expected_result = textwrap.dedent('''\
+            Architecture: hurd-amd64
+                 ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.no_reformatting_when_finished()
+            # Delete kfreebsd first (which will remove the comment)
+            arch_list.remove('kfreebsd-i386')
+            arch_list.remove('kfreebsd-amd64')
+            arch_list.append_newline()
+            arch_list.append('hurd-amd64')
+            arch_list.remove('amd64')
+            arch_list.remove('i386')
+
+        # Test deletion of the last value, which will clear the field
+        expected_result = textwrap.dedent('''\
+            Architecture: hurd-amd64
+                 ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.no_reformatting_when_finished()
+            arch_list.append_comment("This will not appear in the output")
+            assert arch_list
+            arch_list.remove('kfreebsd-i386')
+            arch_list.remove('kfreebsd-amd64')
+            arch_list.remove('amd64')
+            arch_list.remove('i386')
+            # Field should be cleared now.
+            assert not arch_list
+            # Add a value (as leaving the field empty would raise an error
+            # on leaving the with-statement)
+            arch_list.append('hurd-amd64')

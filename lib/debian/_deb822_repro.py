@@ -1,11 +1,13 @@
 import collections
 import collections.abc
+import contextlib
 import re
 import sys
 import typing
 import weakref
 from abc import ABC
-from typing import Iterable, List, Union, Dict, Optional, TypeVar, Callable, Any, Generic
+from types import TracebackType
+from typing import Iterable, Iterator, List, Union, Dict, Optional, TypeVar, Callable, Any, Generic
 from weakref import ReferenceType
 
 from .deb822 import _strI, OrderedSet
@@ -13,6 +15,12 @@ from .deb822 import _strI, OrderedSet
 
 T = TypeVar('T')
 TokenOrElement = Union['Deb822Element', 'Deb822Token']
+E = TypeVar('E', bound=TokenOrElement)
+R = TypeVar('R', bound='Deb822Element')
+S = TypeVar('S', bound=TokenOrElement)
+
+VT = TypeVar('VT', bound='Deb822Token')
+ST = TypeVar('ST', bound='Deb822Token')
 ParagraphKeyBase = Union['Deb822FieldNameToken', str]
 ParagraphKey = Union[ParagraphKeyBase, typing.Tuple[str, int]]
 Commentish = Union[List[str], 'Deb822CommentElement']
@@ -113,14 +121,26 @@ class _LinkedListNode(Generic[T]):
         self._previous_node = weakref.ref(node) if node is not None else None
 
     def remove(self) -> T:
-        _LinkedListNode._link_nodes(self.previous_node, self.next_node)
+        _LinkedListNode.link_nodes(self.previous_node, self.next_node)
         self.previous_node = None
         self.next_node = None
         return self.value
 
+    def iter_next(self, *, skip_current: bool = False) -> Iterator['_LinkedListNode[T]']:
+        node = self.next_node if skip_current else self
+        while node:
+            yield node
+            node = node.next_node
+
+    def iter_previous(self, *, skip_current: bool = False) -> Iterator['_LinkedListNode[T]']:
+        node = self.previous_node if skip_current else self
+        while node:
+            yield node
+            node = node.previous_node
+
     @staticmethod
-    def _link_nodes(previous_node: Optional['_LinkedListNode[T]'],
-                    next_node: Optional['_LinkedListNode[T]']) -> None:
+    def link_nodes(previous_node: Optional['_LinkedListNode[T]'],
+                   next_node: Optional['_LinkedListNode[T]']) -> None:
         if next_node:
             next_node.previous_node = previous_node
         if previous_node:
@@ -131,10 +151,11 @@ class _LinkedListNode(Generic[T]):
                      new_node: '_LinkedListNode[T]',
                      last_node: Optional['_LinkedListNode[T]']
                      ) -> None:
-        _LinkedListNode._link_nodes(first_node, new_node)
-        _LinkedListNode._link_nodes(new_node, last_node)
+        _LinkedListNode.link_nodes(first_node, new_node)
+        _LinkedListNode.link_nodes(new_node, last_node)
 
     def insert_after(self, new_node: '_LinkedListNode[T]') -> None:
+        assert self is not new_node and new_node is not self.next_node
         _LinkedListNode._insert_link(self, new_node, self.next_node)
 
 
@@ -147,59 +168,570 @@ class _LinkedList(Generic[T]):
     components like Deb822InvalidParagraphElement.
     """
 
-    __slots__ = ('_head', '_tail')
+    __slots__ = ('head_node', 'tail_node')
 
-    def __init__(self) -> None:
-        self._head: Optional[_LinkedListNode[T]] = None
-        self._tail: Optional[_LinkedListNode[T]] = None
+    def __init__(self, values: Optional[Iterable[T]] = None, /) -> None:
+        self.head_node: Optional[_LinkedListNode[T]] = None
+        self.tail_node: Optional[_LinkedListNode[T]] = None
+        if values is not None:
+            self.extend(values)
 
     def __bool__(self) -> bool:
-        return self._head is not None
+        return self.head_node is not None
 
-    def _iter_nodes(self) -> typing.Iterator[_LinkedListNode[T]]:
-        node = self._head
-        while node:
-            yield node
-            node = node.next_node
+    @property
+    def tail(self) -> Optional[T]:
+        return self.tail_node.value if self.tail_node is not None else None
+
+    def pop(self) -> None:
+        if self.tail_node is None:
+            raise IndexError('pop from empty list')
+        self.remove_node(self.tail_node)
+
+    def iter_nodes(self) -> typing.Iterator[_LinkedListNode[T]]:
+        head_node = self.head_node
+        if head_node is None:
+            return
+        yield from head_node.iter_next()
 
     def __iter__(self) -> typing.Iterator[T]:
-        yield from (node.value for node in self._iter_nodes())
+        yield from (node.value for node in self.iter_nodes())
 
     def __reversed__(self) -> typing.Iterator[T]:
-        node = self._tail
-        while node:
-            yield node.value
-            node = node.previous_node
+        tail_node = self.tail_node
+        if tail_node is None:
+            return
+        yield from (n.value for n in tail_node.iter_previous())
 
     def remove_node(self, node: _LinkedListNode[T]) -> None:
-        if node is self._head:
-            self._head = node.next_node
-            if self._head is None:
-                self._tail = None
-        elif node is self._tail:
-            self._tail = node.previous_node
+        if node is self.head_node:
+            self.head_node = node.next_node
+            if self.head_node is None:
+                self.tail_node = None
+        elif node is self.tail_node:
+            self.tail_node = node.previous_node
             # That case should have happened in the "if node is self._head"
             # part
-            assert self._tail is not None
+            assert self.tail_node is not None
         node.remove()
 
     def append(self, value: T) -> _LinkedListNode[T]:
         node = _LinkedListNode(value)
-        if self._head is None:
-            self._head = node
-            self._tail = node
+        if self.head_node is None:
+            self.head_node = node
+            self.tail_node = node
         else:
             # Primarily as a hint to mypy
-            assert self._tail is not None
-            self._tail.insert_after(node)
-            self._tail = node
+            assert self.tail_node is not None
+            self.tail_node.insert_after(node)
+            self.tail_node = node
         return node
+
+    def extend(self, values: Iterable[T]) -> None:
+        for v in values:
+            self.append(v)
+
+    def clear(self) -> None:
+        self.head_node = None
+        self.tail_node = None
+
+
+class Deb822ParsedTokenList(Generic[VT, ST],
+                            contextlib.AbstractContextManager['Deb822ParsedTokenList[VT, ST]']
+                            ):
+
+    def __init__(self,
+                 kvpair_element: 'Deb822KeyValuePairElement',
+                 interpreted_value_element: 'List[Deb822Token]',
+                 vtype: typing.Type[VT],
+                 stype: typing.Type[ST],
+                 tokenizer: Callable[[str], Iterable['Deb822Token']],
+                 default_separator_factory: Callable[[], ST],
+                 ) -> None:
+        self._kvpair_element = kvpair_element
+        self._token_list = _LinkedList(interpreted_value_element)
+        self._vtype = vtype
+        self._stype = stype
+        self._tokenizer = tokenizer
+        self._default_separator_factory = default_separator_factory
+        self._value_factory = _tokenizer_to_value_factory(tokenizer, vtype)
+        self._format_preserve_original_formatting = True
+        self._format_one_value_per_line = False
+        self._format_with_leading_whitespace_matching_field_length = False
+        self._format_trailing_separator_after_last_element = False
+        self._changed = False
+        assert self._token_list
+        last_token = self._token_list.tail
+
+        if last_token is not None and isinstance(last_token, Deb822NewlineAfterValueToken):
+            # We always remove the last newline (if present), because then
+            # adding values will happen after the last value rather than on
+            # a new line by default.
+            #
+            # On write, we always ensure the value ends on a newline (even
+            # if it did not before).  This is simpler and should be a
+            # non-issue in practise.
+            self._token_list.pop()
+
+    def __iter__(self) -> Iterator[E]:
+        yield from (v for v in self._token_list if isinstance(v, self._vtype))
+
+    def __bool__(self) -> bool:
+        return next(iter(self), None) is not None
+
+    def __exit__(self,
+                 exc_type: Optional[typing.Type[BaseException]],
+                 exc_val: Optional[BaseException],
+                 exc_tb: Optional[TracebackType]
+                 ) -> Optional[bool]:
+        if exc_type is None and self._changed:
+            self._update_field()
+        return super().__exit__(exc_type, exc_val, exc_tb)
+
+    def append_separator(self,
+                         space_after_separator: bool = True) -> None:
+
+        separator_token = self._default_separator_factory()
+        if separator_token.is_whitespace:
+            space_after_separator = False
+
+        self._changed = True
+        self._append_continuation_line_token_if_necessary()
+        self._token_list.append(separator_token)
+
+        if space_after_separator and not separator_token.is_whitespace:
+            self._token_list.append(Deb822WhitespaceToken(' '))
+
+    def replace(self, orig_value: str, new_value: str) -> None:
+        """Replace the first instance of a value with another"""
+        for node in self._token_list.iter_nodes():
+            if node.value.text == orig_value:
+                node.value = self._value_factory(new_value)
+                self._changed = True
+                break
+        else:
+            raise ValueError("list.replace(x, y): x not in list")
+
+    def remove(self, value: str) -> None:
+
+        vtype = self._vtype
+        for node in self._token_list.iter_nodes():
+            if node.value.text == value and isinstance(node.value, vtype):
+                node_to_remove = node
+                break
+        else:
+            raise ValueError("list.remove(x): x not in list")
+
+        self._changed = True
+
+        # We naively want to remove the node and every thing to the left of it
+        # until the previous value.  That is the basic idea for now (ignoring
+        # special-cases for now).
+        #
+        # Example:
+        #
+        # """
+        # Multiline-Keywords: bar[
+        # # Comment about foo
+        #                     foo]
+        #                     baz
+        # Keywords: bar[ foo] baz
+        # Comma-List: bar[, foo], baz,
+        # Multiline-Comma-List: bar[,
+        # # Comment about foo
+        #                       foo],
+        #                       baz,
+        # """
+        #
+        # Assuming we want to remove "foo" for the lists, the []-markers
+        # show what we aim to remove.  This has the nice side-effect of
+        # preserving whether nor not the value has a trailing separator.
+        # Note that we do *not* attempt to repair missing separators but
+        # it may fix duplicated separators by "accident".
+        #
+        # Now, there are two special cases to be aware of, where this approach
+        # has short comings:
+        #
+        # 1) If foo is the only value (in which case, "delete everything"
+        #    is the only option).
+        # 2) If foo is the first value
+        # 3) If foo is not the only value on the line and we see a comment
+        #    inside the deletion range.
+        #
+        # For 2) + 3), we attempt to flip and range to delete and every
+        # thing after it (up to but exclusion "baz") instead.  This
+        # definitely fixes 3), but 2) has yet another corner case, namely:
+        #
+        # """
+        # Multiline-Comma-List: foo,
+        # # Remark about bar
+        #                       bar,
+        # Another-Case: foo
+        # # Remark, also we use leading separator
+        #             , bar
+        # """
+        #
+        # The options include:
+        #
+        #  A) Discard the comment - brain-dead simple
+        #  B) Hoist the comment up to a field comment, but then what if the
+        #     field already has a comment?
+        #  C) Clear the first value line leaving just the newline and
+        #     replace the separator before "bar" (if present) with a space.
+        #     (leaving you with the value of the form "\n# ...\n      bar")
+        #
+
+        first_value_on_lhs: Optional[_LinkedListNode[Deb822Token]] = None
+        first_value_on_rhs: Optional[_LinkedListNode[Deb822Token]] = None
+        comment_before_previous_value = False
+        comment_before_next_value = False
+        for past_node in node_to_remove.iter_previous(skip_current=True):
+            past_token = past_node.value
+            if past_token.is_comment:
+                comment_before_previous_value = True
+                continue
+            if isinstance(past_token, vtype):
+                first_value_on_lhs = past_node
+                break
+
+        for future_node in node_to_remove.iter_next(skip_current=True):
+            future_token = future_node.value
+            if future_token.is_comment:
+                comment_before_next_value = True
+                continue
+            if isinstance(future_token, vtype):
+                first_value_on_rhs = future_node
+                break
+
+        if first_value_on_rhs is None and first_value_on_lhs is None:
+            # This was the last value, just remove everything.
+            self._token_list.clear()
+            return
+
+        if first_value_on_lhs is not None and not comment_before_previous_value:
+            # Delete left
+            delete_lhs_of_node = True
+        elif first_value_on_rhs is not None and not comment_before_next_value:
+            # Delete right
+            delete_lhs_of_node = False
+        else:
+            # There is a comment on either side (or no value on one and a
+            # comment and the other). Keep it simple, we just delete to
+            # one side (preferring deleting to left if possible).
+            delete_lhs_of_node = first_value_on_lhs is not None
+
+        if delete_lhs_of_node:
+            first_remain_lhs = first_value_on_lhs
+            first_remain_rhs = node_to_remove.next_node
+        else:
+            first_remain_lhs = node_to_remove.previous_node
+            first_remain_rhs = first_value_on_rhs
+
+        # Actual deletion - with some manual labour to update HEAD/TAIL of
+        # the list in case we do a "delete everything left/right this node".
+        if first_remain_lhs is None:
+            self._token_list.head_node = first_remain_rhs
+        if first_remain_rhs is None:
+            self._token_list.tail_node = first_remain_lhs
+        _LinkedListNode.link_nodes(first_remain_lhs, first_remain_rhs)
+
+    def append(self, value: str) -> None:
+        vt = self._value_factory(value)
+        self.append_value(vt)
+
+    def append_value(self, vt: VT) -> None:
+        value_parts = self._token_list
+        if value_parts:
+            needs_separator = False
+            stype = self._stype
+            vtype = self._vtype
+            for t in reversed(value_parts):
+                if isinstance(t, vtype):
+                    needs_separator = True
+                    break
+                if isinstance(t, stype):
+                    break
+
+            if needs_separator:
+                self.append_separator()
+        else:
+            # Looks nicer if there is a space before the very first value
+            self._token_list.append(Deb822WhitespaceToken(' '))
+        self._append_continuation_line_token_if_necessary()
+        self._changed = True
+        value_parts.append(vt)
+
+    def _previous_is_newline(self) -> bool:
+        tail = self._token_list.tail
+        return tail is not None and tail.text.endswith("\n")
+
+    def append_newline(self) -> None:
+        if self._previous_is_newline():
+            raise ValueError("Cannot add a newline after a token that ends on a newline")
+        self._token_list.append(Deb822NewlineAfterValueToken())
+
+    def append_comment(self, comment_text: str) -> None:
+        tail = self._token_list.tail
+        if tail is None or not tail.text.endswith('\n'):
+            self.append_newline()
+        comment_token = Deb822CommentToken(_format_comment(comment_text))
+        self._token_list.append(comment_token)
+
+    def _append_continuation_line_token_if_necessary(self) -> None:
+        tail = self._token_list.tail
+        if tail is not None and tail.text.endswith("\n"):
+            self._token_list.append(Deb822ValueContinuationToken())
+
+    def reformat_when_finished(self) -> None:
+        self._enable_reformatting()
+        self._changed = True
+
+    def _enable_reformatting(self) -> None:
+        self._format_one_value_per_line = True
+        self._format_with_leading_whitespace_matching_field_length = True
+        self._format_trailing_separator_after_last_element = True
+        self._format_preserve_original_formatting = False
+
+    def no_reformatting_when_finished(self) -> None:
+        self._format_one_value_per_line = False
+        self._format_with_leading_whitespace_matching_field_length = False
+        self._format_trailing_separator_after_last_element = False
+        self._format_preserve_original_formatting = True
+
+    def _generate_reformatted_field_content(self) -> str:
+        separator_token = self._default_separator_factory()
+        space_after_newline = ' '
+        separator_includes_newline = self._format_one_value_per_line
+        if separator_token.is_whitespace:
+            separator_as_text = ''
+        else:
+            separator_as_text = separator_token.text
+        if separator_includes_newline:
+            separator_with_space = separator_as_text + '\n '
+            if self._format_with_leading_whitespace_matching_field_length:
+                space_len = len(self._kvpair_element.field_name)
+                # Plus 2 (one for the separator and one for the space after it)
+                # This space already covers the mandatory space at the beginning
+                # of a continuation line
+                space_len += 2
+                separator_with_space = separator_as_text + '\n'
+                space_after_newline = ' ' * space_len
+        else:
+            separator_with_space = separator_as_text + ' '
+
+        vtype = self._vtype
+        token_iter: Iterator[Deb822Token] = (t for t in self._token_list
+                                             if t.is_comment or isinstance(t, vtype))
+
+        def _token_iter() -> Iterable[str]:
+            first_token: Optional[Deb822Token] = next(token_iter, None)
+            assert first_token is not None and isinstance(first_token, vtype)
+            # Leading space after ":"
+            yield ' '
+            # Not sure why mypy concludes that first_token must be "<nothing>"
+            # when it is clearly typed as a Deb822Token plus it would have
+            # passed an "assert isinstance" check too.
+            yield first_token.text  # type: ignore
+            pending_separator = True
+            ended_on_a_newline = False
+            last_token: Deb822Token = first_token
+            for t in token_iter:
+                if t.is_comment:
+                    if pending_separator:
+                        if separator_as_text:
+                            yield separator_as_text
+                    if not last_token.is_comment or not separator_includes_newline:
+                        yield "\n"
+                    yield t.text
+                    pending_separator = False
+                    ended_on_a_newline = True
+                else:
+                    if pending_separator:
+                        yield separator_with_space
+                        ended_on_a_newline = separator_includes_newline
+                    if ended_on_a_newline:
+                        yield space_after_newline
+                    yield t.text
+                    ended_on_a_newline = False
+                    pending_separator = True
+                last_token = t
+
+            # We do not support values ending on a comment
+            assert last_token is not None and not last_token.is_comment
+            if self._format_trailing_separator_after_last_element and separator_as_text:
+                yield separator_as_text
+            yield '\n'
+
+        return ''.join(_token_iter())
+
+    def _generate_field_content(self) -> str:
+        return "".join(t.text for t in self._token_list)
+
+    def _update_field(self) -> None:
+        kvpair_element = self._kvpair_element
+        field_name = kvpair_element.field_name
+        token_list = self._token_list
+        tail = token_list.tail
+
+        for t in token_list:
+            if not t.is_comment and not t.is_whitespace:
+                break
+        else:
+            raise ValueError("Field must have content (i.e. non-whitespace and non-comments)")
+
+        assert tail is not None
+        if tail.is_comment:
+            raise ValueError("Fields must not end on a comment")
+        if not tail.text.endswith("\n"):
+            # Always end on a newline
+            self.append_newline()
+
+        if self._format_preserve_original_formatting:
+            value_text = self._generate_field_content()
+        else:
+            value_text = self._generate_reformatted_field_content()
+        text = ':'.join((field_name, value_text))
+        new_content = text.splitlines(keepends=True)
+
+        # As absurd as it might seem, it is easier to just use the parser to
+        # construct the AST correctly
+        deb822_file = parse_deb822_file(iter(new_content))
+        error_token = deb822_file.find_first_error_element()
+        if error_token:
+            # _print_ast(deb822_file)
+            raise ValueError(f"Syntax error in new field value for {field_name}")
+        paragraph = next(iter(deb822_file.paragraphs))
+        assert isinstance(paragraph, Deb822ValidParagraphElement)
+        new_kvpair_element = paragraph[field_name]
+        kvpair_element.value_element = new_kvpair_element.value_element
+        self._changed = False
+
+
+class Interpretation(Generic[T]):
+
+    def interpret(self, kvpair_element: 'Deb822KeyValuePairElement') -> T:
+        raise NotImplementedError  # pragma: no cover
+
+
+class LineByLineBasedInterpretation(Interpretation[T]):
+
+    def __init__(self,
+                 tokenizer: Callable[[str], Iterable['Deb822Token']]):
+        super().__init__()
+        self._tokenizer = tokenizer
+
+    def _high_level_interpretation(self, kvpair_element: 'Deb822KeyValuePairElement',
+                                   token_list: List['Deb822Token']) -> T:
+        raise NotImplementedError  # pragma: no cover
+
+    def interpret(self, kvpair_element: 'Deb822KeyValuePairElement') -> T:
+        code = self._tokenizer
+        token_list: List['Deb822Token'] = []
+        for vl in kvpair_element.value_element.value_lines:
+            content_text = vl.convert_content_to_text()
+
+            value_parts = list(_check_line_is_covered(len(content_text),
+                                                      content_text,
+                                                      code(content_text)
+                                                      ))
+            if vl.comment_element:
+                token_list.extend(vl.comment_element.iter_tokens())
+            if vl.continuation_line_token:
+                token_list.append(vl.continuation_line_token)
+            token_list.extend(value_parts)
+            if vl.newline_token:
+                token_list.append(vl.newline_token)
+
+        return self._high_level_interpretation(kvpair_element, token_list)
+
+
+def _tokenizer_to_value_factory(tokenizer: Callable[[str], Iterable['Deb822Token']],
+                                vtype: typing.Type[VT],
+                                ) -> Callable[[str], VT]:
+    def _value_factory(v: str) -> VT:
+        if v == '':
+            raise ValueError("The empty string is not a value")
+        token_iter = iter(tokenizer(v))
+        t1: Optional[Union[Deb822Token, VT]] = next(token_iter, None)
+        t2 = next(token_iter, None)
+        assert t1 is not None, f'Bad tokenizer - it returned None (or no tokens) for "{v}"'
+        if t2 is not None:
+            raise ValueError(f'The input "{v}" should have been exactly one token,'
+                             ' but the tokenizer provided at least two.  This can'
+                             ' happen with unnecessary leading/trailing whitespace'
+                             ' or including commas the value for a comma list.')
+        if not isinstance(t1, vtype):
+            raise ValueError(f'The input "{v}" should have produced a token of type'
+                             f' {vtype.__name__}, but instead it produced {t1}.')
+
+        assert len(t1.text) == len(v), "Bad tokenizer - the token did not cover the input text" \
+                                       f" exactly ({len(t1.text)} != {len(v)}"
+        return t1
+
+    return _value_factory
+
+
+class ListInterpretation(LineByLineBasedInterpretation[Deb822ParsedTokenList[VT, ST]]):
+
+    def __init__(self,
+                 tokenizer: Callable[[str], Iterable['Deb822Token']],
+                 vtype: typing.Type[VT],
+                 stype: typing.Type[ST],
+                 default_separator_factory: Callable[[], ST],
+                 ) -> None:
+        super().__init__(tokenizer)
+        self._vtype = vtype
+        self._stype = stype
+        self._default_separator_factory = default_separator_factory
+
+    def _high_level_interpretation(self,
+                                   kvpair_element: 'Deb822KeyValuePairElement',
+                                   token_list: List['Deb822Token'],
+                                   ) -> Deb822ParsedTokenList[VT, ST]:
+        return Deb822ParsedTokenList(
+            kvpair_element,
+            token_list,
+            self._vtype,
+            self._stype,
+            self._tokenizer,
+            self._default_separator_factory,
+        )
+
+
+def _whitespace_separated_list_of_tokens(v: str) -> 'Iterable[Deb822Token]':
+    assert not _RE_WHITESPACE_LINE.match(v)
+    for match in _RE_WHITESPACE_SEPARATED_WORD_LIST.finditer(v):
+        space_before, word, space_after = match.groups()
+        if space_before:
+            yield Deb822SpaceSeparatorToken(sys.intern(space_before))
+        yield Deb822ValueToken(word)
+        if space_after:
+            yield Deb822SpaceSeparatorToken(sys.intern(space_after))
+
+
+def _comma_separated_list_of_tokens(v: str) -> 'Iterable[Deb822Token]':
+    assert not _RE_WHITESPACE_LINE.match(v)
+    for match in _RE_COMMA_SEPARATED_WORD_LIST.finditer(v):
+        space_before_comma, comma, space_before_word, word, space_after_word = match.groups()
+        if space_before_comma:
+            yield Deb822WhitespaceToken(sys.intern(space_before_comma))
+        if comma:
+            yield Deb822CommaToken()
+        if space_before_word:
+            yield Deb822WhitespaceToken(sys.intern(space_before_word))
+        if word:
+            yield Deb822ValueToken(word)
+        if space_after_word:
+            yield Deb822WhitespaceToken(sys.intern(space_after_word))
 
 
 class Deb822Token:
     """A token is an atomic syntactical element from a deb822 file
 
-    They form a long linked list of all tokens in the file.
+    A file is parsed into a series of tokens.  If these tokens are converted to
+    text in exactly the same order, you get exactly the same file - bit-for-bit.
+    Accordingly ever bit of text in a file must be assigned to exactly one
+    Deb822Token.
     """
 
     __slots__ = ('_text', '_hash', '_parent_element', '__weakref__')
@@ -364,7 +896,7 @@ class Deb822Element:
     def iter_parts(self) -> Iterable[TokenOrElement]:
         raise NotImplementedError  # pragma: no cover
 
-    def iter_parts_of_type(self, only_element_or_token_type: 'typing.Type[T]') -> 'Iterable[T]':
+    def iter_parts_of_type(self, only_element_or_token_type: 'typing.Type[E]') -> 'Iterable[E]':
         for part in self.iter_parts():
             if isinstance(part, only_element_or_token_type):
                 yield part
@@ -377,11 +909,11 @@ class Deb822Element:
                 yield part
 
     def iter_recurse(self, *,
-                     only_element_or_token_type: 'Optional[typing.Type[TokenOrElement]]' = None
-                     ) -> 'Iterable[TokenOrElement]':
+                     only_element_or_token_type: 'Optional[typing.Type[E]]' = None
+                     ) -> 'Iterable[E]':
         for part in self.iter_parts():
             if only_element_or_token_type is None or isinstance(part, only_element_or_token_type):
-                yield part
+                yield typing.cast('E', part)
             if isinstance(part, Deb822Element):
                 yield from part.iter_recurse(only_element_or_token_type=only_element_or_token_type)
 
@@ -436,7 +968,7 @@ class Deb822ValueLineElement(Deb822Element):
                  comment_element: 'Optional[Deb822CommentElement]',
                  continuation_line_token: 'Optional[Deb822ValueContinuationToken]',
                  leading_whitespace_token: 'Optional[Deb822WhitespaceToken]',
-                 value_tokens: 'List[TokenOrElement]',
+                 value_parts: 'List[TokenOrElement]',
                  trailing_whitespace_token: 'Optional[Deb822WhitespaceToken]',
                  # only optional if it is the last line of the file and the file does not
                  # end with a newline.
@@ -448,25 +980,55 @@ class Deb822ValueLineElement(Deb822Element):
         self._comment_element: 'Optional[Deb822CommentElement]' = comment_element
         self._continuation_line_token = continuation_line_token
         self._leading_whitespace_token: 'Optional[Deb822WhitespaceToken]' = leading_whitespace_token
-        self._value_tokens: 'List[TokenOrElement]' = value_tokens
+        self._value_tokens: 'List[TokenOrElement]' = value_parts
         self._trailing_whitespace_token = trailing_whitespace_token
         self._newline_token: 'Optional[Deb822WhitespaceToken]' = newline_token
         self._init_parent_of_parts()
 
     @property
-    def is_continuation_line(self) -> bool:
-        return self._continuation_line_token is not None
+    def comment_element(self) -> 'Optional[Deb822CommentElement]':
+        return self._comment_element
+
+    @property
+    def continuation_line_token(self) -> 'Optional[Deb822ValueContinuationToken]':
+        return self._continuation_line_token
+
+    @property
+    def newline_token(self) -> 'Optional[Deb822WhitespaceToken]':
+        return self._newline_token
+
+    def _iter_content_parts(self) -> Iterable[TokenOrElement]:
+        if self._leading_whitespace_token:
+            yield self._leading_whitespace_token
+        yield from self._value_tokens
+        if self._trailing_whitespace_token:
+            yield self._trailing_whitespace_token
+
+    def _iter_content_tokens(self) -> Iterable[Deb822Token]:
+        for part in self._iter_content_parts():
+            if isinstance(part, Deb822Element):
+                yield from part.iter_tokens()
+            else:
+                yield part
+
+    def convert_content_to_text(self) -> str:
+        if len(self._value_tokens) == 1 \
+                and not self._leading_whitespace_token \
+                and not self._trailing_whitespace_token \
+                and isinstance(self._value_tokens[0], Deb822Token):
+            # By default, we get a single value spanning the entire line
+            # (minus continuation line and newline but we are supposed to
+            # exclude those)
+            return self._value_tokens[0].text
+
+        return "".join(t.text for t in self._iter_content_tokens())
 
     def iter_parts(self) -> Iterable[TokenOrElement]:
         if self._comment_element:
             yield self._comment_element
         if self._continuation_line_token:
             yield self._continuation_line_token
-        if self._leading_whitespace_token:
-            yield self._leading_whitespace_token
-        yield from self._value_tokens
-        if self._trailing_whitespace_token:
-            yield self._trailing_whitespace_token
+        yield from self._iter_content_parts()
         if self._newline_token:
             yield self._newline_token
 
@@ -535,6 +1097,15 @@ class Deb822KeyValuePairElement(Deb822Element):
     @property
     def value_element(self) -> Deb822ValueElement:
         return self._value_element
+
+    @value_element.setter
+    def value_element(self, new_value: Deb822ValueElement) -> None:
+        self._value_element.clear_parent_if_parent(self)
+        self._value_element = new_value
+        new_value.parent_element = self
+
+    def interpret_as(self, interpreter: Interpretation[T]) -> T:
+        return interpreter.interpret(self)
 
     @property
     def comment_element(self) -> Optional[Deb822CommentElement]:
@@ -1232,10 +1803,8 @@ class Deb822FileElement(Deb822Element):
         return self.find_first_error_element() is None
 
     def find_first_error_element(self) -> Optional[Deb822ErrorElement]:
-        """Returns the first Deb822ErrorToken (or None) in the file"""
-        v = next((t for t in self.iter_recurse(only_element_or_token_type=Deb822ErrorElement)),
-                 None)
-        return typing.cast('Optional[Deb822ErrorElement]', v)
+        """Returns the first Deb822ErrorElement (or None) in the file"""
+        return next(iter(self.iter_recurse(only_element_or_token_type=Deb822ErrorElement)), None)
 
     @property
     def paragraphs(self) -> Iterable[Deb822ParagraphElement]:
@@ -1247,39 +1816,6 @@ class Deb822FileElement(Deb822Element):
     def write_to_fd(self, fd: typing.TextIO) -> None:
         for token in self.iter_tokens():
             fd.write(token.text)
-
-
-def _treat_everything_as_value(v: str) -> Iterable[Deb822Token]:
-    yield Deb822ValueToken(v)
-
-
-def _whitespace_separated_list_of_tokens(v: str) -> Iterable[Deb822Token]:
-    if _RE_WHITESPACE_LINE.match(v):
-        raise ValueError("Value lines in Deb822 cannot consist of entirely whitespace")
-    for match in _RE_WHITESPACE_SEPARATED_WORD_LIST.finditer(v):
-        space_before, word, space_after = match.groups()
-        if space_before:
-            yield Deb822WhitespaceToken(sys.intern(space_before))
-        yield Deb822ValueToken(word)
-        if space_after:
-            yield Deb822WhitespaceToken(sys.intern(space_after))
-
-
-def _comma_separated_list_of_tokens(v: str) -> Iterable[Deb822Token]:
-    if _RE_WHITESPACE_LINE.match(v):
-        raise ValueError("Value lines in Deb822 cannot consist of entirely whitespace")
-    for match in _RE_COMMA_SEPARATED_WORD_LIST.finditer(v):
-        space_before_comma, comma, space_before_word, word, space_after_word = match.groups()
-        if space_before_comma:
-            yield Deb822WhitespaceToken(sys.intern(space_before_comma))
-        if comma:
-            yield Deb822CommaToken()
-        if space_before_word:
-            yield Deb822WhitespaceToken(sys.intern(space_before_word))
-        if word:
-            yield Deb822ValueToken(word)
-        if space_after_word:
-            yield Deb822WhitespaceToken(sys.intern(space_after_word))
 
 
 class _BufferingIterator(collections.abc.Iterator[T]):
@@ -1329,13 +1865,19 @@ class _BufferingIterator(collections.abc.Iterator[T]):
         return list(self._buffer)
 
 
-def _check_line_is_covered(line_len: int, line: str, tokens: Iterable[Deb822Token]
+def _check_line_is_covered(line_len: int, line: str, stream: Iterable[TokenOrElement]
                            ) -> Iterable[Deb822Token]:
     # Fail-safe to ensure none of the value parsers incorrectly parse a value.
     covered = 0
-    for token in tokens:
-        covered += len(token.text)
-        yield token
+    for token_or_element in stream:
+        if isinstance(token_or_element, Deb822Element):
+            for token in token_or_element.iter_tokens():
+                covered += len(token.text)
+                yield token
+        else:
+            token = token_or_element
+            covered += len(token.text)
+            yield token
     if covered != line_len:
         if covered < line_len:
             raise ValueError(f"Value parser did not fully cover the entire line with tokens ("
@@ -1353,8 +1895,6 @@ def _tokenize_deb822_file(line_iter: Iterable[str]) -> Iterable[Deb822Token]:
     """
     current_field_name = None
     field_name_cache: Dict[str, _strI] = {}
-
-    value_parser = _treat_everything_as_value
 
     text_stream: _BufferingIterator[str] = _BufferingIterator(line_iter)
 
@@ -1400,7 +1940,7 @@ def _tokenize_deb822_file(line_iter: Iterable[str]) -> Iterable[Deb822Token]:
                     emit_newline_token = False
 
                 yield Deb822ValueContinuationToken()
-                yield from _check_line_is_covered(len(line), line, value_parser(line))
+                yield Deb822ValueToken(line)
                 if emit_newline_token:
                     yield Deb822NewlineAfterValueToken()
             else:
@@ -1445,7 +1985,7 @@ def _tokenize_deb822_file(line_iter: Iterable[str]) -> Iterable[Deb822Token]:
             if space_before:
                 yield Deb822WhitespaceToken(sys.intern(space_before))
             if value:
-                yield from _check_line_is_covered(len(value), value, value_parser(value))
+                yield Deb822ValueToken(value)
             if space_after:
                 yield Deb822WhitespaceToken(sys.intern(space_after))
             if emit_newline_token:
@@ -1453,9 +1993,6 @@ def _tokenize_deb822_file(line_iter: Iterable[str]) -> Iterable[Deb822Token]:
         else:
             yield Deb822ErrorToken(line)
 
-
-S = TypeVar('S', bound=TokenOrElement)
-R = TypeVar('R', bound=Deb822Element, covariant=True)
 
 _combine_parts_ret_type = Callable[
     [Iterable[Union[TokenOrElement, S]]],
@@ -1500,6 +2037,18 @@ _combine_kvp_elements_into_paragraphs = _combine_parts(
     Deb822ParagraphElement,
     constructor=Deb822ParagraphElement.from_kvpairs
     )
+
+
+LIST_SPACE_SEPARATED_INTERPRETATION = ListInterpretation(_whitespace_separated_list_of_tokens,
+                                                         Deb822ValueToken,
+                                                         Deb822SemanticallySignificantWhiteSpace,
+                                                         lambda: Deb822SpaceSeparatorToken(' '),
+                                                         )
+LIST_COMMA_SEPARATED_INTERPRETATION = ListInterpretation(_comma_separated_list_of_tokens,
+                                                         Deb822ValueToken,
+                                                         Deb822CommaToken,
+                                                         Deb822CommaToken,
+                                                         )
 
 
 def _non_end_of_line_token(v: TokenOrElement) -> bool:
