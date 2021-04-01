@@ -24,7 +24,10 @@ import textwrap
 from unittest import TestCase, SkipTest
 
 if sys.version_info >= (3, 9):
-    from debian._deb822_repro import parse_deb822_file, Deb822ErrorToken
+    from debian._deb822_repro import (parse_deb822_file,
+                                      Deb822ErrorToken,
+                                      AmbiguousDeb822FieldKeyError,
+                                      )
 else:
     parse_deb822_file = None
     Deb822ErrorToken = None
@@ -195,3 +198,66 @@ class FormatPreservingDeb822ParserTests(TestCase):
             self.assertEqual(case_input, deb822_file.convert_to_text(),
                              "Input of case " + c + " is round trip safe")
             print("Successfully passed case " + c)
+
+    def test_duplicate_fields(self):
+        # type: () -> None
+
+        if sys.version_info < (3, 9):
+            raise SkipTest('The format preserving parser assume python 3.9')
+
+        original = textwrap.dedent('''\
+        Source: foo
+        # Comment for RRR
+        Rules-Requires-Root: no
+        # Comment for S-V
+        Standards-Version: 1.2.3
+        Rules-Requires-Root: binary-targets
+        ''')
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file.paragraphs))
+        as_dict = source_paragraph.as_dict_view()
+        # Non-ambiguous fields are fine
+        self.assertEqual("foo", as_dict['Source'])
+        self.assertEqual("1.2.3", as_dict['Standards-Version'])
+        try:
+            v = as_dict['Rules-Requires-Root']
+            self.fail('Should have thrown an error, but extracted "' + v + '" instead')
+        except AmbiguousDeb822FieldKeyError:
+            pass
+        as_dict_auto_resolve = source_paragraph.as_dict_view(auto_resolve_ambiguous_fields=True)
+        self.assertEqual("foo", as_dict_auto_resolve['Source'])
+        self.assertEqual("1.2.3", as_dict_auto_resolve['Standards-Version'])
+        # Auto-resolution always takes the first field value
+        self.assertEqual("no", as_dict_auto_resolve['Rules-Requires-Root'])
+        # It should be possible to "fix" the duplicate field by setting the field explicitly
+        as_dict_auto_resolve['Rules-Requires-Root'] = as_dict_auto_resolve['Rules-Requires-Root']
+
+        expected_fixed = original.replace('Rules-Requires-Root: binary-targets\n', '')
+        self.assertEqual(expected_fixed, deb822_file.convert_to_text(),
+                         "Fixed version should only have one Rules-Requires-Root field")
+
+        # As an alternative, we can also fix the problem if we discard comments
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file.paragraphs))
+        as_dict_discard_comments = source_paragraph.as_dict_view(
+            preserve_field_comments_on_field_updates=False,
+            auto_resolve_ambiguous_fields=False,
+        )
+        # First, ensure the reset succeeded
+        try:
+            v = as_dict_discard_comments['Rules-Requires-Root']
+            self.fail('Should have thrown an error, but extracted "' + v + '" instead')
+        except AmbiguousDeb822FieldKeyError:
+            pass
+        as_dict_discard_comments["Rules-Requires-Root"] = "no"
+        # Test setter and deletion while we are at it
+        as_dict_discard_comments["New-Field"] = "value"
+        del as_dict_discard_comments["Standards-Version"]
+        as_dict_discard_comments['Source'] = 'bar'
+        expected = textwrap.dedent('''\
+        Source: bar
+        Rules-Requires-Root: no
+        New-Field: value
+        ''')
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Fixed version should only have one Rules-Requires-Root field")

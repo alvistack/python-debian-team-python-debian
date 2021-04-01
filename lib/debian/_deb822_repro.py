@@ -87,6 +87,10 @@ _RE_FIELD_LINE = re.compile(r'''
 ''', re.VERBOSE)
 
 
+class AmbiguousDeb822FieldKeyError(KeyError):
+    pass
+
+
 def _resolve_ref(ref: Optional[ReferenceType[T]]) -> Optional[T]:
     return ref() if ref is not None else None
 
@@ -1122,10 +1126,11 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
                         if name_token is node.value.field_token:
                             return node.value
 
-                raise KeyError(f"Ambiguous key {key} - the field appears {len(res)} times. "
-                               f"Use ({key}, index) to denote which instance of the"
-                               f" field you want.  (Index can be 0..{len(res) - 1} or e.g. -1 to"
-                               " denote the last field)")
+                raise AmbiguousDeb822FieldKeyError(f"Ambiguous key {key} - the field appears "
+                                                   f"{len(res)} times. Use ({key}, index) to"
+                                                   " denote which instance of the field you want."
+                                                   f" (Index can be 0..{len(res) - 1} or e.g. -1 to"
+                                                   " denote the last field)")
             index = 0
         return res[index].value
 
