@@ -12,10 +12,12 @@ import sys
 
 from debian import deb822
 
-for fname in sys.argv[1:]:
-    with open(fname) as f:
-    for stanza in deb822.Sources.iter_paragraphs(f):
-        pieces = stanza['version'].split('-')
-        if len(pieces) < 2:
-            print(stanza['package'])
+
+if __name__ == '__main__':
+    for fname in sys.argv[1:]:
+        with open(fname) as f:
+            for stanza in deb822.Sources.iter_paragraphs(f):
+                pieces = stanza['version'].split('-')
+                if len(pieces) < 2:
+                    print(stanza['package'])
 
