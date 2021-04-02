@@ -444,6 +444,11 @@ class OrderedSet(object):
         # Return an iterator of items in the order they were added
         return iter(self.__order)
 
+    def __reversed__(self):
+        # type: () -> Iterator[str]
+        # Return an iterator of items in the opposite order they were added
+        return iter(reversed(self.__order))
+
     def __len__(self):
         # type: () -> int
         return len(self.__order)
