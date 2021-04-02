@@ -22,7 +22,6 @@ import collections
 import contextlib
 import sys
 import textwrap
-from typing import Iterator
 from unittest import TestCase, SkipTest
 
 if sys.version_info >= (3, 9):
@@ -38,9 +37,12 @@ if sys.version_info >= (3, 9):
                                       VT,
                                       ST,
                                       )
+    from typing import Iterator, Tuple
 else:
     parse_deb822_file = None
     Deb822ErrorToken = None
+    Iterator = None
+    Tuple = None
 
 RoundTripParseCase = collections.namedtuple('RoundTripParseCase',
                                             ['input',
@@ -271,6 +273,94 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ''')
         self.assertEqual(expected, deb822_file.convert_to_text(),
                          "Fixed version should only have one Rules-Requires-Root field")
+
+    def test_sorting(self):
+        # type: () -> None
+
+        if sys.version_info < (3, 9):
+            raise SkipTest('The format preserving parser assume python 3.9')
+
+        name_order = {
+            f: i
+            for i, f in enumerate([
+                'source',
+                'priority'
+            ], start=0)
+        }
+
+        def key_func(field_name):
+            # type: (str) -> Tuple[int, str]
+            field_name_lower = field_name.lower()
+            order = name_order.get(field_name_lower)
+            if order is not None:
+                return order, field_name_lower
+            return len(name_order), field_name_lower
+
+        # Note the lack of trailing newline is deliberate.
+        # We want to ensure that sorting cannot trash the file even if the last
+        # field does not end with a newline
+        original_nodups = textwrap.dedent('''\
+        Source: foo
+        # Comment for RRR
+        Rules-Requires-Root: no
+        # Comment for S-V
+        Standards-Version: 1.2.3
+        Build-Depends: foo
+        # With inline comment
+                       bar
+        Priority: optional''')
+
+        sorted_nodups = textwrap.dedent('''\
+        Source: foo
+        Priority: optional
+        Build-Depends: foo
+        # With inline comment
+                       bar
+        # Comment for RRR
+        Rules-Requires-Root: no
+        # Comment for S-V
+        Standards-Version: 1.2.3
+        ''')
+
+        original_with_dups = textwrap.dedent('''\
+        Source: foo
+        # Comment for RRR
+        Rules-Requires-Root: no
+        # Comment for S-V
+        Standards-Version: 1.2.3
+        Priority: optional
+        # Comment for Second instance of RRR
+        Rules-Requires-Root: binary-targets
+        Build-Depends: foo
+        # With inline comment
+                       bar''')
+        sorted_with_dups = textwrap.dedent('''\
+        Source: foo
+        Priority: optional
+        Build-Depends: foo
+        # With inline comment
+                       bar
+        # Comment for RRR
+        Rules-Requires-Root: no
+        # Comment for Second instance of RRR
+        Rules-Requires-Root: binary-targets
+        # Comment for S-V
+        Standards-Version: 1.2.3
+        ''')
+
+        deb822_file_nodups = parse_deb822_file(original_nodups.splitlines(keepends=True))
+        for paragraph in deb822_file_nodups.paragraphs:
+            paragraph.sort_fields(key=key_func)
+
+        self.assertEqual(sorted_nodups, deb822_file_nodups.convert_to_text(),
+                         "Sorting without duplicated fields work")
+        deb822_file_with_dups = parse_deb822_file(original_with_dups.splitlines(keepends=True))
+
+        for paragraph in deb822_file_with_dups.paragraphs:
+            paragraph.sort_fields(key=key_func)
+
+        self.assertEqual(sorted_with_dups, deb822_file_with_dups.convert_to_text(),
+                         "Sorting with duplicated fields work")
 
     def test_interpretation(self):
         # type: () -> None

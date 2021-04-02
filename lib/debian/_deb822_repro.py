@@ -1,6 +1,7 @@
 import collections
 import collections.abc
 import contextlib
+import operator
 import re
 import sys
 import typing
@@ -997,6 +998,10 @@ class Deb822ValueLineElement(Deb822Element):
     def newline_token(self) -> 'Optional[Deb822WhitespaceToken]':
         return self._newline_token
 
+    def add_newline_if_missing(self) -> None:
+        if self._newline_token is None:
+            self._newline_token = Deb822NewlineAfterValueToken()
+
     def _iter_content_parts(self) -> Iterable[TokenOrElement]:
         if self._leading_whitespace_token:
             yield self._leading_whitespace_token
@@ -1048,6 +1053,10 @@ class Deb822ValueElement(Deb822Element):
 
     def iter_parts(self) -> Iterable[TokenOrElement]:
         yield from self._value_entry_elements
+
+    def add_final_newline_if_missing(self) -> None:
+        if self._value_entry_elements:
+            self._value_entry_elements[-1].add_newline_if_missing()
 
 
 class Deb822CommentElement(Deb822Element):
@@ -1431,6 +1440,9 @@ class Deb822ParagraphElement(Deb822Element, ABC):
     def get(self, key: ParagraphKey) -> Optional[Deb822KeyValuePairElement]:
         raise NotImplementedError  # pragma: no cover
 
+    def sort_fields(self, key: Optional[Callable[[str], Any]] = None) -> None:
+        raise NotImplementedError  # pragma: no cover
+
     def set_field_to_simple_value(self, field_name: str, simple_value: str, *,
                                   preserve_original_field_comment: Optional[bool] = None,
                                   field_comment: Optional[Commentish] = None,
@@ -1645,6 +1657,11 @@ class Deb822ValidParagraphElement(Deb822ParagraphElement):
         return self._kvpair_elements.get(key)
 
     def sort_fields(self, key: Optional[Callable[[str], Any]] = None) -> None:
+        for last_field_name in reversed(self._kvpair_order):
+            last_kvpair = self._kvpair_elements[typing.cast('_strI', last_field_name)]
+            last_kvpair.value_element.add_final_newline_if_missing()
+            break
+
         self._kvpair_order = OrderedSet(sorted(self._kvpair_order, key=key))
 
     def iter_parts(self) -> Iterable[TokenOrElement]:
@@ -1658,14 +1675,19 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
         super().__init__()
         self._kvpair_order: _LinkedList[Deb822KeyValuePairElement] = _LinkedList()
         self._kvpair_elements: Dict[_strI, List[_LinkedListNode[Deb822KeyValuePairElement]]] = {}
-        for kv in kvpair_elements:
+        self._init_kvpair_fields(kvpair_elements)
+        self._init_parent_of_parts()
+
+    def _init_kvpair_fields(self, kvpairs: Iterable[Deb822KeyValuePairElement]) -> None:
+        assert not self._kvpair_order
+        assert not self._kvpair_elements
+        for kv in kvpairs:
             field_name = kv.field_name
             node = self._kvpair_order.append(kv)
             if field_name not in self._kvpair_elements:
                 self._kvpair_elements[field_name] = [node]
             else:
                 self._kvpair_elements[field_name].append(node)
-        self._init_parent_of_parts()
 
     def iter_parts(self) -> Iterable[TokenOrElement]:
         yield from self._kvpair_order
@@ -1777,6 +1799,28 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
 
     def get(self, key: ParagraphKey) -> Optional[Deb822KeyValuePairElement]:
         return self._get_item(key, use_get=True)
+
+    def sort_fields(self, key: Optional[Callable[[str], Any]] = None) -> None:
+        actual_key: Callable[[Deb822KeyValuePairElement], Any]
+        if key is not None:
+            # Work around mypy that cannot seem to shred the Optional notion
+            # without this little indirection
+            key_impl = key
+
+            def _actual_key(kvpair: Deb822KeyValuePairElement) -> Any:
+                return key_impl(kvpair.field_name)
+
+            actual_key = _actual_key
+        else:
+            actual_key = operator.attrgetter('field_name')
+        for last_kvpair in reversed(self._kvpair_order):
+            last_kvpair.value_element.add_final_newline_if_missing()
+            break
+
+        sorted_kvpair_list = sorted(self._kvpair_order, key=actual_key)
+        self._kvpair_order = _LinkedList()
+        self._kvpair_elements = {}
+        self._init_kvpair_fields(sorted_kvpair_list)
 
 
 class Deb822FileElement(Deb822Element):
