@@ -315,7 +315,6 @@ except ImportError:
         Deb822Mapping = None
         InputDataType = None
 
-
 from debian.deprecation import function_deprecated_by
 import debian.debian_support
 import debian.changelog
@@ -817,6 +816,14 @@ class Deb822(Deb822Dict):
     _single = re.compile(_key_part + r"(?P<data>\S.*?)\s*$")
     _multi = re.compile(_key_part + r"$")
     _multidata = re.compile(r"^\s(?P<data>.+?)\s*$")
+
+    # Explicit source entries in the file can be either:
+    #   Source: source_package
+    #   Source: source_package (1.2.3-1)
+    _explicit_source_re = re.compile(
+        r"(?P<source>[^ ]+)"
+        r"( \((?P<version>.+)\))?"
+    )
 
     def _internal_parser(self,
                          sequence,      # type: InputDataType
@@ -2030,7 +2037,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         '']
     """
     _multivalued_fields = {
-        "files": ["md5sum", "size", "section", "priority", "name"],
+        "checksums-md5": ["md5", "size", "name"],
         "checksums-sha1": ["sha1", "size", "name"],
         "checksums-sha256": ["sha256", "size", "name"],
         "checksums-sha512": ["sha512", "size", "name"],
@@ -2043,6 +2050,12 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         # type: (*Any, **Any) -> None
         _gpg_multivalued.__init__(self, *args, **kwargs)
         _PkgRelationMixin.__init__(self, *args, **kwargs)
+
+    def _get_array_value(self, field):
+        # type: (str) -> Optional[List[str]]
+        if field not in self:
+            raise KeyError("'{}' not found in buildinfo".format(field))
+        return list(self[field].replace('\n', '').strip().split())
 
     def get_environment(self):
         # type: () -> Dict[str, str]
@@ -2073,6 +2086,72 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         chlines = self['Binary-Only-Changes'].splitlines()
         chlines = ['' if s == ' .' else s[1:] for s in chlines]
         return debian.changelog.Changelog(chlines)
+
+    def get_source(self):
+        # type: () -> Tuple[str, str]
+        if 'source' not in self:
+            raise KeyError("'Source' field not found in buildinfo")
+        matches = self._explicit_source_re.match(self['source'])
+        if not matches:
+            raise ValueError("Invalid 'Source' field specified")
+        return matches.group('source'), matches.group('version')
+
+    def get_binary(self):
+        # type: () -> Optional[List[str]]
+        return self._get_array_value('Binary')
+
+    def get_debian_suite(self):
+        # type: () -> str
+        """Returns the Debian suite suited for debootstraping the build
+        environment as described by the .buildinfo file.
+        (For *re*building we cannot base upon packages from sid as else
+        we might be forced to downgrades which are not supported.)
+        This is then used by rebuilders usage of debootstrap for
+        rebuilding the underling packages.
+        """
+        debian_suite = 'sid'
+        for pkg in self.relations['installed-build-depends']:  # type: ignore
+            if pkg[0]['name'] == "base-files":
+                _, version = pkg[0]['version']
+                try:
+                    version = str(int(float(version)))
+                except ValueError:
+                    break
+                for rel in debian.debian_support._release_list.values():
+                    if rel and rel.version == version:
+                        debian_suite = str(rel)
+                        break
+        return debian_suite
+
+    def get_build_date(self):
+        # type: () -> datetime.datetime
+        if 'build-date' not in self:
+            raise KeyError("'Build-Date' field not found in buildinfo")
+        timearray = email.utils.parsedate_tz(self['build-date'])
+        if timearray is None:
+            raise ValueError("Invalid 'Build-Date' field specified")
+        ts = email.utils.mktime_tz(timearray)
+        return datetime.datetime.fromtimestamp(ts)
+
+    def get_architecture(self):
+        # type: () -> Optional[List[str]]
+        return self._get_array_value('Architecture')
+
+    def is_build_source(self):
+        # type: () -> bool
+        arches = [arch for arch in self.get_architecture()  # type: ignore
+                  if arch == "source"]
+        return len(arches) == 1
+
+    def is_build_arch_all(self):
+        # type: () -> bool
+        return 'all' in self.get_architecture()  # type: ignore
+
+    def is_build_arch_any(self):
+        # type: () -> bool
+        arches = [arch for arch in self.get_architecture()  # type: ignore
+                  if arch not in ("all", "source")]
+        return len(arches) == 1
 
     class _EnvParserState():
         # trivial enum for the deserialiser
@@ -2352,14 +2431,6 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
             }
         return super(Packages, cls).iter_paragraphs(
             sequence, fields, use_apt_pkg, shared_storage, encoding, strict)
-
-    # Explicit source entries in the file can be either:
-    #   Source: source_package
-    #   Source: source_package (1.2.3-1)
-    _explicit_source_re = re.compile(
-        r"(?P<source>[^ ]+)"
-        r"( \((?P<version>.+)\))?"
-    )
 
     @property
     def source(self):
