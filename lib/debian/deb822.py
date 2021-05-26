@@ -2102,10 +2102,12 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
 
     def get_debian_suite(self):
         # type: () -> str
-        """Returns the Debian suite used to generate the buildinfo.
-
-        Such information is used by Debian rebuilders in order to know
-        which Debian suite to debootstrap for rebuilding the underling packages.
+        """Returns the Debian suite suited for debootstraping the build
+        environment as described by the .buildinfo file.
+        (For *re*building we cannot base upon packages from sid as else
+        we might be forced to downgrades which are not supported.)
+        This is then used by rebuilders usage of debootstrap for
+        rebuilding the underling packages.
         """
         debian_suite = 'sid'
         for pkg in self.relations['installed-build-depends']:  # type: ignore
