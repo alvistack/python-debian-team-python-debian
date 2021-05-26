@@ -2102,6 +2102,11 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
 
     def get_debian_suite(self):
         # type: () -> str
+        """Returns the Debian suite used to generate the buildinfo.
+
+        Such information is used by Debian rebuilders in order to know
+        which Debian suite to use for rebuilding the underling packages.
+        """
         debian_suite = 'sid'
         for pkg in self.relations['installed-build-depends']:  # type: ignore
             if pkg[0]['name'] == "base-files":
