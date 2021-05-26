@@ -2105,7 +2105,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         """Returns the Debian suite used to generate the buildinfo.
 
         Such information is used by Debian rebuilders in order to know
-        which Debian suite to use for rebuilding the underling packages.
+        which Debian suite to debootstrap for rebuilding the underling packages.
         """
         debian_suite = 'sid'
         for pkg in self.relations['installed-build-depends']:  # type: ignore
