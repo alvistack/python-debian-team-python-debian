@@ -2054,7 +2054,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
     def _get_array_value(self, field):
         # type: (str) -> Optional[List[str]]
         if field not in self:
-            raise ValueError("'{}' not found in buildinfo".format(field))
+            raise KeyError("'{}' not found in buildinfo".format(field))
         return list(self[field].replace('\n', '').strip().split())
 
     def get_environment(self):
@@ -2090,7 +2090,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
     def get_source(self):
         # type: () -> Tuple[str, str]
         if 'source' not in self:
-            raise ValueError("'Source' field not found in buildinfo")
+            raise KeyError("'Source' field not found in buildinfo")
         matches = self._explicit_source_re.match(self['source'])
         if not matches:
             raise ValueError("Invalid 'Source' field specified")
@@ -2124,7 +2124,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
     def get_build_date(self):
         # type: () -> datetime.datetime
         if 'build-date' not in self:
-            raise ValueError("'Build-Date' field not found in buildinfo")
+            raise KeyError("'Build-Date' field not found in buildinfo")
         timearray = email.utils.parsedate_tz(self['build-date'])
         if timearray is None:
             raise ValueError("Invalid 'Build-Date' field specified")
