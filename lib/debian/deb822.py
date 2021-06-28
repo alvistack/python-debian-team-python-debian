@@ -2101,29 +2101,6 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         # type: () -> Optional[List[str]]
         return self._get_array_value('Binary')
 
-    def get_debian_suite(self):
-        # type: () -> str
-        """Returns the Debian suite suited for debootstraping the build
-        environment as described by the .buildinfo file.
-        (For *re*building we cannot base upon packages from sid as else
-        we might be forced to downgrades which are not supported.)
-        This is then used by rebuilders usage of debootstrap for
-        rebuilding the underling packages.
-        """
-        debian_suite = 'sid'
-        for pkg in self.relations['installed-build-depends']:  # type: ignore
-            if pkg[0]['name'] == "base-files":
-                _, version = pkg[0]['version']
-                try:
-                    version = str(int(float(version)))
-                except ValueError:
-                    break
-                for rel in debian.debian_support._release_list.values():
-                    if rel and rel.version == version:
-                        debian_suite = str(rel)
-                        break
-        return debian_suite
-
     def get_build_date(self):
         # type: () -> datetime.datetime
         if 'build-date' not in self:
