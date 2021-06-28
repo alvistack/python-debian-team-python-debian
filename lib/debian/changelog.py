@@ -17,19 +17,30 @@ file if there are some entries, or ``None`` to create an empty changelog::
 
     >>> import debian.changelog
     >>> ch = debian.changelog.Changelog()
+    >>> maintainer, email = 'John Doe', 'joe@example.com'
+    >>> timestamp = 1617222715
+    >>> # You might want to use get_maintainer() a la:
+    >>> # maintainer, email = debian.changelog.get_maintainer()
     >>> ch.new_block(
     ...     package='example',
     ...     version='0.1',
     ...     distributions='unstable',
     ...     urgency='low',
-    ...     author="%s <%s>" % debian.changelog.get_maintainer(),
-    ...     date=debian.changelog.format_date()
+    ...     author="%s <%s>" % (maintainer, email),
+    ...     # You can also omit timestamp, if you are fine with "now"
+    ...     # We use a hard-coded timestamp for deterministic output
+    ...     date=debian.changelog.format_date(timestamp=1617222715, localtime=False)
     ... )
     >>> ch.add_change('')
-    >>> print(ch)
+    >>> ch.add_change(' * Some change')
+    >>> ch.add_change('')
+    >>> print(ch, end='')
     example (0.1) unstable; urgency=low
-
-    -- Stuart Prescott <stuart@debian.org>  Sun, 08 Apr 2018 13:03:01 +1000
+    <BLANKLINE>
+     * Some change
+    <BLANKLINE>
+     -- John Doe <joe@example.com>  Wed, 31 Mar 2021 20:31:55 -0000
+    <BLANKLINE>
 
 
 If you have the full contents of a changelog, but are only interested in the
@@ -45,7 +56,7 @@ If you are only interested in the most recent version of the package then pass
     >>> print('''
     ...     Package: %s
     ...     Version: %s
-    ...     Urgency: %s''' % (ch.package, ch.version, ch.urgency))
+    ...     Urgency: %s''' % (ch.package, ch.version, ch.urgency))  # doctest: +SKIP
         Package: dpkg
         Version: 1.18.24
         Urgency: medium

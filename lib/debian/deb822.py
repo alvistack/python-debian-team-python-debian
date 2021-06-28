@@ -128,13 +128,14 @@ Example::
 
     >>> from debian.deb822 import Deb822
     >>> filename = '/var/lib/apt/lists/deb.debian.org_debian_dists_sid_InRelease'
-    >>> with open(filename) as fh:
+    >>> with open(filename) as fh: # doctest: +SKIP
     ...     rel = Deb822(fh)
-    >>> print('Origin: {Origin}\\nCodename: {Codename}\\nDate: {Date}'.format_map(rel))
+    >>> print('Origin: {Origin}\\nCodename: {Codename}\\nDate: {Date}'.format_map( # doctest: +SKIP
+    ...       rel))
     Origin: Debian
     Codename: sid
     Date: Sat, 07 Apr 2018 14:41:12 UTC
-    >>> print(list(rel.keys()))
+    >>> print(list(rel.keys()))   # doctest: +SKIP
     ['Origin', 'Label', 'Suite', 'Codename', 'Changelogs', 'Date',
     'Valid-Until', 'Acquire-By-Hash', 'Architectures', 'Components',
     'Description', 'MD5Sum', 'SHA256']
@@ -146,10 +147,10 @@ can be addressed::
 
     >>> from debian.deb822 import Release
     >>> filename = '/var/lib/apt/lists/deb.debian.org_debian_dists_sid_InRelease'
-    >>> with open(filename) as fh:
+    >>> with open(filename) as fh: # doctest: +SKIP
     ...     rel = Release(fh)
     >>> wanted = 'main/binary-amd64/Packages'
-    >>> [(l['sha256'], l['size']) for l in rel['SHA256'] if l['name'] == wanted]
+    >>> [(l['sha256'], l['size']) for l in rel['SHA256'] if l['name'] == wanted]   # doctest: +SKIP
     [('c0f7aa0b92ebd6971c0b64f93f52a8b2e15b0b818413ca13438c50eb82586665', '45314424')]
 
 
@@ -161,7 +162,7 @@ iterate through each paragraph in a file that contains multiple entries
 (e.g. a Packages.gz file).
 For example::
 
-    >>> with open('/mirror/debian/dists/sid/main/binary-i386/Sources') as f:
+    >>> with open('/mirror/debian/dists/sid/main/binary-i386/Sources') as f:  # doctest: +SKIP
     ...     for src in Sources.iter_paragraphs(f):
     ...         print(src['Package'], src['Version'])
 
@@ -2010,27 +2011,27 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
 
         >>> from debian.deb822 import BuildInfo
         >>> filename = 'package.buildinfo'
-        >>> with open(filename) as fh:
+        >>> with open(filename) as fh:    # doctest: +SKIP
         ...     info = BuildInfo(fh)
-        >>> print(info.get_environment())
+        >>> print(info.get_environment())    # doctest: +SKIP
         {'DEB_BUILD_OPTIONS': 'parallel=4',
         'LANG': 'en_AU.UTF-8',
         'LC_ALL': 'C.UTF-8',
         'LC_TIME': 'en_GB.UTF-8',
         'LD_LIBRARY_PATH': '/usr/lib/libeatmydata',
         'SOURCE_DATE_EPOCH': '1601784586'}
-        >>> installed = info.relations['installed-build-depends']
-        >>> for dep in installed:
+        >>> installed = info.relations['installed-build-depends']  # doctest: +SKIP
+        >>> for dep in installed:  # doctest: +SKIP
         ...     print("Installed %s/%s" % (dep[0]['name'], dep[0]['version'][1]))
         Installed autoconf/2.69-11.1
         Installed automake/1:1.16.2-4
         Installed autopoint/0.19.8.1-10
         Installed autotools-dev/20180224.1
         ... etc ...
-        >>> changelog = info.get_changelog()
-        >>> print(changelog.author)
+        >>> changelog = info.get_changelog() # doctest: +SKIP
+        >>> print(changelog.author) # doctest: +SKIP
         'xyz Build Daemon (xyz-01) <buildd_xyz-01@buildd.debian.org>'
-        >>> print(changelog[0].changes())
+        >>> print(changelog[0].changes()) # doctest: +SKIP
         ['',
         '  * Binary-only non-maintainer upload for amd64; no source changes.',
         '  * Add Python 3.9 as supported version',
