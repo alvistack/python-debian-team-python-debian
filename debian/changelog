@@ -1,20 +1,29 @@
-python-debian (0.1.40) UNRELEASED; urgency=medium
+python-debian (0.1.40) experimental; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * In debian.changelog.get_maintainer, cope with unknown UIDs. Closes:
     #980385
+
+  [ Niels Thykier ]
+  * Add some doctest SKIP markers to the code (MR!45).
+  * Fix examples in code (MR!41, MR!43).
+
+  [ Frédéric Pierret ]
+  * Numerous enhancements to the deb822.BuildInfo class (MR!40).
 
   [ Stuart Prescott ]
   * Update annotations for mypy 0.8.00.
   * Include portability patch for pwd module on Windows from MR!38, with
     thanks to Ryan Pavlik for the report and Carmen Bianca Bakker for the
     implementation.
+  * Drop the deb822.BuildInfo.get_debian_suite function.
+  * Stop testing with Python 2.7.
 
   [ Debian Janitor ]
   * Remove constraints unnecessary since stretch:
     + Build-Depends: Drop versioned constraint on binutils.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 Jan 2021 03:12:37 +0000
+ -- Stuart Prescott <stuart@debian.org>  Mon, 28 Jun 2021 18:09:46 +1000
 
 python-debian (0.1.39) unstable; urgency=medium
 
