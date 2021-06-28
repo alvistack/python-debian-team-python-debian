@@ -10,6 +10,10 @@ python-debian (0.1.40) UNRELEASED; urgency=medium
     thanks to Ryan Pavlik for the report and Carmen Bianca Bakker for the
     implementation.
 
+  [ Debian Janitor ]
+  * Remove constraints unnecessary since stretch:
+    + Build-Depends: Drop versioned constraint on binutils.
+
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 Jan 2021 03:12:37 +0000
 
 python-debian (0.1.39) unstable; urgency=medium
