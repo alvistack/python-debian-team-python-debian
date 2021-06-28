@@ -28,19 +28,12 @@ import re
 import subprocess
 import sys
 import tempfile
-if sys.version_info[0] >= 3:
-    import unittest
-else:
-    import unittest2 as unittest
+import unittest
 import warnings
 
 import six
 
-if six.PY3:
-    from io import BytesIO, StringIO
-else:
-    from StringIO import StringIO
-    BytesIO = StringIO
+from io import BytesIO, StringIO
 
 import apt_pkg
 
@@ -334,16 +327,7 @@ KEYRING = os.path.abspath(find_test_file('test-keyring.gpg'))
 def open_utf8(filename, mode='r'):
     # type: (str, str) -> IO[Text]
     """Open a UTF-8 text file in text mode."""
-    if sys.version < '3':
-        # TODO(jsw): This isn't actually doing what the docstring says.  The
-        # correct code (for both 2 and 3) is
-        #   io.open(filename, code=mode, encoding='utf-8')
-        # but that makes a couple of other tests fail on 2.x (both related to
-        # apt_pkg - not surprisingly, its behavior with unicode objects isn't
-        # very consistent).
-        return open(filename, mode=mode)
-    else:
-        return open(filename, mode=mode, encoding='UTF-8')
+    return open(filename, mode=mode, encoding='UTF-8')
 
 
 class TestDeb822Dict(unittest.TestCase):
@@ -554,10 +538,7 @@ with open("test_deb822.pickle", "wb") as fh:
         text.write(UNPARSED_PACKAGE)
 
         with tempfile.NamedTemporaryFile() as fh:
-            if sys.version_info[0] >= 3:
-                txt = text.getvalue().encode('UTF-8')
-            else:
-                txt = text.getvalue()
+            txt = text.getvalue().encode('UTF-8')
             fh.write(txt)
 
             fh.seek(0)

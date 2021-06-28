@@ -24,6 +24,7 @@ Debfile Classes
 from __future__ import absolute_import, print_function
 
 import gzip
+import io
 import tarfile
 import sys
 import os.path
@@ -109,35 +110,8 @@ class DebPart(object):
             extension = os.path.splitext(name)[1][1:]
             if extension in PART_EXTS or name == DATA_PART or name == CTRL_PART:
                 # Permit compressed members and also uncompressed data.tar
-                if sys.version_info < (3, 3) and extension == 'xz':
-                    try:
-                        # pylint: disable=import-outside-toplevel
-                        import subprocess
-                        import signal
-                        import io
-
-                        # pylint: disable=subprocess-popen-preexec-fn
-                        proc = subprocess.Popen(
-                            ['unxz', '--stdout'],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            universal_newlines=False,
-                            preexec_fn=lambda:
-                            signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-                        )
-                    except (OSError, ValueError) as e:
-                        raise DebError("%s" % e)
-
-                    data = proc.communicate(self.__member.read())[0]
-                    if proc.returncode != 0:
-                        raise DebError("command has failed with code '%s'" %
-                                       proc.returncode)
-
-                    buffer = io.BytesIO(data)
-                else:
-                    buffer = self.__member
-
                 try:
-                    self.__tgz = tarfile.open(fileobj=buffer, mode='r:*')    # type: ignore
+                    self.__tgz = tarfile.open(fileobj=self.__member, mode='r:*')    # type: ignore
                 except (tarfile.ReadError, tarfile.CompressionError) as e:
                     raise DebError("tarfile has returned an error: '%s'" % e)
             else:
@@ -156,20 +130,13 @@ class DebPart(object):
             fname = fname[1:]
         return fname
 
-    # XXX in some of the following methods, compatibility among >= 2.5 and <<
-    # 2.5 python versions had to be taken into account. TarFile << 2.5 indeed
-    # was buggied and returned member file names with an heading './' only for
-    # the *first* file member. TarFile >= 2.5 fixed this and has the heading
-    # './' for all file members.
-
     def has_file(self, fname):
         # type: (str) -> bool
         """Check if this part contains a given file name."""
 
         fname = DebPart.__normalize_member(fname)
         names = self.tgz().getnames()
-        return (('./' + fname in names)
-                or (fname in names))  # XXX python << 2.5 TarFile compatibility
+        return './' + fname in names
 
     @overload
     def get_file(self, fname, encoding=None, errors=None):
@@ -190,25 +157,11 @@ class DebPart(object):
         """
 
         fname = DebPart.__normalize_member(fname)
-        try:
-            fobj = self.tgz().extractfile('./' + fname)
-        except KeyError:    # XXX python << 2.5 TarFile compatibility
-            fobj = self.tgz().extractfile(fname)
+        fobj = self.tgz().extractfile('./' + fname)
         if fobj is None:
             raise DebError("File not found inside package")
         if encoding is not None:
-            if sys.version_info[0] >= 3:
-                import io   # pylint: disable=import-outside-toplevel
-                if not hasattr(fobj, 'flush'):
-                    # XXX http://bugs.python.org/issue13815
-                    fobj.flush = lambda: None   # type: ignore
-                return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)
-
-            # CRUFT: Python 2 only
-            import codecs     # pylint: disable=import-outside-toplevel
-            if errors is None:
-                errors = 'strict'
-            return codecs.EncodedFile(fobj, encoding, errors=errors)
+            return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)
 
         return fobj
 
@@ -259,11 +212,6 @@ class DebPart(object):
     def __contains__(self, fname):
         # type: (str) -> bool
         return self.has_file(fname)
-
-    if sys.version_info[0] < 3:
-        def has_key(self, fname):
-            # type: (str) -> bool
-            return self.has_file(fname)
 
     def __getitem__(self, fname):
         # type: (str) ->  Optional[Union[bytes, Text]]
@@ -341,10 +289,10 @@ class DebControl(DebPart):
         for line in md5_file.readlines():
             # we need to support spaces in filenames, .split() is not enough
             md5, fname = line.rstrip(newline).split(None, 1)  # type: ignore
-            if sys.version_info[0] >= 3 and isinstance(md5, bytes):
+            if isinstance(md5, bytes):
                 sums[fname] = md5.decode()
             else:
-                sums[fname] = md5  # type: ignore
+                sums[fname] = md5
         md5_file.close()
         return sums
 

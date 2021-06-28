@@ -104,7 +104,6 @@ import os
 import re
 import socket
 import warnings
-import sys
 
 import six
 
@@ -144,16 +143,8 @@ except ImportError:
 
 from debian.debian_support import Version
 
-# Python 3 doesn't have StandardError, but let's avoid changing our
-# exception inheritance hierarchy for Python 2.
-_base_exception_class = Exception
-try:
-    _base_exception_class = StandardError    # type: ignore
-except NameError:
-    pass
 
-
-class ChangelogParseError(_base_exception_class):
+class ChangelogParseError(Exception):
     """Indicates that the changelog could not be parsed"""
     is_user_error = True
 
@@ -167,12 +158,12 @@ class ChangelogParseError(_base_exception_class):
         return "Could not parse changelog: "+self._line
 
 
-class ChangelogCreateError(_base_exception_class):
+class ChangelogCreateError(Exception):
     """Indicates that changelog could not be created, as all the information
     required was not given"""
 
 
-class VersionError(_base_exception_class):
+class VersionError(Exception):
     """Indicates that the version does not conform to the required format"""
 
     is_user_error = True
@@ -363,23 +354,14 @@ class ChangeBlock(object):
             block += line + "\n"
         return block
 
-    if sys.version_info[0] >= 3:
-        def __str__(self):
-            # type: () -> str
-            return self._format()
+    def __str__(self):
+        # type: () -> str
+        return self._format()
 
-        def __bytes__(self):  # type: () -> bytes
-            # pylint: disable=invalid-bytes-returned
-            # pylint bug https://github.com/PyCQA/pylint/issues/3599
-            return str(self).encode(self._encoding)
-    else:
-        def __unicode__(self):
-            return self._format()
-
-        def __str__(self):
-            # pylint: disable=undefined-variable
-            # (pylint3 doesn't cope with the use of `unicode`)
-            return unicode(self).encode(self._encoding)
+    def __bytes__(self):  # type: () -> bytes
+        # pylint: disable=invalid-bytes-returned
+        # pylint bug https://github.com/PyCQA/pylint/issues/3599
+        return str(self).encode(self._encoding)
 
 
 topline = re.compile(
@@ -798,23 +780,14 @@ class Changelog(object):
             pieces.append(block._format(allow_missing_author=allow_missing_author))
         return six.u('').join(pieces)
 
-    if sys.version_info[0] >= 3:
-        def __str__(self):
-            # type: () -> str
-            return self._format()
+    def __str__(self):
+        # type: () -> str
+        return self._format()
 
-        def __bytes__(self):  # type: () -> bytes
-            # pylint: disable=invalid-bytes-returned
-            # pylint bug https://github.com/PyCQA/pylint/issues/3599
-            return str(self).encode(self._encoding)
-    else:
-        def __unicode__(self):
-            return self._format()
-
-        def __str__(self):
-            # pylint: disable=undefined-variable
-            # (pylint3 doesn't cope with the use of `unicode`)
-            return unicode(self).encode(self._encoding)
+    def __bytes__(self):  # type: () -> bytes
+        # pylint: disable=invalid-bytes-returned
+        # pylint bug https://github.com/PyCQA/pylint/issues/3599
+        return str(self).encode(self._encoding)
 
     def __iter__(self):
         # type: () -> Iterator[ChangeBlock]

@@ -27,11 +27,7 @@
 from __future__ import absolute_import
 
 import os.path
-import sys
-if sys.version_info[0] >= 3:
-    import unittest
-else:
-    import unittest2 as unittest
+import unittest
 import warnings
 
 import six
@@ -62,10 +58,7 @@ def find_test_file(filename):
 def open_utf8(filename, mode='r'):
     # type: (str, str) -> IO[Text]
     """Open a UTF-8 text file in text mode."""
-    if sys.version_info[0] >= 3:
-        return open(filename, mode=mode, encoding='UTF-8')
-    else:
-        return open(filename, mode=mode)
+    return open(filename, mode=mode, encoding='UTF-8')
 
 
 class ChangelogTests(unittest.TestCase):

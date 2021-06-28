@@ -59,22 +59,16 @@ except ImportError:
 # Use the built-in _sha extension instead of hashlib to avoid a dependency on
 # OpenSSL, which is incompatible with the GPL.
 try:
-    # Python 2.x
-    import _sha    # type: ignore
-    new_sha1 = _sha.new
+    import _sha1    # type: ignore
+    new_sha1 = _sha1.sha1
 except ImportError:
-    # Python 3.x
-    try:
-        import _sha1    # type: ignore
-        new_sha1 = _sha1.sha1
-    except ImportError:
-        def new_sha1(*args):    # pylint: disable=unused-argument
-            # type: (bytes) -> str
-            raise NotImplementedError(
-                "Built-in sha1 implementation not found; cannot use hashlib"
-                " implementation because it depends on OpenSSL, which"
-                " may not be linked with this library due to license"
-                " incompatibilities")
+    def new_sha1(*args):    # pylint: disable=unused-argument
+        # type: (bytes) -> str
+        raise NotImplementedError(
+            "Built-in sha1 implementation not found; cannot use hashlib"
+            " implementation because it depends on OpenSSL, which"
+            " may not be linked with this library due to license"
+            " incompatibilities")
 
 
 # Use the built-in _sha256 extension instead of hashlib to avoid a dependency on

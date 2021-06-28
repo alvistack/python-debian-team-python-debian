@@ -20,11 +20,7 @@
 from __future__ import unicode_literals
 
 import re
-import sys
-if sys.version_info[0] >= 3:
-    import unittest
-else:
-    import unittest2 as unittest
+import unittest
 import warnings
 
 from debian import copyright
