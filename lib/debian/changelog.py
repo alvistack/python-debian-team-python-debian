@@ -97,8 +97,6 @@ Changelog Classes
 # Copyright 2005 Frank Lichtenheld <frank@lichtenheld.de>
 # and licensed under the same license as above.
 
-from __future__ import absolute_import
-
 import email.utils
 import os
 import re
