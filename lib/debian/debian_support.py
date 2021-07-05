@@ -737,9 +737,8 @@ def download_gunzip_lines(remote):
     try:
         os.close(handle)
         (filename, _) = urlretrieve(remote, fname)
-        gfile = gzip.open(filename, 'rt')
-        lines = gfile.readlines()
-        gfile.close()
+        with gzip.open(filename, 'rt') as gfile:
+            lines = gfile.readlines()
     finally:
         os.unlink(fname)
     return lines
