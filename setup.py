@@ -58,6 +58,6 @@ setup(
     py_modules=['deb822'],
     maintainer='Debian python-debian Maintainers',
     maintainer_email='pkg-python-debian-maint@lists.alioth.debian.org',
-    install_requires=['six', 'chardet'],
+    install_requires=['chardet'],
     test_suite='debian.tests',
 )

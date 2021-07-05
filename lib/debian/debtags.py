@@ -15,13 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import pickle
 import re
-import six
-
-try:
-    import cPickle as pickle    # type: ignore
-except ImportError:
-    import pickle               # type: ignore
 
 try:
     # pylint: disable=unused-import
@@ -333,7 +328,7 @@ class DB:
         """
         res = DB()
         db = {}
-        for pkg in filter(package_filter, six.iterkeys(self.db)):
+        for pkg in filter(package_filter, self.db.keys()):
             db[pkg] = self.db[pkg]
         res.db = db
         res.rdb = reverse(db)
@@ -350,7 +345,7 @@ class DB:
         """
         res = DB()
         db = {}
-        for pkg in filter(filter_data, six.iterkeys(self.db)):
+        for pkg in filter(filter_data, self.db.keys()):
             db[pkg] = self.db[pkg].copy()
         res.db = db
         res.rdb = reverse(db)
@@ -367,7 +362,7 @@ class DB:
         """
         res = DB()
         db = {}
-        for pkg, _ in filter(package_tag_filter, six.iteritems(self.db)):
+        for pkg, _ in filter(package_tag_filter, self.db.items()):
             db[pkg] = self.db[pkg]
         res.db = db
         res.rdb = reverse(db)
@@ -384,7 +379,7 @@ class DB:
         """
         res = DB()
         db = {}
-        for pkg, _ in filter(package_tag_filter, six.iteritems(self.db)):
+        for pkg, _ in filter(package_tag_filter, self.db.items()):
             db[pkg] = self.db[pkg].copy()
         res.db = db
         res.rdb = reverse(db)
@@ -401,7 +396,7 @@ class DB:
         """
         res = DB()
         rdb = {}
-        for tag in filter(tag_filter, six.iterkeys(self.rdb)):
+        for tag in filter(tag_filter, self.rdb.keys()):
             rdb[tag] = self.rdb[tag]
         res.rdb = rdb
         res.db = reverse(rdb)
@@ -418,7 +413,7 @@ class DB:
         """
         res = DB()
         rdb = {}
-        for tag in filter(tag_filter, six.iterkeys(self.rdb)):
+        for tag in filter(tag_filter, self.rdb.keys()):
             rdb[tag] = self.rdb[tag].copy()
         res.rdb = rdb
         res.db = reverse(rdb)
@@ -490,30 +485,30 @@ class DB:
         return min(n, tot - n)
 
     def iter_packages(self):
-        # type: () -> Iterator[str]
+        # type: () -> Iterable[str]
         """Iterate over the packages"""
-        return six.iterkeys(self.db)
+        return self.db.keys()
 
     iterPackages = function_deprecated_by(iter_packages)
 
     def iter_tags(self):
-        # type: () -> Iterator[str]
+        # type: () -> Iterable[str]
         """Iterate over the tags"""
-        return six.iterkeys(self.rdb)
+        return self.rdb.keys()
 
     iterTags = function_deprecated_by(iter_tags)
 
     def iter_packages_tags(self):
-        # type: () -> Iterator[Tuple[str, Set[str]]]
+        # type: () -> Iterable[Tuple[str, Set[str]]]
         """Iterate over 2-tuples of (pkg, tags)"""
-        return six.iteritems(self.db)
+        return self.db.items()
 
     iterPackagesTags = function_deprecated_by(iter_packages_tags)
 
     def iter_tags_packages(self):
-        # type: () -> Iterator[Tuple[str, Set[str]]]
+        # type: () -> Iterable[Tuple[str, Set[str]]]
         """Iterate over 2-tuples of (tag, pkgs)"""
-        return six.iteritems(self.rdb)
+        return self.rdb.items()
 
     iterTagsPackages = function_deprecated_by(iter_tags_packages)
 

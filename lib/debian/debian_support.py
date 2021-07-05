@@ -728,11 +728,10 @@ def download_gunzip_lines(remote):
     # The implementation is rather crude, but it seems that the gzip
     # module needs a real file for input.
 
-   # pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel
     import gzip
     import tempfile
-    # pylint: disable=import-error
-    from six.moves.urllib.request import urlretrieve
+    from urllib.request import urlretrieve
 
     (handle, fname) = tempfile.mkstemp()
     try:
@@ -784,9 +783,8 @@ def update_file(remote, local, verbose=False):
     patches_to_apply = []    # type: List[str]
     patch_hashes = {}        # type: Dict[str, str]
 
-    # pylint: disable=import-error
     # pylint: disable=import-outside-toplevel
-    from six.moves.urllib.request import urlopen
+    from urllib.request import urlopen
 
     index_name = remote + '.diff/Index'
 

@@ -26,8 +26,6 @@ import sys
 import tempfile
 import uu
 
-import six
-
 from debian import arfile
 from debian import debfile
 
@@ -256,9 +254,9 @@ class TestDebFile(unittest.TestCase):
         self.assertEqual(md5b[b'usr/share/locale/zh_TW/LC_MESSAGES/hello.mo'],
                 'a7356e05bd420872d03cd3f5369de42f')
         md5 = self.d.md5sums(encoding='UTF-8')
-        self.assertEqual(md5[six.u('usr/bin/hello')],
+        self.assertEqual(md5['usr/bin/hello'],
                 '9c1a72a78f82216a0305b6c90ab71058')
-        self.assertEqual(md5[six.u('usr/share/locale/zh_TW/LC_MESSAGES/hello.mo')],
+        self.assertEqual(md5['usr/share/locale/zh_TW/LC_MESSAGES/hello.mo'],
                 'a7356e05bd420872d03cd3f5369de42f')
 
 if __name__ == '__main__':

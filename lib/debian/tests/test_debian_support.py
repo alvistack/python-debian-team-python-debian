@@ -21,7 +21,6 @@
 import gzip
 import os
 import os.path
-import six
 import sys
 import tempfile
 import re
@@ -317,12 +316,12 @@ class PackageFileTests(unittest.TestCase):
             pf = debian_support.PackageFile('ignored', file_obj=fhbin)
             pflist = list(pf)
             self.assertEqual(len(pflist), 3)
-            self.assertType(pflist[0][0][1], six.string_types)
+            self.assertType(pflist[0][0][1], str)
         with open(packfile, 'rt') as fhtext:
             pf = debian_support.PackageFile('ignored', file_obj=fhtext)
             pflist = list(pf)
             self.assertEqual(len(pflist), 3)
-            self.assertType(pflist[0][0][1], six.string_types)
+            self.assertType(pflist[0][0][1], str)
 
 
 if __name__ == "__main__":

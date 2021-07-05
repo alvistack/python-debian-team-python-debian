@@ -103,8 +103,6 @@ import re
 import socket
 import warnings
 
-import six
-
 # pwd is only available on Unix platforms.
 try:
     import pwd
@@ -294,7 +292,7 @@ class ChangeBlock(object):
 
     def _get_bugs_closed_generic(self, type_re):
         # type: (Pattern[Text]) -> List[int]
-        changes = six.u(' ').join(self._changes)
+        changes = ' '.join(self._changes)
         bugs = []
         for match in type_re.finditer(changes):
             closes_list = match.group(0)
@@ -531,7 +529,7 @@ class Changelog(object):
         old_state = None
         if isinstance(file, bytes):
             file = file.decode(encoding)
-        if isinstance(file, six.string_types):
+        if isinstance(file, str):
             # Make sure the changelog file is not empty.
             if not file.strip():
                 self._parse_error('Empty changelog file.', strict)
@@ -539,7 +537,7 @@ class Changelog(object):
 
             file = file.splitlines()
         for line in file:
-            if not isinstance(line, six.text_type):
+            if not isinstance(line, str):
                 line = line.decode(encoding)
             # Support both lists of lines without the trailing newline and
             # those with trailing newlines (e.g. when given a file object
@@ -773,10 +771,10 @@ class Changelog(object):
         # type: (Optional[bool]) -> str
         pieces = []
         for line in self.initial_blank_lines:
-            pieces.append(line + six.u('\n'))
+            pieces.append(line + '\n')
         for block in self._blocks:
             pieces.append(block._format(allow_missing_author=allow_missing_author))
-        return six.u('').join(pieces)
+        return ''.join(pieces)
 
     def __str__(self):
         # type: () -> str
@@ -797,7 +795,7 @@ class Changelog(object):
 
         :param n: integer or str representing a version or Version object
         """
-        if isinstance(n, six.string_types):
+        if isinstance(n, str):
             return self[Version(n)]
         if isinstance(n, int):
             idx = n
