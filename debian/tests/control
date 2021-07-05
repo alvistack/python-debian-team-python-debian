@@ -7,3 +7,12 @@ Depends:
  python3-debian,
  debian-keyring,
  debian-archive-keyring
+
+Tests: python3-debian-no-apt-pkg
+Restrictions: allow-stderr
+Depends:
+ binutils (>= 2.23),
+ python3-all,
+ python3-debian,
+ debian-keyring,
+ debian-archive-keyring
