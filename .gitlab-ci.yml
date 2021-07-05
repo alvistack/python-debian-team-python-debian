@@ -4,7 +4,7 @@ default:
   before_script:
   - apt-get update
   - apt-get -y install make dpkg-dev
-  - apt-get -y install python3 python3-apt python3-chardet python3-setuptools python3-six
+  - apt-get -y install python3 python3-apt python3-chardet python3-setuptools
 
 unit-tests:
   script:
@@ -37,7 +37,7 @@ unit-tests-stable:
   before_script:
   - apt-get update
   - apt-get -y install make dpkg-dev
-  - apt-get -y install python3 python3-apt python3-chardet python3-setuptools python3-six
+  - apt-get -y install python3 python3-apt python3-chardet python3-setuptools
 
   script:
   - ./debian/rules lib/debian/__init__.py
