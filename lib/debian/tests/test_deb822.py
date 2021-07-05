@@ -29,8 +29,6 @@ import tempfile
 import unittest
 import warnings
 
-from io import BytesIO, StringIO
-
 import apt_pkg
 
 from debian import deb822
@@ -473,7 +471,7 @@ with open("test_deb822.pickle", "wb") as fh:
         unparsed_with_gpg = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
         deb822_from_str = deb822.Dsc(unparsed_with_gpg)
         result_from_str = deb822_from_str.get_gpg_info(keyrings=[KEYRING])
-        deb822_from_file = deb822.Dsc(StringIO(unparsed_with_gpg))
+        deb822_from_file = deb822.Dsc(io.StringIO(unparsed_with_gpg))
         result_from_file = deb822_from_file.get_gpg_info(keyrings=[KEYRING])
         deb822_from_lines = deb822.Dsc(unparsed_with_gpg.splitlines())
         result_from_lines = deb822_from_lines.get_gpg_info(keyrings=[KEYRING])
@@ -515,19 +513,19 @@ with open("test_deb822.pickle", "wb") as fh:
 
     def test_iter_paragraphs_file_io(self):
         # type: () -> None
-        text = StringIO(UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
+        text = io.StringIO(UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
 
         for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=False):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
         with self.assertWarns(UserWarning):
-            # The StringIO is not a real file so this will raise a warning
+            # The io.StringIO is not a real file so this will raise a warning
             for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=True):
                 self.assertWellParsed(d, PARSED_PACKAGE)
 
     def test_iter_paragraphs_file(self):
         # type: () -> None
-        text = StringIO()
+        text = io.StringIO()
         text.write(UNPARSED_PACKAGE)
         text.write('\n\n\n')
         text.write(UNPARSED_PACKAGE)
@@ -647,7 +645,7 @@ with open("test_deb822.pickle", "wb") as fh:
         packages_content = b"\n".join([line.rstrip() for line in
                                        packages_content.splitlines()] + [b''])
 
-        s = BytesIO()
+        s = io.BytesIO()
         l = []
         f = open_utf8(filename)
         for p in cls.iter_paragraphs(f, **kwargs):
@@ -659,7 +657,7 @@ with open("test_deb822.pickle", "wb") as fh:
         if kwargs["shared_storage"] is False:
             # If shared_storage is False, data should be consistent across
             # iterations -- i.e. we can use "old" objects
-            s = BytesIO()
+            s = io.BytesIO()
             for p in l:
                 p.dump(s)
                 s.write(b"\n")
@@ -791,7 +789,7 @@ with open("test_deb822.pickle", "wb") as fh:
         c_i_dict['TeSt-KeY'] = test_string_2
         self.assertEqual(test_string_2, c_i_dict['Test-Key'])
 
-        deb822_ = deb822.Deb822(StringIO(UNPARSED_PACKAGE))
+        deb822_ = deb822.Deb822(io.StringIO(UNPARSED_PACKAGE))
         # deb822_.keys() will return non-normalized keys
         for k in deb822_:
             self.assertEqual(deb822_[k], deb822_[k.lower()])
@@ -969,12 +967,12 @@ Description: python modules to work with Debian-related data formats
         with open(find_test_file('test_Sources.iso8859-1'), 'rb') as fb:
             latin1_contents = b"\n".join([line.rstrip() for line in fb] + [b''])
 
-        utf8_to_latin1 = BytesIO()
+        utf8_to_latin1 = io.BytesIO()
         for d in utf8:
             d.dump(fd=utf8_to_latin1, encoding='iso8859-1')
             utf8_to_latin1.write(b"\n")
 
-        latin1_to_utf8 = BytesIO()
+        latin1_to_utf8 = io.BytesIO()
         for d in latin1:
             d.dump(fd=latin1_to_utf8, encoding='utf-8')
             latin1_to_utf8.write(b"\n")
@@ -1531,7 +1529,7 @@ class TestGpgInfo(unittest.TestCase):
 
     def test_from_sequence_newline_terminated(self):
         # type: () -> None
-        sequence = BytesIO(self.data)
+        sequence = io.BytesIO(self.data)
         gpg_info = deb822.GpgInfo.from_sequence(sequence, keyrings=[KEYRING])
         self._validate_gpg_info(gpg_info)
 
