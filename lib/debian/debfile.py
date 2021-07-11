@@ -419,6 +419,14 @@ class DebFile(ArFile):
         self.control.close()
         self.data.close()
 
+    def __enter__(self):
+        # type: () -> DebFile
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # type: (Any, Any, Any) -> None
+        self.close()
+
 
 if __name__ == '__main__':
     deb = DebFile(filename=sys.argv[1])
