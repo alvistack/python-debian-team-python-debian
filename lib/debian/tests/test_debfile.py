@@ -390,6 +390,25 @@ class TestDebFile(unittest.TestCase):
                 self.assertEqual(md5[str(f)], h)
             deb.close()
 
+    def test_contextmanager(self):
+        # type: () -> None
+        """test use of DebFile as a contextmanager"""
+        with self.temp_deb() as debname:
+            with debfile.DebFile(debname) as deb:
+                all_files = deb.data.tgz().getnames()
+                self.assertTrue(all_files)
+                self.assertTrue(deb.control.get_content("control"))
+
+    def test_open_directly(self):
+        # type: () -> None
+        """test use of DebFile without the contextmanager"""
+        with self.temp_deb() as debname:
+            deb = debfile.DebFile(debname)
+            all_files = deb.data.tgz().getnames()
+            self.assertTrue(all_files)
+            self.assertTrue(deb.control.get_content("control"))
+            deb.close()
+
 
 if __name__ == '__main__':
     unittest.main()
