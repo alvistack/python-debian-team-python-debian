@@ -796,6 +796,8 @@ class Deb822WhitespaceToken(Deb822Token):
     list, etc.).
     """
 
+    __slots__ = ()
+
     @property
     def is_whitespace(self) -> bool:
         return True
@@ -804,12 +806,16 @@ class Deb822WhitespaceToken(Deb822Token):
 class Deb822SemanticallySignificantWhiteSpace(Deb822WhitespaceToken):
     """Whitespace that (if removed) would change the meaning of the file (or cause syntax errors)"""
 
+    __slots__ = ()
+
 
 class Deb822NewlineAfterValueToken(Deb822SemanticallySignificantWhiteSpace):
     """The newline after a value token.
 
     If not followed by a continuation token, this also marks the end of the field.
     """
+
+    __slots__ = ()
 
     def __init__(self) -> None:
         super().__init__('\n')
@@ -818,6 +824,8 @@ class Deb822NewlineAfterValueToken(Deb822SemanticallySignificantWhiteSpace):
 class Deb822ValueContinuationToken(Deb822SemanticallySignificantWhiteSpace):
     """The whitespace denoting a value spanning an additional line (the first space on a line)"""
 
+    __slots__ = ()
+
     def __init__(self) -> None:
         super().__init__(' ')
 
@@ -825,12 +833,18 @@ class Deb822ValueContinuationToken(Deb822SemanticallySignificantWhiteSpace):
 class Deb822SpaceSeparatorToken(Deb822SemanticallySignificantWhiteSpace):
     """Whitespace between values in a space list (e.g. "Architectures")"""
 
+    __slots__ = ()
+
 
 class Deb822ErrorToken(Deb822Token):
     """Token that represents a syntactical error"""
 
+    __slots__ = ()
+
 
 class Deb822CommentToken(Deb822Token):
+
+    __slots__ = ()
 
     @property
     def is_comment(self) -> bool:
@@ -838,6 +852,8 @@ class Deb822CommentToken(Deb822Token):
 
 
 class Deb822FieldNameToken(Deb822Token):
+
+    __slots__ = ()
 
     def __init__(self, text: str) -> None:
         if not isinstance(text, _strI):
@@ -851,10 +867,13 @@ class Deb822FieldNameToken(Deb822Token):
 
 # The colon after the field name, parenthesis, etc.
 class Deb822SeparatorToken(Deb822Token):
-    pass
+
+    __slots__ = ()
 
 
 class Deb822FieldSeparatorToken(Deb822Token):
+
+    __slots__ = ()
 
     def __init__(self) -> None:
         super().__init__(':')
@@ -863,12 +882,16 @@ class Deb822FieldSeparatorToken(Deb822Token):
 class Deb822CommaToken(Deb822SeparatorToken):
     """Used by the comma-separated list value parsers to denote a comma between two value tokens."""
 
+    __slots__ = ()
+
     def __init__(self) -> None:
         super().__init__(',')
 
 
 class Deb822PipeToken(Deb822SeparatorToken):
     """Used in some dependency fields as OR relation"""
+
+    __slots__ = ()
 
     def __init__(self) -> None:
         super().__init__('|')
@@ -877,13 +900,18 @@ class Deb822PipeToken(Deb822SeparatorToken):
 class Deb822ValueToken(Deb822Token):
     """A field value can be split into multi "Deb822ValueToken"s (as well as separator tokens)"""
 
+    __slots__ = ()
+
 
 class Deb822ValueDependencyToken(Deb822Token):
     """Package name, architecture name, a version number, or a profile name in a dependency field"""
 
+    __slots__ = ()
+
 
 class Deb822ValueDependencyVersionRelationOperatorToken(Deb822Token):
-    pass
+
+    __slots__ = ()
 
 
 class Deb822Element:
