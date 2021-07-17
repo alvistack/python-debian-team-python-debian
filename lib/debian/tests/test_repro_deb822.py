@@ -410,16 +410,15 @@ class FormatPreservingDeb822ParserTests(TestCase):
             LIST_SPACE_SEPARATED_INTERPRETATION
         )
         self.assertEqual(['amd64', 'i386', 'kfreebsd-amd64', 'kfreebsd-i386'],
-                         [x.text for x in archs])
+                         list(archs))
         self.assertEqual([',', 'a,', 'b', ',', 'c'],
-                         [x.text for x in comma_list_misread])
+                         list(comma_list_misread))
 
         comma_list_correctly_read = comma_list_kvpair.interpret_as(
             LIST_COMMA_SEPARATED_INTERPRETATION
         )
 
-        self.assertEqual(['a', 'b', 'c'],
-                         [x.text for x in comma_list_correctly_read])
+        self.assertEqual(['a', 'b', 'c'], list(comma_list_correctly_read))
 
         # Interpretation must not change the content
         self.assertEqual(original, deb822_file.convert_to_text())

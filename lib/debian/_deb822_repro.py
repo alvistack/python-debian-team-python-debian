@@ -274,8 +274,8 @@ class Deb822ParsedTokenList(Generic[VT, ST],
             # non-issue in practise.
             self._token_list.pop()
 
-    def __iter__(self) -> Iterator[E]:
-        yield from (v for v in self._token_list if isinstance(v, self._vtype))
+    def __iter__(self) -> Iterator[str]:
+        yield from (v.convert_to_text() for v in self.value_parts)
 
     def __bool__(self) -> bool:
         return next(iter(self), None) is not None
@@ -288,6 +288,10 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         if exc_type is None and self._changed:
             self._update_field()
         return super().__exit__(exc_type, exc_val, exc_tb)
+
+    @property
+    def value_parts(self) -> Iterator[E]:
+        yield from (v for v in self._token_list if isinstance(v, self._vtype))
 
     def append_separator(self,
                          space_after_separator: bool = True) -> None:
@@ -774,6 +778,10 @@ class Deb822Token:
     def text(self) -> str:
         return self._text
 
+    # To support callers that want a simple interface for converting tokens and elements to text
+    def convert_to_text(self) -> str:
+        return self._text
+
     @property
     def parent_element(self) -> 'Optional[Deb822Element]':
         return _resolve_ref(self._parent_element)
@@ -1219,7 +1227,59 @@ def _convert_value_lines_to_lines(value_lines: Iterable[Deb822ValueLineElement],
                           if not x.is_comment)
 
 
-class Deb822DictishParagraphWrapper:
+class AbstractDeb822ParagraphWrapper(Generic[T]):
+
+    def __init__(self,
+                 paragraph: 'Deb822ParagraphElement',
+                 *,
+                 auto_resolve_ambiguous_fields: bool = False,
+                 ):
+        self._paragraph = paragraph
+        self.auto_resolve_ambiguous_fields = auto_resolve_ambiguous_fields
+
+    def __contains__(self, item: str) -> bool:
+        return item in self._paragraph
+
+    def get(self, item: str) -> Optional[T]:
+        if self.auto_resolve_ambiguous_fields:
+            v = self._paragraph.get((item, 0))
+        else:
+            v = self._paragraph.get(item)
+        if v is None:
+            return None
+        return self._interpret_value(item, v)
+
+    def __getitem__(self, item: str) -> T:
+        if self.auto_resolve_ambiguous_fields:
+            v = self._paragraph[(item, 0)]
+        else:
+            v = self._paragraph[item]
+        return self._interpret_value(item, v)
+
+    def __delitem__(self, item: str) -> None:
+        del self._paragraph[item]
+
+    def _interpret_value(self, key: str, value: Deb822KeyValuePairElement) -> T:
+        raise NotImplementedError
+
+
+class Deb822InterpretingParagraphWrapper(Generic[T], AbstractDeb822ParagraphWrapper[T]):
+
+    def __init__(self,
+                 paragraph: 'Deb822ParagraphElement',
+                 interpretation: Interpretation[T],
+                 *,
+                 auto_resolve_ambiguous_fields: bool = False,
+                 ) -> None:
+        super().__init__(paragraph, auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields)
+        self._paragraph = paragraph
+        self._interpretation = interpretation
+
+    def _interpret_value(self, key: str, value: Deb822KeyValuePairElement) -> T:
+        return self._interpretation.interpret(value)
+
+
+class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str]):
 
     def __init__(self,
                  paragraph: 'Deb822ParagraphElement',
@@ -1229,14 +1289,10 @@ class Deb822DictishParagraphWrapper:
                  auto_resolve_ambiguous_fields: bool = False,
                  preserve_field_comments_on_field_updates: bool = True
                  ):
-        self._paragraph = paragraph
+        super().__init__(paragraph, auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields)
         self.discard_comments_on_read = discard_comments_on_read
         self.auto_map_initial_line_whitespace = auto_map_initial_line_whitespace
-        self.auto_resolve_ambiguous_fields = auto_resolve_ambiguous_fields
         self.preserve_field_comments_on_field_updates = preserve_field_comments_on_field_updates
-
-    def __contains__(self, item: str) -> bool:
-        return item in self._paragraph
 
     def _convert_value_to_str(self, kvpair_element: Deb822KeyValuePairElement) -> str:
         value_element = kvpair_element.value_element
@@ -1265,22 +1321,6 @@ class Deb822DictishParagraphWrapper:
         return ''.join(line.strip() + "\n" if auto_map_space and i == 1 else line
                        for i, line in enumerate(converter, start=1)
                        )
-
-    def get(self, item: str) -> Optional[str]:
-        if self.auto_resolve_ambiguous_fields:
-            v = self._paragraph.get((item, 0))
-        else:
-            v = self._paragraph.get(item)
-        if v is None:
-            return None
-        return self._convert_value_to_str(v)
-
-    def __getitem__(self, item: str) -> str:
-        if self.auto_resolve_ambiguous_fields:
-            v = self._paragraph[(item, 0)]
-        else:
-            v = self._paragraph[item]
-        return self._convert_value_to_str(v)
 
     def __setitem__(self, field_name: str, value: str) -> None:
         keep_comments: Optional[bool] = self.preserve_field_comments_on_field_updates
@@ -1314,8 +1354,9 @@ class Deb822DictishParagraphWrapper:
             field_comment=comment,
         )
 
-    def __delitem__(self, item: str) -> None:
-        del self._paragraph[item]
+    def _interpret_value(self, key: str, value: Deb822KeyValuePairElement) -> T:
+        # mypy is a bit dense and cannot see that T == str
+        return typing.cast('T', self._convert_value_to_str(value))
 
 
 class Deb822ParagraphElement(Deb822Element, ABC):
@@ -1335,6 +1376,63 @@ class Deb822ParagraphElement(Deb822Element, ABC):
         # at the cost of complexity.
         return Deb822InvalidParagraphElement(kvpair_elements)
 
+    def as_interpreted_dict_view(self,
+                                 interpretation: Interpretation[T],
+                                 *,
+                                 auto_resolve_ambiguous_fields: bool = False,
+                                 ) -> Deb822InterpretingParagraphWrapper[T]:
+        r"""Provide a Dict-like view of the paragraph
+
+        This method returns a dict-like object representing this paragraph and
+        is useful for accessing fields in a given interpretation. It is possible
+        to use multiple versions of this dict-like view with different interpretations
+        on the same paragraph at the same time (for different fields).
+
+            >>> example_deb822_paragraph = '''
+            ... Package: foo
+            ... # Field comment (because it becomes just before a field)
+            ... Architecture: amd64
+            ... # Inline comment (associated with the next line)
+            ...               i386
+            ... '''
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> paragraph = next(iter(dfile.paragraphs))
+            >>> list_view = paragraph.as_interpreted_dict_view(LIST_SPACE_SEPARATED_INTERPRETATION)
+            >>> # With the defaults, you only deal with the semantic values
+            >>> # - no leading or trailing whitespace on the first part of the value
+            >>> list(list_view["Package"])
+            ['foo']
+            >>> with list_view["Architecture"] as arch_list:
+            ...    orig_arch_list = list(arch_list)
+            ...    arch_list.replace('i386', 'kfreebsd-amd64')
+            >>> orig_arch_list
+            ['amd64', 'i386']
+            >>> list(list_view["Architecture"])
+            ['amd64', 'kfreebsd-amd64']
+            >>> print(paragraph.convert_to_text(), end='')
+            Package: foo
+            # Field comment (because it becomes just before a field)
+            Architecture: amd64
+            # Inline comment (associated with the next line)
+                          kfreebsd-amd64
+            >>> # Format preserved and architecture replaced
+
+        :param interpretation: Decides how the field values are interpreted.  As an example,
+          use LIST_SPACE_SEPARATED_INTERPRETATION for fields such as Architecture in the
+          debian/control file.
+        :param auto_resolve_ambiguous_fields: This parameter is only relevant for paragraphs
+          that contain the same field multiple times (these are generally invalid).  If the
+          caller requests an ambiguous field from an invalid paragraph via a plain field name,
+          the return dict-like object will refuse to resolve the field (not knowing which
+          version to pick).  This parameter (if set to True) instead changes the error into
+          assuming the caller wants the *first* variant.
+        """
+        return Deb822InterpretingParagraphWrapper(
+            self,
+            interpretation,
+            auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields,
+        )
+
     def as_simple_dict_view(self,
                             *,
                             discard_comments_on_read: bool = True,
@@ -1342,7 +1440,7 @@ class Deb822ParagraphElement(Deb822Element, ABC):
                             auto_resolve_ambiguous_fields: bool = False,
                             preserve_field_comments_on_field_updates: bool = True,
                             ) -> Deb822DictishParagraphWrapper:
-        r"""Provide a Dict[str, str] like-view of this paragraph
+        r"""Provide a Dict[str, str]-like view of this paragraph
 
         This method returns a dict-like object representing this paragraph,
         which attempts to hide most of the complexity of the
@@ -1443,7 +1541,12 @@ class Deb822ParagraphElement(Deb822Element, ABC):
         :param auto_map_initial_line_whitespace:
         :param preserve_field_comments_on_field_updates: Whether to preserve the field
           comments when mutating the field.
-        :param auto_resolve_ambiguous_fields:
+        :param auto_resolve_ambiguous_fields: This parameter is only relevant for paragraphs
+          that contain the same field multiple times (these are generally invalid).  If the
+          caller requests an ambiguous field from an invalid paragraph via a plain field name,
+          the return dict-like object will refuse to resolve the field (not knowing which
+          version to pick).  This parameter (if set to True) instead changes the error into
+          assuming the caller wants the *first* variant.
         """
         return Deb822DictishParagraphWrapper(
             self,
