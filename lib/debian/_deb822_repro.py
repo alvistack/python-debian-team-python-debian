@@ -1335,13 +1335,13 @@ class Deb822ParagraphElement(Deb822Element, ABC):
         # at the cost of complexity.
         return Deb822InvalidParagraphElement(kvpair_elements)
 
-    def as_dict_view(self,
-                     *,
-                     discard_comments_on_read: bool = True,
-                     auto_map_initial_line_whitespace: bool = True,
-                     auto_resolve_ambiguous_fields: bool = False,
-                     preserve_field_comments_on_field_updates: bool = True,
-                     ) -> Deb822DictishParagraphWrapper:
+    def as_simple_dict_view(self,
+                            *,
+                            discard_comments_on_read: bool = True,
+                            auto_map_initial_line_whitespace: bool = True,
+                            auto_resolve_ambiguous_fields: bool = False,
+                            preserve_field_comments_on_field_updates: bool = True,
+                            ) -> Deb822DictishParagraphWrapper:
         r"""Provide a Dict[str, str] like-view of this paragraph
 
         This method returns a dict-like object representing this paragraph,
@@ -1357,7 +1357,7 @@ class Deb822ParagraphElement(Deb822Element, ABC):
             ... '''
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
             >>> paragraph = next(iter(dfile.paragraphs))
-            >>> dictview = paragraph.as_dict_view()
+            >>> dictview = paragraph.as_simple_dict_view()
             >>> # With the defaults, you only deal with the semantic values
             >>> # - no leading or trailing whitespace on the first part of the value
             >>> dictview["Package"]
@@ -1388,8 +1388,8 @@ class Deb822ParagraphElement(Deb822Element, ABC):
             >>> # - We will just reset the paragraph as a "nothing up my sleeve"
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
             >>> paragraph = next(iter(dfile.paragraphs))
-            >>> dictview = paragraph.as_dict_view()
-            >>> nonstd_dictview = paragraph.as_dict_view(
+            >>> dictview = paragraph.as_simple_dict_view()
+            >>> nonstd_dictview = paragraph.as_simple_dict_view(
             ...     discard_comments_on_read=False,
             ...     auto_map_initial_line_whitespace=False,
             ...     # For paragraphs with duplicate fields, this makes you always get the first

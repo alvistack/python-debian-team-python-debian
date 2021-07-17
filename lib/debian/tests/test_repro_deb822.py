@@ -227,7 +227,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file.paragraphs))
-        as_dict = source_paragraph.as_dict_view()
+        as_dict = source_paragraph.as_simple_dict_view()
         # Non-ambiguous fields are fine
         self.assertEqual("foo", as_dict['Source'])
         self.assertEqual("1.2.3", as_dict['Standards-Version'])
@@ -236,7 +236,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             self.fail('Should have thrown an error, but extracted "' + v + '" instead')
         except AmbiguousDeb822FieldKeyError:
             pass
-        as_dict_auto_resolve = source_paragraph.as_dict_view(auto_resolve_ambiguous_fields=True)
+        as_dict_auto_resolve = source_paragraph.as_simple_dict_view(auto_resolve_ambiguous_fields=True)
         self.assertEqual("foo", as_dict_auto_resolve['Source'])
         self.assertEqual("1.2.3", as_dict_auto_resolve['Standards-Version'])
         # Auto-resolution always takes the first field value
@@ -251,7 +251,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         # As an alternative, we can also fix the problem if we discard comments
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file.paragraphs))
-        as_dict_discard_comments = source_paragraph.as_dict_view(
+        as_dict_discard_comments = source_paragraph.as_simple_dict_view(
             preserve_field_comments_on_field_updates=False,
             auto_resolve_ambiguous_fields=False,
         )
