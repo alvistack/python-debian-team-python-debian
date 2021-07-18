@@ -27,6 +27,7 @@ from unittest import TestCase, SkipTest
 if sys.version_info >= (3, 9):
     from debian._deb822_repro import (parse_deb822_file,
                                       Deb822ErrorToken,
+                                      Deb822Token,
                                       AmbiguousDeb822FieldKeyError,
                                       LIST_SPACE_SEPARATED_INTERPRETATION,
                                       LIST_COMMA_SEPARATED_INTERPRETATION,
@@ -37,7 +38,7 @@ if sys.version_info >= (3, 9):
                                       VT,
                                       ST,
                                       )
-    from typing import Iterator, Tuple
+    from typing import Any, Iterator, Tuple
 else:
     parse_deb822_file = None
     Deb822ErrorToken = None
@@ -590,3 +591,66 @@ class FormatPreservingDeb822ParserTests(TestCase):
             # Add a value (as leaving the field empty would raise an error
             # on leaving the with-statement)
             arch_list.append('hurd-amd64')
+
+        # Test sorting of the field
+        expected_result = textwrap.dedent('''\
+                Architecture: amd64
+                              hurd-amd64
+                              hurd-i386
+                              i386
+                # Also on kfreebsd
+                              kfreebsd-amd64
+                              kfreebsd-i386
+                              ppc64el
+                 ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            # Sort does not promise a "nice" output, hench reformatting
+            arch_list.reformat_when_finished()
+            # Add a few extra as the field is "almost" sorted already.
+            arch_list.append('ppc64el')
+            arch_list.append('hurd-i386')
+            arch_list.append('hurd-amd64')
+            arch_list.sort()
+
+        # Test sorting of the field with key-func
+        expected_result = textwrap.dedent('''\
+                Architecture: amd64
+                              i386
+                              ppc64el
+                # Also on kfreebsd
+                              kfreebsd-amd64
+                              kfreebsd-i386
+                # Also on hurd
+                              hurd-amd64
+                              hurd-i386
+                 ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            # Sort does not promise a "nice" output, hench reformatting
+            arch_list.reformat_when_finished()
+            # Add a few extra as the field is "almost" sorted already.
+            arch_list.append('ppc64el')
+            arch_list.append('hurd-i386')
+            arch_list.append_comment('Also on hurd')
+            arch_list.append('hurd-amd64')
+            order = {
+                'linux': 0,
+                'kfreebsd': 1,
+                'hurd': 2,
+            }
+
+            def _key_func(value):
+                # type: (Deb822Token) -> Any
+                v = value.text
+                if '-' in v:
+                    ov = order.get(v.split('-')[0])
+                    if ov is None:
+                        ov = 0
+                else:
+                    ov = 0
+                return ov, v
+
+            arch_list.sort(key=_key_func)

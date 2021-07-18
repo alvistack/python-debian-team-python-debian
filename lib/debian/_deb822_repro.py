@@ -611,6 +611,81 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         kvpair_element.value_element = new_kvpair_element.value_element
         self._changed = False
 
+    def sort(self, /, *, key: Optional[Callable[[VT], Any]] = None, reverse: bool = False) -> None:
+        """Sort the elements (values) in this list.
+
+        This method will sort the logical values of the list. It will
+        attempt to preserve comments associated with a given value where
+        possible.  Whether space and separators are preserved depends on
+        the contents of the field as well as the formatting settings.
+
+        Sorting (without reformatting) is likely to leave you with "awkward"
+        whitespace. Therefore, you almost always want to apply reformatting
+        such as the reformat_when_finished() method.
+
+
+        """
+        comment_start_node = None
+        vtype = self._vtype
+        stype = self._stype
+
+        def key_func(x: typing.Tuple[VT, List['Deb822Token']]) -> Any:
+            if key:
+                return key(x[0])
+            return x[0].convert_to_text()
+
+        parts = []
+
+        for node in self._token_list.iter_nodes():
+            value = node.value
+            if value.is_comment:
+                if comment_start_node is None:
+                    comment_start_node = node
+                continue
+
+            if isinstance(value, vtype):
+                comments = []
+                if comment_start_node is not None:
+                    for keep_node in comment_start_node.iter_next(skip_current=False):
+                        if keep_node is node:
+                            break
+                        comments.append(keep_node.value)
+                parts.append((value, comments))
+                comment_start_node = None
+
+        parts.sort(key=key_func, reverse=reverse)
+
+        self._changed = True
+        self._token_list.clear()
+        first_value = True
+
+        separator_is_space = self._default_separator_factory().is_whitespace
+
+        for value, comments in parts:
+            if first_value:
+                first_value = False
+                if comments:
+                    # While unlikely, there could be a separator between the comments.
+                    # It would be in the way and we remove it.
+                    comments = [x for x in comments if not isinstance(x, stype)]
+                    # Comments cannot start the field, so inject a newline to
+                    # work around that
+                    self.append_newline()
+            else:
+                if not separator_is_space and not any(isinstance(x, stype) for x in comments):
+                    # While unlikely, you can hide a comma between two comments and expect
+                    # us to preserve it.  However, the more common case is that the separator
+                    # appeared before the comments and was thus omitted (leaving us to re-add
+                    # it here).
+                    self.append_separator(space_after_separator=False)
+                if comments or self._format_one_value_per_line:
+                    self.append_newline()
+                else:
+                    self._token_list.append(Deb822WhitespaceToken(' '))
+
+            self._token_list.extend(comments)
+            self.append_value(value)
+
 
 class Interpretation(Generic[T]):
 
@@ -1394,6 +1469,9 @@ class Deb822ParagraphElement(Deb822Element, ABC):
             ... Architecture: amd64
             ... # Inline comment (associated with the next line)
             ...               i386
+            ... # We also support arm
+            ...               arm64
+            ...               armel
             ... '''
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
             >>> paragraph = next(iter(dfile.paragraphs))
@@ -1403,19 +1481,38 @@ class Deb822ParagraphElement(Deb822Element, ABC):
             >>> list(list_view["Package"])
             ['foo']
             >>> with list_view["Architecture"] as arch_list:
-            ...    orig_arch_list = list(arch_list)
-            ...    arch_list.replace('i386', 'kfreebsd-amd64')
+            ...     orig_arch_list = list(arch_list)
+            ...     arch_list.replace('i386', 'kfreebsd-amd64')
             >>> orig_arch_list
-            ['amd64', 'i386']
+            ['amd64', 'i386', 'arm64', 'armel']
             >>> list(list_view["Architecture"])
-            ['amd64', 'kfreebsd-amd64']
+            ['amd64', 'kfreebsd-amd64', 'arm64', 'armel']
             >>> print(paragraph.convert_to_text(), end='')
             Package: foo
             # Field comment (because it becomes just before a field)
             Architecture: amd64
             # Inline comment (associated with the next line)
                           kfreebsd-amd64
+            # We also support arm
+                          arm64
+                          armel
             >>> # Format preserved and architecture replaced
+            >>> with list_view["Architecture"] as arch_list:
+            ...     # Prettify the result as sorting will cause awkward whitespace
+            ...     arch_list.reformat_when_finished()
+            ...     arch_list.sort()
+            >>> print(paragraph.convert_to_text(), end='')
+            Package: foo
+            # Field comment (because it becomes just before a field)
+            Architecture: amd64
+            # We also support arm
+                          arm64
+                          armel
+            # Inline comment (associated with the next line)
+                          kfreebsd-amd64
+            >>> list(list_view["Architecture"])
+            ['amd64', 'arm64', 'armel', 'kfreebsd-amd64']
+            >>> # Format preserved and architecture values sorted
 
         :param interpretation: Decides how the field values are interpreted.  As an example,
           use LIST_SPACE_SEPARATED_INTERPRETATION for fields such as Architecture in the
