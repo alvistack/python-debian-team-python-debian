@@ -228,7 +228,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file.paragraphs))
-        as_dict = source_paragraph.as_simple_dict_view()
+        as_dict = source_paragraph.configured_view()
         # Non-ambiguous fields are fine
         self.assertEqual("foo", as_dict['Source'])
         self.assertEqual("1.2.3", as_dict['Standards-Version'])
@@ -237,7 +237,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             self.fail('Should have thrown an error, but extracted "' + v + '" instead')
         except AmbiguousDeb822FieldKeyError:
             pass
-        as_dict_auto_resolve = source_paragraph.as_simple_dict_view(auto_resolve_ambiguous_fields=True)
+        as_dict_auto_resolve = source_paragraph.configured_view(auto_resolve_ambiguous_fields=True)
         self.assertEqual("foo", as_dict_auto_resolve['Source'])
         self.assertEqual("1.2.3", as_dict_auto_resolve['Standards-Version'])
         # Auto-resolution always takes the first field value
@@ -252,7 +252,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         # As an alternative, we can also fix the problem if we discard comments
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file.paragraphs))
-        as_dict_discard_comments = source_paragraph.as_simple_dict_view(
+        as_dict_discard_comments = source_paragraph.configured_view(
             preserve_field_comments_on_field_updates=False,
             auto_resolve_ambiguous_fields=False,
         )
@@ -404,8 +404,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
             kvpair.value_element = original_value_element
             self.assertEqual(original, deb822_file.convert_to_text())
 
-        arch_kvpair = source_paragraph['Architecture']
-        comma_list_kvpair = source_paragraph['Some-Comma-List']
+        arch_kvpair = source_paragraph.get_kvpair_element('Architecture')
+        comma_list_kvpair = source_paragraph.get_kvpair_element('Some-Comma-List')
+        assert arch_kvpair is not None and comma_list_kvpair is not None
         archs = arch_kvpair.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
         comma_list_misread = comma_list_kvpair.interpret_as(
             LIST_SPACE_SEPARATED_INTERPRETATION
