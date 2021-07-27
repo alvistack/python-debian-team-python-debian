@@ -1311,11 +1311,11 @@ class AutoResolvingMixin(Generic[T]):
 
     @property
     def _auto_resolve_ambiguous_fields(self) -> bool:
-        raise NotImplementedError
+        return True
 
     @property
     def _paragraph(self) -> 'Deb822ParagraphElement':
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def __contains__(self, item: str) -> bool:
         return self._paragraph.contains_kvpair_element(item)
@@ -1341,7 +1341,7 @@ class AutoResolvingMixin(Generic[T]):
         self._paragraph.remove_kvpair_element(item)
 
     def _interpret_value(self, key: str, value: Deb822KeyValuePairElement) -> T:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 # Deb822ParagraphElement uses this Mixin (by having `_paragraph` return self).
@@ -1350,20 +1350,20 @@ class AutoResolvingMixin(Generic[T]):
 class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
 
     @property
-    def _auto_resolve_ambiguous_fields(self) -> bool:
-        raise NotImplementedError
-
-    @property
     def _auto_map_initial_line_whitespace(self) -> bool:
-        raise NotImplementedError
+        return True
 
     @property
     def _discard_comments_on_read(self) -> bool:
-        raise NotImplementedError
+        return True
+
+    @property
+    def _auto_map_final_newline_in_multiline_values(self) -> bool:
+        return True
 
     @property
     def _preserve_field_comments_on_field_updates(self) -> bool:
-        raise NotImplementedError
+        return True
 
     def _convert_value_to_str(self, kvpair_element: Deb822KeyValuePairElement) -> str:
         value_element = kvpair_element.value_element
@@ -1377,21 +1377,25 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
                 t = t.strip()
             return t
 
-        if not self._auto_map_initial_line_whitespace and not self._discard_comments_on_read:
+        if self._auto_map_initial_line_whitespace or self._discard_comments_on_read:
+            converter = _convert_value_lines_to_lines(value_entries,
+                                                      self._discard_comments_on_read,
+                                                      )
+
+            auto_map_space = self._auto_map_initial_line_whitespace
+
+            # Because we know there are more than one line, we can unconditionally inject
+            # the newline after the first line
+            as_text = ''.join(line.strip() + "\n" if auto_map_space and i == 1 else line
+                              for i, line in enumerate(converter, start=1)
+                              )
+        else:
             # No rewrite necessary.
-            return value_element.convert_to_text()
+            as_text = value_element.convert_to_text()
 
-        converter = _convert_value_lines_to_lines(value_entries,
-                                                  self._discard_comments_on_read,
-                                                  )
-
-        auto_map_space = self._auto_map_initial_line_whitespace
-
-        # Because we know there are more than one line, we can unconditionally inject
-        # the newline after the first line
-        return ''.join(line.strip() + "\n" if auto_map_space and i == 1 else line
-                       for i, line in enumerate(converter, start=1)
-                       )
+        if self._auto_map_final_newline_in_multiline_values and as_text[-1] == "\n":
+            as_text = as_text[:-1]
+        return as_text
 
     def __setitem__(self, field_name: str, value: str) -> None:
         keep_comments: Optional[bool] = self._preserve_field_comments_on_field_updates
@@ -1407,17 +1411,26 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
                 comment = orig_kvpair.comment_element
 
         if self._auto_map_initial_line_whitespace:
-            if '\n' not in value and not value[0].isspace():
+            try:
+                idx = value.index("\n")
+            except ValueError:
+                idx = -1
+            if idx == -1 or idx == len(value):
                 self._paragraph.set_field_to_simple_value(
                     field_name,
-                    value,
+                    value.strip(),
                     preserve_original_field_comment=keep_comments,
                     field_comment=comment,
                 )
                 return
+            # Regenerate the first line with normalized whitespace
+            first_line, rest = value.split("\n", 1)
+            value = "".join((" ", first_line.strip(), "\n", rest))
         if not value.endswith("\n"):
-            raise ValueError("Values must end with a newline (or be single line"
-                             " values and use the auto whitespace mapping feature)")
+            if not self._auto_map_final_newline_in_multiline_values:
+                raise ValueError("Values must end with a newline (or be single line"
+                                 " values and use the auto whitespace mapping feature)")
+            value += "\n"
         self._paragraph.set_field_from_raw_string(
             field_name,
             value,
@@ -1473,12 +1486,15 @@ class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str],
                  discard_comments_on_read: bool = True,
                  auto_map_initial_line_whitespace: bool = True,
                  auto_resolve_ambiguous_fields: bool = False,
-                 preserve_field_comments_on_field_updates: bool = True
+                 preserve_field_comments_on_field_updates: bool = True,
+                 auto_map_final_newline_in_multiline_values: bool = True,
                  ):
         super().__init__(paragraph, auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields)
         self.__discard_comments_on_read = discard_comments_on_read
         self.__auto_map_initial_line_whitespace = auto_map_initial_line_whitespace
         self.__preserve_field_comments_on_field_updates = preserve_field_comments_on_field_updates
+        self.__auto_map_final_newline_in_multiline_values = \
+            auto_map_final_newline_in_multiline_values
 
     @property
     def _auto_map_initial_line_whitespace(self) -> bool:
@@ -1491,6 +1507,10 @@ class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str],
     @property
     def _preserve_field_comments_on_field_updates(self) -> bool:
         return self.__preserve_field_comments_on_field_updates
+
+    @property
+    def _auto_map_final_newline_in_multiline_values(self) -> bool:
+        return self.__auto_map_final_newline_in_multiline_values
 
 
 class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, ABC):
@@ -1595,6 +1615,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                         auto_map_initial_line_whitespace: bool = True,
                         auto_resolve_ambiguous_fields: bool = False,
                         preserve_field_comments_on_field_updates: bool = True,
+                        auto_map_final_newline_in_multiline_values: bool = True,
                         ) -> Deb822DictishParagraphWrapper:
         r"""Provide a Dict[str, str]-like view of this paragraph with non-standard parameters
 
@@ -1610,14 +1631,13 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ... '''
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
             >>> paragraph = next(iter(dfile.paragraphs))
-            >>> dictview = paragraph.configured_view()
             >>> # With the defaults, you only deal with the semantic values
             >>> # - no leading or trailing whitespace on the first part of the value
             >>> paragraph["Package"]
             'foo'
             >>> # - no inline comments in multiline values (but whitespace will be present
             >>> #   subsequent lines.)
-            >>> print(paragraph["Depends"], end='')
+            >>> print(paragraph["Depends"])
             libfoo,
                      libbar,
             >>> paragraph['Foo'] = 'bar'
@@ -1630,11 +1650,13 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             >>> paragraph['Foo']
             'bar'
             >>> paragraph['Bar'] = '     bar\n#Comment\n another value\n'
-            >>> paragraph['Bar']
-            'bar\n another value\n'
+            >>> # Note that the whitespace on the first line has been normalized.
+            >>> print("Bar: " + paragraph['Bar'])
+            Bar: bar
+             another value
             >>> # The comment is present (in case you where wondering)
             >>> print(paragraph.get_kvpair_element('Bar').convert_to_text(), end='')
-            Bar:     bar
+            Bar: bar
             #Comment
              another value
             >>> # On the other hand, you can choose to see the values as they are
@@ -1644,15 +1666,18 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             >>> nonstd_dictview = paragraph.configured_view(
             ...     discard_comments_on_read=False,
             ...     auto_map_initial_line_whitespace=False,
-            ...     # For paragraphs with duplicate fields, this makes you always get the first
-            ...     # field
-            ...     auto_resolve_ambiguous_fields=True,
+            ...     # For paragraphs with duplicate fields, you can choose to get an error
+            ...     # rather than the dict picking the first value available.
+            ...     auto_resolve_ambiguous_fields=False,
+            ...     auto_map_final_newline_in_multiline_values=False,
             ... )
             >>> # Because we have reset the state, Foo and Bar are no longer there.
             >>> 'Bar' not in paragraph and 'Foo' not in paragraph
             True
             >>> # We can now see the comments (discard_comments_on_read=False)
-            >>> print(nonstd_dictview["Depends"], end="")
+            >>> # (The leading whitespace in front of "libfoo" is due to
+            >>> #  auto_map_initial_line_whitespace=False)
+            >>> print(nonstd_dictview["Depends"], end='')
              libfoo,
             # Inline comment (associated with the next line)
                      libbar,
@@ -1682,6 +1707,10 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             >>> # But because they are views, changes performed via one view is visible in the other
             >>> paragraph['Foo']
             'bar'
+            >>> # The views show the values according to their own rules. Therefore, there is an
+            >>> # asymmetric between paragraph['Foo'] and nonstd_dictview['Foo']
+            >>> # Nevertheless, you can read or write the fields via either - enabling you to use
+            >>> # the view that best suit your use-case for the given field.
             >>> 'Baz' in paragraph and nonstd_dictview.get('Baz') is not None
             True
             >>> # Deletion via the view also works
@@ -1691,8 +1720,19 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
 
 
         :param discard_comments_on_read: When getting a field value from the dict,
-          this parameter decides how in-line comments are handled.
-        :param auto_map_initial_line_whitespace:
+          this parameter decides how in-line comments are handled.  When setting
+          the value, inline comments are still allowed and will be retained.
+          However, keep in mind that this option makes getter and setter assymetric
+          as a "get" following a "set" with inline comments will omit the comments
+          even if they are there (see the code example).
+        :param auto_map_initial_line_whitespace: Special-case the first value line
+          by trimming unnecessary whitespace leaving only the value. For single-line
+          values, all space including newline is pruned. For multi-line values, the
+          newline is preserved / needed to distinguish the first line from the
+          following lines.  When setting a value, this option normalizes the
+          whitespace of the initial line of the value field.
+          When this option is set to True makes the dictionary behave more like the
+          original Deb822 module.
         :param preserve_field_comments_on_field_updates: Whether to preserve the field
           comments when mutating the field.
         :param auto_resolve_ambiguous_fields: This parameter is only relevant for paragraphs
@@ -1701,6 +1741,11 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
           the return dict-like object will refuse to resolve the field (not knowing which
           version to pick).  This parameter (if set to True) instead changes the error into
           assuming the caller wants the *first* variant.
+        :param auto_map_final_newline_in_multiline_values: This parameter controls whether
+          a multiline field with have / need a trailing newline. If True, the trailing
+          newline is hidden on get and automatically added in set (if missing).
+          When this option is set to True makes the dictionary behave more like the
+          original Deb822 module.
         """
         return Deb822DictishParagraphWrapper(
             self,
@@ -1708,23 +1753,8 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             auto_map_initial_line_whitespace=auto_map_initial_line_whitespace,
             auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields,
             preserve_field_comments_on_field_updates=preserve_field_comments_on_field_updates,
+            auto_map_final_newline_in_multiline_values=auto_map_final_newline_in_multiline_values,
         )
-
-    @property
-    def _auto_map_initial_line_whitespace(self) -> bool:
-        return True
-
-    @property
-    def _discard_comments_on_read(self) -> bool:
-        return True
-
-    @property
-    def _preserve_field_comments_on_field_updates(self) -> bool:
-        return True
-
-    @property
-    def _auto_resolve_ambiguous_fields(self) -> bool:
-        return True
 
     @property
     def _paragraph(self) -> 'Deb822ParagraphElement':
