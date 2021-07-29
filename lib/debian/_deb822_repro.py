@@ -170,16 +170,20 @@ class _LinkedList(Generic[T]):
     components like Deb822InvalidParagraphElement.
     """
 
-    __slots__ = ('head_node', 'tail_node')
+    __slots__ = ('head_node', 'tail_node', '_size')
 
     def __init__(self, values: Optional[Iterable[T]] = None, /) -> None:
         self.head_node: Optional[_LinkedListNode[T]] = None
         self.tail_node: Optional[_LinkedListNode[T]] = None
+        self._size = 0
         if values is not None:
             self.extend(values)
 
     def __bool__(self) -> bool:
         return self.head_node is not None
+
+    def __len__(self) -> int:
+        return self._size
 
     @property
     def tail(self) -> Optional[T]:
@@ -215,6 +219,8 @@ class _LinkedList(Generic[T]):
             # That case should have happened in the "if node is self._head"
             # part
             assert self.tail_node is not None
+        assert self._size > 0
+        self._size -= 1
         node.remove()
 
     def append(self, value: T) -> _LinkedListNode[T]:
@@ -227,6 +233,7 @@ class _LinkedList(Generic[T]):
             assert self.tail_node is not None
             self.tail_node.insert_after(node)
             self.tail_node = node
+        self._size += 1
         return node
 
     def extend(self, values: Iterable[T]) -> None:
@@ -236,6 +243,7 @@ class _LinkedList(Generic[T]):
     def clear(self) -> None:
         self.head_node = None
         self.tail_node = None
+        self._size = 0
 
 
 class Deb822ParsedTokenList(Generic[VT, ST],
@@ -1307,7 +1315,7 @@ def _convert_value_lines_to_lines(value_lines: Iterable[Deb822ValueLineElement],
 # Deb822ParagraphElement uses this Mixin (by having `_paragraph` return self).
 # Therefore the Mixin needs to call the "proper" methods on the paragraph to
 # avoid doing infinite recursion.
-class AutoResolvingMixin(Generic[T]):
+class AutoResolvingMixin(Generic[T], collections.abc.Mapping[ParagraphKey, T]):
 
     @property
     def _auto_resolve_ambiguous_fields(self) -> bool:
@@ -1317,37 +1325,36 @@ class AutoResolvingMixin(Generic[T]):
     def _paragraph(self) -> 'Deb822ParagraphElement':
         raise NotImplementedError  # pragma: no cover
 
-    def __contains__(self, item: str) -> bool:
+    def __len__(self) -> int:
+        return self._paragraph.kvpair_count
+
+    def __contains__(self, item: object) -> bool:
         return self._paragraph.contains_kvpair_element(item)
 
-    def get(self, item: str) -> Optional[T]:
-        if self._auto_resolve_ambiguous_fields:
-            v = self._paragraph.get_kvpair_element((item, 0), use_get=True)
-        else:
-            v = self._paragraph.get_kvpair_element(item, use_get=True)
-        if v is None:
-            return None
-        return self._interpret_value(item, v)
+    def __iter__(self) -> Iterator[ParagraphKey]:
+        return iter(self._paragraph.iter_keys())
 
-    def __getitem__(self, item: str) -> T:
-        if self._auto_resolve_ambiguous_fields:
+    def __getitem__(self, item: ParagraphKey) -> T:
+        if self._auto_resolve_ambiguous_fields and isinstance(item, str):
             v = self._paragraph.get_kvpair_element((item, 0))
         else:
             v = self._paragraph.get_kvpair_element(item)
         assert v is not None
         return self._interpret_value(item, v)
 
-    def __delitem__(self, item: str) -> None:
+    def __delitem__(self, item: ParagraphKey) -> None:
         self._paragraph.remove_kvpair_element(item)
 
-    def _interpret_value(self, key: str, value: Deb822KeyValuePairElement) -> T:
+    def _interpret_value(self, key: ParagraphKey, value: Deb822KeyValuePairElement) -> T:
         raise NotImplementedError  # pragma: no cover
 
 
 # Deb822ParagraphElement uses this Mixin (by having `_paragraph` return self).
 # Therefore the Mixin needs to call the "proper" methods on the paragraph to
 # avoid doing infinite recursion.
-class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
+class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
+                                       collections.abc.MutableMapping[ParagraphKey, str],
+                                       ABC):
 
     @property
     def _auto_map_initial_line_whitespace(self) -> bool:
@@ -1397,7 +1404,7 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
             as_text = as_text[:-1]
         return as_text
 
-    def __setitem__(self, field_name: str, value: str) -> None:
+    def __setitem__(self, item: ParagraphKey, value: str) -> None:
         keep_comments: Optional[bool] = self._preserve_field_comments_on_field_updates
         comment = None
         if keep_comments and self._auto_resolve_ambiguous_fields:
@@ -1406,7 +1413,10 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
             # means we might as well clear the keep_comments flag as we have
             # resolved the comment.
             keep_comments = None
-            orig_kvpair = self._paragraph.get_kvpair_element((field_name, 0), use_get=True)
+            key_lookup = item
+            if isinstance(item, str):
+                key_lookup = (item, 0)
+            orig_kvpair = self._paragraph.get_kvpair_element(key_lookup, use_get=True)
             if orig_kvpair is not None:
                 comment = orig_kvpair.comment_element
 
@@ -1417,7 +1427,7 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
                 idx = -1
             if idx == -1 or idx == len(value):
                 self._paragraph.set_field_to_simple_value(
-                    field_name,
+                    item,
                     value.strip(),
                     preserve_original_field_comment=keep_comments,
                     field_comment=comment,
@@ -1432,13 +1442,13 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str], ABC):
                                  " values and use the auto whitespace mapping feature)")
             value += "\n"
         self._paragraph.set_field_from_raw_string(
-            field_name,
+            item,
             value,
             preserve_original_field_comment=keep_comments,
             field_comment=comment,
         )
 
-    def _interpret_value(self, key: str, value: Deb822KeyValuePairElement) -> T:
+    def _interpret_value(self, key: ParagraphKey, value: Deb822KeyValuePairElement) -> T:
         # mypy is a bit dense and cannot see that T == str
         return typing.cast('T', self._convert_value_to_str(value))
 
@@ -1473,7 +1483,7 @@ class Deb822InterpretingParagraphWrapper(AbstractDeb822ParagraphWrapper[T]):
         super().__init__(paragraph, auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields)
         self._interpretation = interpretation
 
-    def _interpret_value(self, key: str, value: Deb822KeyValuePairElement) -> T:
+    def _interpret_value(self, key: 'ParagraphKey', value: Deb822KeyValuePairElement) -> T:
         return self._interpretation.interpret(value)
 
 
@@ -1760,7 +1770,14 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
     def _paragraph(self) -> 'Deb822ParagraphElement':
         return self
 
-    def contains_kvpair_element(self, item: ParagraphKey) -> bool:
+    @property
+    def kvpair_count(self) -> int:
+        raise NotImplementedError  # pragma: no cover
+
+    def iter_keys(self) -> Iterable[ParagraphKey]:
+        raise NotImplementedError  # pragma: no cover
+
+    def contains_kvpair_element(self, item: object) -> bool:
         raise NotImplementedError  # pragma: no cover
 
     def get_kvpair_element(self, item: ParagraphKey,
@@ -1770,13 +1787,13 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
     def set_kvpair_element(self, key: ParagraphKey, value: Deb822KeyValuePairElement) -> None:
         raise NotImplementedError  # pragma: no cover
 
-    def remove_kvpair_element(self, key: Union[Deb822FieldNameToken, str]) -> None:
+    def remove_kvpair_element(self, key: ParagraphKey) -> None:
         raise NotImplementedError  # pragma: no cover
 
     def sort_fields(self, key: Optional[Callable[[str], Any]] = None) -> None:
         raise NotImplementedError  # pragma: no cover
 
-    def set_field_to_simple_value(self, field_name: str, simple_value: str, *,
+    def set_field_to_simple_value(self, item: ParagraphKey, simple_value: str, *,
                                   preserve_original_field_comment: Optional[bool] = None,
                                   field_comment: Optional[Commentish] = None,
                                   ) -> None:
@@ -1809,10 +1826,13 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                 ...
             ValueError: Cannot use set_field_to_simple_value for values with newlines
 
-        :param field_name: Name of the field to set.  If the paragraph already
+        :param item: Name of the field to set.  If the paragraph already
           contains the field, then it will be replaced.  If the field exists,
           then it will preserve its order in the paragraph.  Otherwise, it is
           added to the end of the paragraph.
+          Note this can be a "paragraph key", which enables you to control
+          *which* instance of a field is being replaced (in case of duplicate
+          fields).
         :param simple_value: The text to use as the value.  The value must not
           contain newlines.  Leading and trailing will be stripped but space
           within the value is preserved.  The value cannot contain comments
@@ -1831,13 +1851,13 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         # have single space after the field separator
         raw_value = ' ' + simple_value.strip() + "\n"
         self.set_field_from_raw_string(
-            field_name,
+            item,
             raw_value,
             preserve_original_field_comment=preserve_original_field_comment,
             field_comment=field_comment,
         )
 
-    def set_field_from_raw_string(self, field_name: str, raw_string_value: str, *,
+    def set_field_from_raw_string(self, item: ParagraphKey, raw_string_value: str, *,
                                   preserve_original_field_comment: Optional[bool] = None,
                                   field_comment: Optional[Commentish] = None,
                                   ) -> None:
@@ -1871,9 +1891,12 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                            another-bd,
             >>> # Format preserved
 
-        :param field_name: Name of the field to set.  If the paragraph already
+        :param item: Name of the field to set.  If the paragraph already
           contains the field, then it will be replaced.  Otherwise, it is
           added to the end of the paragraph.
+          Note this can be a "paragraph key", which enables you to control
+          *which* instance of a field is being replaced (in case of duplicate
+          fields).
         :param raw_string_value: The text to use as the value.  The text must
           be valid deb822 syntax and is used *exactly* as it is given.
           Accordingly, multi-line values must include mandatory leading space
@@ -1911,7 +1934,10 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         else:
             preserve_original_field_comment = True
 
-        raw = ":".join((field_name, raw_string_value))
+        field_name, _ = _unpack_key(item, resolve_field_name=True)
+        field_name = typing.cast('str', field_name)
+
+        raw = ":".join((field_name, raw_string_value))  # FIXME
         raw_lines = raw.splitlines(keepends=True)
         for i, line in enumerate(raw_lines, start=1):
             if not line.endswith("\n"):
@@ -1934,13 +1960,13 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         value = paragraph.get_kvpair_element(field_name)
         assert value is not None
         if preserve_original_field_comment:
-            original = self.get_kvpair_element(value.field_name, use_get=True)
+            original = self.get_kvpair_element(item, use_get=True)
             if original:
                 value.comment_element = original.comment_element
                 original.comment_element = None
         elif field_comment is not None:
             value.comment_element = field_comment
-        self.set_kvpair_element(value.field_name, value)
+        self.set_kvpair_element(item, value)
 
 
 class Deb822ValidParagraphElement(Deb822ParagraphElement):
@@ -1958,12 +1984,22 @@ class Deb822ValidParagraphElement(Deb822ParagraphElement):
         self._kvpair_order = kvpair_order
         self._init_parent_of_parts()
 
-    def remove_kvpair_element(self, key: Union[Deb822FieldNameToken, str]) -> None:
+    @property
+    def kvpair_count(self) -> int:
+        return len(self._kvpair_elements)
+
+    def iter_keys(self) -> Iterable[ParagraphKey]:
+        yield from self._kvpair_elements
+
+    def remove_kvpair_element(self, key: ParagraphKey) -> None:
         key, _ = _unpack_key(key, resolve_field_name=True, raise_if_indexed=True)
         key = typing.cast('_strI', key)
         del self._kvpair_elements[key]
 
-    def contains_kvpair_element(self, item: ParagraphKey) -> bool:
+    def contains_kvpair_element(self, item: object) -> bool:
+        if not isinstance(item, (str, tuple, Deb822FieldNameToken)):
+            return False
+        item = typing.cast('ParagraphKey', item)
         key, _ = _unpack_key(item, resolve_field_name=True, raise_if_indexed=True)
         key = typing.cast('_strI', key)
         return key in self._kvpair_elements
@@ -2032,6 +2068,13 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
     def iter_parts(self) -> Iterable[TokenOrElement]:
         yield from self._kvpair_order
 
+    @property
+    def kvpair_count(self) -> int:
+        return len(self._kvpair_order)
+
+    def iter_keys(self) -> Iterable[ParagraphKey]:
+        yield from (kv.field_name for kv in self._kvpair_order)
+
     def get_kvpair_element(self, item: ParagraphKey,
                            use_get: bool = False) -> Optional[Deb822KeyValuePairElement]:
         name_token: Optional[Deb822FieldNameToken]
@@ -2051,13 +2094,9 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
         if index is None:
             if len(res) != 1:
                 if name_token is not None:
-                    # if we are given a name token, then it is non-ambiguous if we have exactly
-                    # that name token in our list of nodes.  It will be an O(n) lookup but we
-                    # probably do not have that many duplicate fields (and even if do, it is not
-                    # exactly a valid file, so there little reason to optimize for it)
-                    for node in res:
-                        if name_token is node.value.field_token:
-                            return node.value
+                    node = self._find_node_via_name_token(name_token, res)
+                    if node is not None:
+                        return node.value
 
                 raise AmbiguousDeb822FieldKeyError(f"Ambiguous key {key} - the field appears "
                                                    f"{len(res)} times. Use ({key}, index) to"
@@ -2065,19 +2104,49 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
                                                    f" (Index can be 0..{len(res) - 1} or e.g. -1 to"
                                                    " denote the last field)")
             index = 0
-        return res[index].value
+        try:
+            return res[index].value
+        except IndexError:
+            if use_get:
+                return None
+            raise KeyError(f'Field "{key}" was present but the index "{index}" was invalid.')
 
-    def contains_kvpair_element(self, item: ParagraphKey) -> bool:
-        key, _ = _unpack_key(item, resolve_field_name=True)
-        key = typing.cast('_strI', key)
-        return key in self._kvpair_elements
+    @staticmethod
+    def _find_node_via_name_token(name_token: Deb822FieldNameToken,
+                                  elements: Iterable['_LinkedListNode[Deb822KeyValuePairElement]'],
+                                  ) -> 'Optional[_LinkedListNode[Deb822KeyValuePairElement]]':
+        # if we are given a name token, then it is non-ambiguous if we have exactly
+        # that name token in our list of nodes.  It will be an O(n) lookup but we
+        # probably do not have that many duplicate fields (and even if do, it is not
+        # exactly a valid file, so there little reason to optimize for it)
+        for node in elements:
+            if name_token is node.value.field_token:
+                return node
+        return None
+
+    def contains_kvpair_element(self, item: object) -> bool:
+        if not isinstance(item, (str, tuple, Deb822FieldNameToken)):
+            return False
+        item = typing.cast('ParagraphKey', item)
+        return self.get_kvpair_element(item, use_get=True) is not None
 
     def set_kvpair_element(self, key: ParagraphKey, value: Deb822KeyValuePairElement) -> None:
         key, index = _unpack_key(key)
         if isinstance(key, Deb822FieldNameToken):
             if key is not value.field_token:
-                raise ValueError("Key is a Deb822FieldNameToken, but not *the* Deb822FieldNameToken"
-                                 " for the value")
+                original_nodes = self._kvpair_elements.get(value.field_name)
+                original_node = None
+                if original_nodes is not None:
+                    original_node = self._find_node_via_name_token(key, original_nodes)
+
+                if original_node is None:
+                    raise ValueError("Key is a Deb822FieldNameToken, but not *the*"
+                                     " Deb822FieldNameToken for the value nor the"
+                                     " Deb822FieldNameToken for an existing field in the paragraph")
+                # Primarily for mypy's sake
+                assert original_nodes is not None
+                # Rely on the index-based code below to handle update.
+                index = original_nodes.index(original_node)
             key = value.field_name
         else:
             if key != value.field_name:
@@ -2122,14 +2191,44 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
                 n.value.parent_element = None
                 self._kvpair_order.remove_node(n)
 
-    def remove_kvpair_element(self, key: Union[Deb822FieldNameToken, str]) -> None:
-        key, _ = _unpack_key(key, resolve_field_name=True, raise_if_indexed=True)
-        key = typing.cast('_strI', key)
-        res = self._kvpair_elements[key]
-        for node in res:
-            node.value.parent_element = None
-            self._kvpair_order.remove_node(node)
-        del self._kvpair_elements[key]
+    def remove_kvpair_element(self, key: ParagraphKey) -> None:
+        key, idx = _unpack_key(key)
+        name_token: Optional[Deb822FieldNameToken]
+        if isinstance(key, Deb822FieldNameToken):
+            name_token = key
+            key = name_token.text
+        else:
+            name_token = None
+            key = _strI(key)
+        field_list = self._kvpair_elements[key]
+
+        if name_token is None and idx is None:
+            # Remove all case
+            for node in field_list:
+                node.value.parent_element = None
+                self._kvpair_order.remove_node(node)
+            del self._kvpair_elements[key]
+            return
+
+        if name_token is not None:
+            # Indirection between original_node and node for mypy's sake
+            original_node = self._find_node_via_name_token(name_token, field_list)
+            if original_node is None:
+                raise KeyError(f'The field "{key}" is present but key used to access it is not.')
+            node = original_node
+        else:
+            assert idx is not None
+            try:
+                node = field_list[idx]
+            except KeyError:
+                raise KeyError(f'The field "{key}" is present, but the index "{idx}" was invalid.')
+
+        if len(field_list) == 1:
+            del self._kvpair_elements[key]
+        else:
+            field_list.remove(node)
+        node.value.parent_element = None
+        self._kvpair_order.remove_node(node)
 
     def sort_fields(self, key: Optional[Callable[[str], Any]] = None) -> None:
         actual_key: Callable[[Deb822KeyValuePairElement], Any]
