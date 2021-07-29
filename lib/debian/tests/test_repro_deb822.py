@@ -22,6 +22,7 @@ import collections
 import contextlib
 import sys
 import textwrap
+from debian.deb822 import Deb822
 from unittest import TestCase, SkipTest
 
 if sys.version_info >= (3, 9):
@@ -211,6 +212,33 @@ class FormatPreservingDeb822ParserTests(TestCase):
             self.assertEqual(case_input, deb822_file.convert_to_text(),
                              "Input of case " + c + " is round trip safe")
             print("Successfully passed case " + c)
+
+    def test_deb822_emulation(self):
+        # type: () -> None
+
+        if sys.version_info < (3, 9):
+            raise SkipTest('The format preserving parser assume python 3.9')
+
+        for i, parse_case in enumerate(ROUND_TRIP_CASES, start=1):
+            if not parse_case.is_valid_file:
+                continue
+            c = str(i)
+            case_input = parse_case.input.replace('¶', '')
+            try:
+                deb822_file = parse_deb822_file(case_input.splitlines(keepends=True))
+            except Exception:
+                print("Error while parsing case " + c)
+                raise
+            deb822_paragraphs = list(Deb822.iter_paragraphs(case_input.splitlines()))
+
+            for repro_paragraph, deb822_paragraph in zip(deb822_file, deb822_paragraphs):
+                self.assertEqual(list(repro_paragraph), list(deb822_paragraph),
+                                 "Ensure keys are the same and in the correct order, case " + c)
+                # Use the key from Deb822 as it is compatible with the round safe version
+                # (the reverse is not true typing wise)
+                for k, ev in deb822_paragraph.items():
+                    av = repro_paragraph[k]
+                    self.assertEqual(av, ev, f"Ensure value for " + k + " is the same, case " + c)
 
     def test_duplicate_fields(self):
         # type: () -> None
