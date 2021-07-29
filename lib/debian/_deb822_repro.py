@@ -606,7 +606,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         if error_token:
             # _print_ast(deb822_file)
             raise ValueError(f"Syntax error in new field value for {field_name}")
-        paragraph = next(iter(deb822_file.paragraphs))
+        paragraph = next(iter(deb822_file))
         assert isinstance(paragraph, Deb822ValidParagraphElement)
         new_kvpair_element = paragraph.get_kvpair_element(field_name)
         assert new_kvpair_element is not None
@@ -1553,7 +1553,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ...               armel
             ... '''
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
-            >>> paragraph = next(iter(dfile.paragraphs))
+            >>> paragraph = next(iter(dfile))
             >>> list_view = paragraph.as_interpreted_dict_view(LIST_SPACE_SEPARATED_INTERPRETATION)
             >>> # With the defaults, you only deal with the semantic values
             >>> # - no leading or trailing whitespace on the first part of the value
@@ -1630,7 +1630,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ...          libbar,
             ... '''
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
-            >>> paragraph = next(iter(dfile.paragraphs))
+            >>> paragraph = next(iter(dfile))
             >>> # With the defaults, you only deal with the semantic values
             >>> # - no leading or trailing whitespace on the first part of the value
             >>> paragraph["Package"]
@@ -1662,7 +1662,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             >>> # On the other hand, you can choose to see the values as they are
             >>> # - We will just reset the paragraph as a "nothing up my sleeve"
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
-            >>> paragraph = next(iter(dfile.paragraphs))
+            >>> paragraph = next(iter(dfile))
             >>> nonstd_dictview = paragraph.configured_view(
             ...     discard_comments_on_read=False,
             ...     auto_map_initial_line_whitespace=False,
@@ -1792,7 +1792,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ... Package: foo
             ... '''
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
-            >>> p = next(iter(dfile.paragraphs))
+            >>> p = next(iter(dfile))
             >>> p.set_field_to_simple_value("Package", "mscgen")
             >>> p.set_field_to_simple_value("Architecture", "linux-any kfreebsd-any",
             ...                             field_comment=['Only ported to linux and kfreebsd'])
@@ -1854,7 +1854,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ... Package: foo
             ... '''
             >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
-            >>> p = next(iter(dfile.paragraphs))
+            >>> p = next(iter(dfile))
             >>> raw_value = '''
             ... Build-Depends: debhelper-compat (= 12),
             ...                some-other-bd,
@@ -1929,7 +1929,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         error_token = deb822_file.find_first_error_element()
         if error_token:
             raise ValueError(f"Syntax error in new field value for {field_name}")
-        paragraph = next(iter(deb822_file.paragraphs))
+        paragraph = next(iter(deb822_file))
         assert isinstance(paragraph, Deb822ValidParagraphElement)
         value = paragraph.get_kvpair_element(field_name)
         assert value is not None
@@ -2170,7 +2170,7 @@ class Deb822FileElement(Deb822Element):
         issues such as paragraphs with duplicate fields or "empty" files
         (a valid deb822 file contains at least one paragraph).
         """
-        paragraphs = list(self.paragraphs)
+        paragraphs = list(self)
         if not paragraphs:
             return False
         if any(p for p in paragraphs if not isinstance(p, Deb822ValidParagraphElement)):
@@ -2181,9 +2181,8 @@ class Deb822FileElement(Deb822Element):
         """Returns the first Deb822ErrorElement (or None) in the file"""
         return next(iter(self.iter_recurse(only_element_or_token_type=Deb822ErrorElement)), None)
 
-    @property
-    def paragraphs(self) -> Iterable[Deb822ParagraphElement]:
-        return self.iter_parts_of_type(Deb822ParagraphElement)
+    def __iter__(self) -> Iterator[Deb822ParagraphElement]:
+        return iter(self.iter_parts_of_type(Deb822ParagraphElement))
 
     def iter_parts(self) -> Iterable[TokenOrElement]:
         yield from self._token_and_elements

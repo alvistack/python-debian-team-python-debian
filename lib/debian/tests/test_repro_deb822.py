@@ -193,7 +193,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             for token in deb822_file.iter_tokens():
                 if isinstance(token, Deb822ErrorToken):
                     error_element_count += 1
-            paragraphs = len(list(deb822_file.paragraphs))
+            paragraph_count = len(list(deb822_file))
             # Remember you can use _print_ast(deb822_file) if you need to debug the test cases.
             # A la
             #
@@ -203,7 +203,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             #   print(f" ---  END CASE {i} --- ")
             self.assertEqual(parse_case.error_element_count, error_element_count,
                              "Correct number of error tokens for case " + c)
-            self.assertEqual(parse_case.paragraph_count, paragraphs,
+            self.assertEqual(parse_case.paragraph_count, paragraph_count,
                              "Correct number of paragraphs parsed for case " + c)
             self.assertEqual(parse_case.is_valid_file, deb822_file.is_valid_file,
                              "Verify deb822_file correctly determines whether the field is invalid"
@@ -227,7 +227,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         Rules-Requires-Root: binary-targets
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
-        source_paragraph = next(iter(deb822_file.paragraphs))
+        source_paragraph = next(iter(deb822_file))
         as_dict = source_paragraph.configured_view()
         # Non-ambiguous fields are fine
         self.assertEqual("foo", as_dict['Source'])
@@ -251,7 +251,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
         # As an alternative, we can also fix the problem if we discard comments
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
-        source_paragraph = next(iter(deb822_file.paragraphs))
+        source_paragraph = next(iter(deb822_file))
         as_dict_discard_comments = source_paragraph.configured_view(
             preserve_field_comments_on_field_updates=False,
             auto_resolve_ambiguous_fields=False,
@@ -350,14 +350,14 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ''')
 
         deb822_file_nodups = parse_deb822_file(original_nodups.splitlines(keepends=True))
-        for paragraph in deb822_file_nodups.paragraphs:
+        for paragraph in deb822_file_nodups:
             paragraph.sort_fields(key=key_func)
 
         self.assertEqual(sorted_nodups, deb822_file_nodups.convert_to_text(),
                          "Sorting without duplicated fields work")
         deb822_file_with_dups = parse_deb822_file(original_with_dups.splitlines(keepends=True))
 
-        for paragraph in deb822_file_with_dups.paragraphs:
+        for paragraph in deb822_file_with_dups:
             paragraph.sort_fields(key=key_func)
 
         self.assertEqual(sorted_with_dups, deb822_file_with_dups.convert_to_text(),
@@ -378,7 +378,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         Some-Comma-List: , a,  b , c
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
-        source_paragraph = next(iter(deb822_file.paragraphs))
+        source_paragraph = next(iter(deb822_file))
 
         @contextlib.contextmanager
         def _field_mutation_test(
