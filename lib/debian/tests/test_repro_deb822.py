@@ -256,7 +256,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
-        as_dict = source_paragraph.configured_view()
+        as_dict = source_paragraph.configured_view(auto_resolve_ambiguous_fields=False)
         # Non-ambiguous fields are fine
         self.assertEqual("foo", as_dict['Source'])
         self.assertEqual("1.2.3", as_dict['Standards-Version'])
