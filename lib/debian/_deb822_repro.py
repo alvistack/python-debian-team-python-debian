@@ -1543,7 +1543,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
     def as_interpreted_dict_view(self,
                                  interpretation: Interpretation[T],
                                  *,
-                                 auto_resolve_ambiguous_fields: bool = False,
+                                 auto_resolve_ambiguous_fields: bool = True,
                                  ) -> Deb822InterpretingParagraphWrapper[T]:
         r"""Provide a Dict-like view of the paragraph
 
@@ -1623,7 +1623,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                         *,
                         discard_comments_on_read: bool = True,
                         auto_map_initial_line_whitespace: bool = True,
-                        auto_resolve_ambiguous_fields: bool = False,
+                        auto_resolve_ambiguous_fields: bool = True,
                         preserve_field_comments_on_field_updates: bool = True,
                         auto_map_final_newline_in_multiline_values: bool = True,
                         ) -> Deb822DictishParagraphWrapper:
