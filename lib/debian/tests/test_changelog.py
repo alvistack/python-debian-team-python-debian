@@ -24,17 +24,9 @@
 # Copyright 2005 Frank Lichtenheld <frank@lichtenheld.de>
 # and licensed under the same license as above.
 
-from __future__ import absolute_import
-
 import os.path
-import sys
-if sys.version_info[0] >= 3:
-    import unittest
-else:
-    import unittest2 as unittest
+import unittest
 import warnings
-
-import six
 
 from debian import changelog
 from debian import debian_support
@@ -62,10 +54,7 @@ def find_test_file(filename):
 def open_utf8(filename, mode='r'):
     # type: (str, str) -> IO[Text]
     """Open a UTF-8 text file in text mode."""
-    if sys.version_info[0] >= 3:
-        return open(filename, mode=mode, encoding='UTF-8')
-    else:
-        return open(filename, mode=mode)
+    return open(filename, mode=mode, encoding='UTF-8')
 
 
 class ChangelogTests(unittest.TestCase):
@@ -256,8 +245,8 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         f = open_utf8(find_test_file('test_changelog_unicode'))
         c = changelog.Changelog(f)
         f.close()
-        u = six.text_type(c)
-        expected_u = six.u("""haskell-src-exts (1.8.2-3) unstable; urgency=low
+        u = str(c)
+        expected_u = """haskell-src-exts (1.8.2-3) unstable; urgency=low
 
   * control: Use versioned Replaces: and Conflicts:
 
@@ -268,7 +257,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
   * debian/control: Rename -doc package.
 
  -- Marco T\xfalio Gontijo e Silva <marcot@debian.org>  Tue, 16 Mar 2010 10:59:48 -0300
-""")
+"""
         self.assertEqual(u, expected_u)
         self.assertEqual(bytes(c), u.encode('utf-8'))
 
@@ -278,7 +267,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
             c_bytes = f.read()
         c_unicode = c_bytes.decode('utf-8')
         c = changelog.Changelog(c_unicode)
-        self.assertEqual(six.text_type(c), c_unicode)
+        self.assertEqual(str(c), c_unicode)
         self.assertEqual(bytes(c), c_bytes)
 
     def test_non_utf8_encoding(self):
@@ -288,11 +277,11 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         c_unicode = c_bytes.decode('utf-8')
         c_latin1_str = c_unicode.encode('latin1')
         c = changelog.Changelog(c_latin1_str, encoding='latin1')
-        self.assertEqual(six.text_type(c), c_unicode)
+        self.assertEqual(str(c), c_unicode)
         self.assertEqual(bytes(c), c_latin1_str)
         for block in c:
             self.assertEqual(bytes(block),
-                             six.text_type(block).encode('latin1'))
+                             str(block).encode('latin1'))
 
     def test_malformed_date(self):
         # type: () -> None

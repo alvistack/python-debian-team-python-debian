@@ -228,28 +228,16 @@ Deb822 Classes
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
-from __future__ import absolute_import, print_function
-
 import collections
-try:
-    # Python 3
-    import collections.abc as collections_abc
-except ImportError:
-    # Python 2.7 cruft
-    # pylint: disable=reimported
-    import collections as collections_abc    # type: ignore
-
+import collections.abc
 import datetime
 import email.utils
 import io
 import re
 import subprocess
-import sys
 import warnings
 
 import chardet
-import six
 
 
 try:
@@ -358,7 +346,7 @@ class RestrictedFieldError(Error):
 if TYPE_CHECKING:
     _TagSectionWrapper_base = Deb822Mapping
 else:
-    _TagSectionWrapper_base = collections_abc.Mapping
+    _TagSectionWrapper_base = collections.abc.Mapping
 
 
 class TagSectionWrapper(_TagSectionWrapper_base):
@@ -471,7 +459,7 @@ class OrderedSet(object):
 if TYPE_CHECKING:
     _Deb822Dict_base = Deb822MutableMapping
 else:
-    _Deb822Dict_base = collections_abc.MutableMapping
+    _Deb822Dict_base = collections.abc.MutableMapping
 
 
 class Deb822Dict(_Deb822Dict_base):
@@ -582,9 +570,6 @@ class Deb822Dict(_Deb822Dict_base):
         # type: (Any) -> bool
         keyi = _strI(key)
         return keyi in self.__keys
-
-    if sys.version < '3':
-        has_key = __contains__
 
     # ### END collections.abc.MutableMapping methods
 
@@ -736,18 +721,16 @@ class Deb822(Deb822Dict):
         if use_apt_pkg and not _have_apt_pkg:
             # warn that apt_pkg was requested but not installed
             msg = (
-                "Parsing of Deb822 data with python{pyver}-apt's apt_pkg was "
+                "Parsing of Deb822 data with python3-apt's apt_pkg was "
                 "requested but this package is not importable. "
-                "Is python{pyver}-apt installed?"
-            ).format(
-                pyver=('3' if sys.version_info[0] == 3 else '')
+                "Is python3-apt installed?"
             )
             warnings.warn(msg)
 
         elif use_apt_pkg and not apt_pkg_allowed:
             # warn that apt_pkg was requested but can't be used
             msg = (
-                "Parsing of Deb822 data with python-apt's apt_pkg was "
+                "Parsing of Deb822 data with python3-apt's apt_pkg was "
                 "requested but this cannot be done on non-file input."
             )
             warnings.warn(msg)
@@ -766,9 +749,9 @@ class Deb822(Deb822Dict):
             # Split this into multiple conditionals so that type checking
             # can follow the types through
             iterable = [] # type: IterableInputDataType
-            if isinstance(sequence, six.string_types):
+            if isinstance(sequence, str):
                 iterable = iter(sequence.splitlines())
-            elif isinstance(sequence, six.binary_type):
+            elif isinstance(sequence, bytes):
                 iterable = iter(sequence.splitlines())
             else:
                 # StringIO/list can be iterated directly
@@ -837,7 +820,7 @@ class Deb822(Deb822Dict):
             # type: (str) -> bool
             return fields is None or f in fields
 
-        if isinstance(sequence, (six.string_types, bytes)):
+        if isinstance(sequence, (str, bytes)):
             sequence = sequence.splitlines()
 
         curkey = None
@@ -891,11 +874,10 @@ class Deb822(Deb822Dict):
         d = self.dump()
         return d if d is not None else ""
 
-    if sys.version_info[0] >= 3:
-        def __bytes__(self):
-            # type: () -> bytes
-            d = self.dump()
-            return d.encode(self.encoding) if d is not None else b""
+    def __bytes__(self):
+        # type: () -> bytes
+        d = self.dump()
+        return d.encode(self.encoding) if d is not None else b""
 
     # __repr__ is handled by Deb822Dict
 
@@ -907,7 +889,7 @@ class Deb822(Deb822Dict):
         this can be overridden in subclasses (e.g. _multivalued) that can take
         special values.
         """
-        return six.text_type(self[key])
+        return str(self[key])
 
     def _dump_format(self):
         # type: () -> Generator[str, None, None]
@@ -1171,10 +1153,10 @@ class Deb822(Deb822Dict):
             # detection and signature checking).  However, we might have
             # been given a file opened in text mode, in which case it's
             # simplest to encode to bytes.
-            if sys.version_info[0] >= 3 and isinstance(line_, str):
+            if isinstance(line_, str):
                 line = line_.encode()
             else:
-                line = cast(bytes, line_)
+                line = line_
 
             line = line.strip(b'\r\n')
 
@@ -1327,12 +1309,12 @@ class GpgInfo(_BaseGpgInfo):
 
         n = cls()
 
-        if isinstance(out, six.string_types):
+        if isinstance(out, str):
             n.out = out.split('\n')
         else:
             n.out = out
 
-        if isinstance(err, six.string_types):
+        if isinstance(err, str):
             n.err = err.split('\n')
         else:
             n.err = err
@@ -1835,7 +1817,7 @@ class _multivalued(Deb822):
             if hasattr(self[key], 'keys'):   # single-line
                 array = [self[key]]
             else:   # multi-line
-                fd.write(six.u("\n"))
+                fd.write("\n")
                 array = self[key]
 
             order = self._multivalued_fields[keyl]
@@ -1846,7 +1828,7 @@ class _multivalued(Deb822):
                 pass
             for item in array:
                 for x in order:
-                    raw_value = six.text_type(item[x])
+                    raw_value = str(item[x])
                     try:
                         length = field_lengths[keyl][x]
                     except KeyError:
@@ -1856,8 +1838,8 @@ class _multivalued(Deb822):
                     if "\n" in value:
                         raise ValueError("'\\n' not allowed in component of "
                                          "multivalued field %s" % key)
-                    fd.write(six.u(" %s") % value)
-                fd.write(six.u("\n"))
+                    fd.write(" %s" % value)
+                fd.write("\n")
             return fd.getvalue().rstrip("\n")
 
         return Deb822.get_as_string(self, key)
@@ -1895,7 +1877,7 @@ class _gpg_multivalued(_multivalued):
                         or kwargs.get('encoding', 'utf-8') or 'utf-8')
             if isinstance(sequence, bytes):
                 self.raw_text = sequence
-            elif isinstance(sequence, six.string_types):
+            elif isinstance(sequence, str):
                 self.raw_text = sequence.encode(encoding)
             elif hasattr(sequence, "items"):
                 # sequence is actually a dict(-like) object, so we don't have
@@ -1936,7 +1918,7 @@ class _gpg_multivalued(_multivalued):
         """
         if isinstance(s, bytes):
             return s
-        if isinstance(s, six.string_types):
+        if isinstance(s, str):
             return s.encode(encoding)
         raise TypeError('bytes or unicode/string required, not %s' % type(s))
 
@@ -2507,8 +2489,7 @@ class RestrictedField(collections.namedtuple(
             allow_none=allow_none)
 
 
-@six.add_metaclass(_ClassInitMeta)
-class RestrictedWrapper(object):
+class RestrictedWrapper(metaclass=_ClassInitMeta):
     """Base class to wrap a Deb822 object, restricting write access to some keys.
 
     The underlying data is hidden internally.  Subclasses may keep a reference
@@ -2780,8 +2761,7 @@ class Removals(Deb822):
 class _CaseInsensitiveString(str):
     """Case insensitive string.
     """
-    if six.PY3:   # CRUFT: can't use __slots__ with str type in py2.7
-        __slots__ = ['str_lower']
+    __slots__ = ['str_lower']
 
     if TYPE_CHECKING:
         # neither pylint nor mypy cope with str_lower being defined in __new__

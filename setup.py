@@ -56,8 +56,9 @@ setup(
     packages=['debian', 'debian_bundle'],
     package_data={'debian': ['py.typed']},
     py_modules=['deb822'],
+    python_requires='>=3.3',
     maintainer='Debian python-debian Maintainers',
     maintainer_email='pkg-python-debian-maint@lists.alioth.debian.org',
-    install_requires=['six', 'chardet'],
+    install_requires=['chardet'],
     test_suite='debian.tests',
 )

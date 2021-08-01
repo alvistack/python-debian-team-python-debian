@@ -111,10 +111,7 @@ if __name__ == '__main__':
 
         # Ask the user to choose a new package
         while True:
-            if sys.version >= '3':
-                ans = input("> ").strip()
-            else:
-                ans = raw_input("> ").strip()
+            ans = input("> ").strip()
             if ans[0] == 'q':
                 done = True
                 break

@@ -17,14 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-from __future__ import unicode_literals
-
 import re
-import sys
-if sys.version_info[0] >= 3:
-    import unittest
-else:
-    import unittest2 as unittest
+import unittest
 import warnings
 
 from debian import copyright

@@ -97,16 +97,11 @@ Changelog Classes
 # Copyright 2005 Frank Lichtenheld <frank@lichtenheld.de>
 # and licensed under the same license as above.
 
-from __future__ import absolute_import
-
 import email.utils
 import os
 import re
 import socket
 import warnings
-import sys
-
-import six
 
 # pwd is only available on Unix platforms.
 try:
@@ -144,16 +139,8 @@ except ImportError:
 
 from debian.debian_support import Version
 
-# Python 3 doesn't have StandardError, but let's avoid changing our
-# exception inheritance hierarchy for Python 2.
-_base_exception_class = Exception
-try:
-    _base_exception_class = StandardError    # type: ignore
-except NameError:
-    pass
 
-
-class ChangelogParseError(_base_exception_class):
+class ChangelogParseError(Exception):
     """Indicates that the changelog could not be parsed"""
     is_user_error = True
 
@@ -167,12 +154,12 @@ class ChangelogParseError(_base_exception_class):
         return "Could not parse changelog: "+self._line
 
 
-class ChangelogCreateError(_base_exception_class):
+class ChangelogCreateError(Exception):
     """Indicates that changelog could not be created, as all the information
     required was not given"""
 
 
-class VersionError(_base_exception_class):
+class VersionError(Exception):
     """Indicates that the version does not conform to the required format"""
 
     is_user_error = True
@@ -305,7 +292,7 @@ class ChangeBlock(object):
 
     def _get_bugs_closed_generic(self, type_re):
         # type: (Pattern[Text]) -> List[int]
-        changes = six.u(' ').join(self._changes)
+        changes = ' '.join(self._changes)
         bugs = []
         for match in type_re.finditer(changes):
             closes_list = match.group(0)
@@ -363,23 +350,14 @@ class ChangeBlock(object):
             block += line + "\n"
         return block
 
-    if sys.version_info[0] >= 3:
-        def __str__(self):
-            # type: () -> str
-            return self._format()
+    def __str__(self):
+        # type: () -> str
+        return self._format()
 
-        def __bytes__(self):  # type: () -> bytes
-            # pylint: disable=invalid-bytes-returned
-            # pylint bug https://github.com/PyCQA/pylint/issues/3599
-            return str(self).encode(self._encoding)
-    else:
-        def __unicode__(self):
-            return self._format()
-
-        def __str__(self):
-            # pylint: disable=undefined-variable
-            # (pylint3 doesn't cope with the use of `unicode`)
-            return unicode(self).encode(self._encoding)
+    def __bytes__(self):  # type: () -> bytes
+        # pylint: disable=invalid-bytes-returned
+        # pylint bug https://github.com/PyCQA/pylint/issues/3599
+        return str(self).encode(self._encoding)
 
 
 topline = re.compile(
@@ -551,7 +529,7 @@ class Changelog(object):
         old_state = None
         if isinstance(file, bytes):
             file = file.decode(encoding)
-        if isinstance(file, six.string_types):
+        if isinstance(file, str):
             # Make sure the changelog file is not empty.
             if not file.strip():
                 self._parse_error('Empty changelog file.', strict)
@@ -559,7 +537,7 @@ class Changelog(object):
 
             file = file.splitlines()
         for line in file:
-            if not isinstance(line, six.text_type):
+            if not isinstance(line, str):
                 line = line.decode(encoding)
             # Support both lists of lines without the trailing newline and
             # those with trailing newlines (e.g. when given a file object
@@ -793,28 +771,19 @@ class Changelog(object):
         # type: (Optional[bool]) -> str
         pieces = []
         for line in self.initial_blank_lines:
-            pieces.append(line + six.u('\n'))
+            pieces.append(line + '\n')
         for block in self._blocks:
             pieces.append(block._format(allow_missing_author=allow_missing_author))
-        return six.u('').join(pieces)
+        return ''.join(pieces)
 
-    if sys.version_info[0] >= 3:
-        def __str__(self):
-            # type: () -> str
-            return self._format()
+    def __str__(self):
+        # type: () -> str
+        return self._format()
 
-        def __bytes__(self):  # type: () -> bytes
-            # pylint: disable=invalid-bytes-returned
-            # pylint bug https://github.com/PyCQA/pylint/issues/3599
-            return str(self).encode(self._encoding)
-    else:
-        def __unicode__(self):
-            return self._format()
-
-        def __str__(self):
-            # pylint: disable=undefined-variable
-            # (pylint3 doesn't cope with the use of `unicode`)
-            return unicode(self).encode(self._encoding)
+    def __bytes__(self):  # type: () -> bytes
+        # pylint: disable=invalid-bytes-returned
+        # pylint bug https://github.com/PyCQA/pylint/issues/3599
+        return str(self).encode(self._encoding)
 
     def __iter__(self):
         # type: () -> Iterator[ChangeBlock]
@@ -826,7 +795,7 @@ class Changelog(object):
 
         :param n: integer or str representing a version or Version object
         """
-        if isinstance(n, six.string_types):
+        if isinstance(n, str):
             return self[Version(n)]
         if isinstance(n, int):
             idx = n

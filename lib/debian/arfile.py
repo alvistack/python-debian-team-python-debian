@@ -21,8 +21,6 @@ packages.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function
-
 import sys
 
 try:
@@ -75,23 +73,18 @@ class ArFile(object):
         """ Build an ar file representation starting from either a filename or
         an existing file object. The only supported mode is 'r'.
 
-        In Python 3, the encoding and errors parameters control how member
+        The encoding and errors parameters control how member
         names are decoded into Unicode strings. Like tarfile, the default
         encoding is sys.getfilesystemencoding() and the default error handling
-        scheme is 'surrogateescape' (>= 3.2) or 'strict' (< 3.2).
+        scheme is 'surrogateescape'.
         """
         self.__members = []  # type: List[ArMember]
         self.__members_dict = {}  # type: Dict[str, ArMember]
         self.__fname = filename  # type: Optional[str]
         self.__fileobj = fileobj
-        if encoding is None:
-            encoding = sys.getfilesystemencoding()
-        self.__encoding = encoding
+        self.__encoding = encoding or sys.getfilesystemencoding()
         if errors is None:
-            if sys.version >= '3.2':
-                errors = 'surrogateescape'
-            else:
-                errors = 'strict'
+            errors = 'surrogateescape'
         self.__errors = errors
 
         if mode == "r":
@@ -264,18 +257,10 @@ class ArMember(object):
         if buf[58:60] != FILE_MAGIC:
             raise IOError("Incorrect file magic")
 
-        if sys.version >= '3':
-            if encoding is None:
-                encoding = sys.getfilesystemencoding()
-            if errors is None:
-                if sys.version >= '3.2':
-                    errors = 'surrogateescape'
-                else:
-                    errors = 'strict'
-        else:
-            # Unused parameters for Python 2
-            encoding = ""
-            errors = ""
+        if encoding is None:
+            encoding = sys.getfilesystemencoding()
+        if errors is None:
+            errors = 'surrogateescape'
 
         # http://en.wikipedia.org/wiki/Ar_(Unix)
         # from   to     Name                      Format
@@ -290,10 +275,7 @@ class ArMember(object):
         # XXX struct.unpack can be used as well here
         f = ArMember()
         name = buf[0:16].split(b"/")[0].strip()
-        if sys.version >= '3':
-            f.__name = name.decode(encoding, errors)
-        else:
-            f.__name = name    # type: ignore
+        f.__name = name.decode(encoding, errors)
         f.__mtime = int(buf[16:28])
         f.__owner = int(buf[28:34])
         f.__group = int(buf[34:40])

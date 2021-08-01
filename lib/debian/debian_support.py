@@ -17,8 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import, print_function
-
 import os
 import os.path
 import re
@@ -59,22 +57,16 @@ except ImportError:
 # Use the built-in _sha extension instead of hashlib to avoid a dependency on
 # OpenSSL, which is incompatible with the GPL.
 try:
-    # Python 2.x
-    import _sha    # type: ignore
-    new_sha1 = _sha.new
+    import _sha1    # type: ignore
+    new_sha1 = _sha1.sha1
 except ImportError:
-    # Python 3.x
-    try:
-        import _sha1    # type: ignore
-        new_sha1 = _sha1.sha1
-    except ImportError:
-        def new_sha1(*args):    # pylint: disable=unused-argument
-            # type: (bytes) -> str
-            raise NotImplementedError(
-                "Built-in sha1 implementation not found; cannot use hashlib"
-                " implementation because it depends on OpenSSL, which"
-                " may not be linked with this library due to license"
-                " incompatibilities")
+    def new_sha1(*args):    # pylint: disable=unused-argument
+        # type: (bytes) -> str
+        raise NotImplementedError(
+            "Built-in sha1 implementation not found; cannot use hashlib"
+            " implementation because it depends on OpenSSL, which"
+            " may not be linked with this library due to license"
+            " incompatibilities")
 
 
 # Use the built-in _sha256 extension instead of hashlib to avoid a dependency on
@@ -736,19 +728,17 @@ def download_gunzip_lines(remote):
     # The implementation is rather crude, but it seems that the gzip
     # module needs a real file for input.
 
-   # pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel
     import gzip
     import tempfile
-    # pylint: disable=import-error
-    from six.moves.urllib.request import urlretrieve
+    from urllib.request import urlretrieve
 
     (handle, fname) = tempfile.mkstemp()
     try:
         os.close(handle)
         (filename, _) = urlretrieve(remote, fname)
-        gfile = gzip.open(filename, 'rt')
-        lines = gfile.readlines()
-        gfile.close()
+        with gzip.open(filename, 'rt') as gfile:
+            lines = gfile.readlines()
     finally:
         os.unlink(fname)
     return lines
@@ -792,9 +782,8 @@ def update_file(remote, local, verbose=False):
     patches_to_apply = []    # type: List[str]
     patch_hashes = {}        # type: Dict[str, str]
 
-    # pylint: disable=import-error
     # pylint: disable=import-outside-toplevel
-    from six.moves.urllib.request import urlopen
+    from urllib.request import urlopen
 
     index_name = remote + '.diff/Index'
 

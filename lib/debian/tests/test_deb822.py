@@ -17,8 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-from __future__ import absolute_import
-
 import email.utils
 import io
 import os
@@ -28,19 +26,10 @@ import re
 import subprocess
 import sys
 import tempfile
-if sys.version_info[0] >= 3:
-    import unittest
-else:
-    import unittest2 as unittest
+import unittest
 import warnings
 
-import six
-
-if six.PY3:
-    from io import BytesIO, StringIO
-else:
-    from StringIO import StringIO
-    BytesIO = StringIO
+from io import BytesIO, StringIO
 
 import apt_pkg
 
@@ -181,7 +170,7 @@ CcYAoOLYDF5G1h3oR1iDNyeCI6hRW03S
     ]
 
 
-CHANGES_FILE = six.u('''\
+CHANGES_FILE = '''\
 Format: 1.7
 Date: Fri, 28 Dec 2007 17:08:48 +0100
 Source: bzr-gtk
@@ -206,7 +195,7 @@ Files:
  0fd797f4138a9d4fdeb8c30597d46bc9 1003 python optional bzr-gtk_0.93.0-2.dsc
  d9523676ae75c4ced299689456f252f4 3860 python optional bzr-gtk_0.93.0-2.diff.gz
  8960459940314b21019dedd5519b47a5 168544 python optional bzr-gtk_0.93.0-2_all.deb
-''')
+'''
 
 CHECKSUM_CHANGES_FILE = '''\
 Format: 1.8
@@ -334,16 +323,7 @@ KEYRING = os.path.abspath(find_test_file('test-keyring.gpg'))
 def open_utf8(filename, mode='r'):
     # type: (str, str) -> IO[Text]
     """Open a UTF-8 text file in text mode."""
-    if sys.version < '3':
-        # TODO(jsw): This isn't actually doing what the docstring says.  The
-        # correct code (for both 2 and 3) is
-        #   io.open(filename, code=mode, encoding='utf-8')
-        # but that makes a couple of other tests fail on 2.x (both related to
-        # apt_pkg - not surprisingly, its behavior with unicode objects isn't
-        # very consistent).
-        return open(filename, mode=mode)
-    else:
-        return open(filename, mode=mode, encoding='UTF-8')
+    return open(filename, mode=mode, encoding='UTF-8')
 
 
 class TestDeb822Dict(unittest.TestCase):
@@ -388,7 +368,6 @@ class TestDeb822Dict(unittest.TestCase):
         keys = ['TestKey', 'another_key', 'Third_key']
 
         self.assertEqual(keys, list(d.keys()))
-        self.assertEqual(keys, list(six.iterkeys(d)))
         self.assertEqual(list(zip(keys, d.values())), list(d.items()))
 
         keys2 = []
@@ -407,7 +386,7 @@ class TestDeb822Dict(unittest.TestCase):
     def test_unicode_key_access(self):
         # type: () -> None
         d = self.make_dict()
-        self.assertEqual(1, d[six.u('testkey')])
+        self.assertEqual(1, d['testkey'])
 
 
 class TestDeb822(unittest.TestCase):
@@ -554,10 +533,7 @@ with open("test_deb822.pickle", "wb") as fh:
         text.write(UNPARSED_PACKAGE)
 
         with tempfile.NamedTemporaryFile() as fh:
-            if sys.version_info[0] >= 3:
-                txt = text.getvalue().encode('UTF-8')
-            else:
-                txt = text.getvalue()
+            txt = text.getvalue().encode('UTF-8')
             fh.write(txt)
 
             fh.seek(0)
@@ -585,10 +561,7 @@ with open("test_deb822.pickle", "wb") as fh:
     def test_iter_paragraphs_bytes(self):
         # type: () -> None
         text = (UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
-        if six.PY2:
-            binary = text
-        else:
-            binary = text.encode('utf-8')
+        binary = text.encode('utf-8')
 
         for d in deb822.Deb822.iter_paragraphs(binary):
             self.assertWellParsed(d, PARSED_PACKAGE)
@@ -613,8 +586,8 @@ with open("test_deb822.pickle", "wb") as fh:
         See #913274 for further details.
         """
         for extra_space in (" ", "  ", "\t"):
-            text = six.u(UNPARSED_PACKAGE) + '%s\n' % extra_space + \
-                        six.u(UNPARSED_PACKAGE)
+            text = UNPARSED_PACKAGE + '%s\n' % extra_space + \
+                        UNPARSED_PACKAGE
 
             fd, filename = tempfile.mkstemp()
             fp = os.fdopen(fd, 'wb')
@@ -961,7 +934,7 @@ Description: python modules to work with Debian-related data formats
                 fb, encoding="iso8859-1"))
         for d in objects:
             for value in d.values():
-                self.assertTrue(isinstance(value, six.text_type))
+                self.assertTrue(isinstance(value, str))
 
         # The same should be true for Sources and Changes except for their
         # _multivalued fields
@@ -974,7 +947,7 @@ Description: python modules to work with Debian-related data formats
         for d in multi:
             for key, value in d.items():
                 if key.lower() not in d.__class__._multivalued_fields:
-                    self.assertTrue(isinstance(value, six.text_type))
+                    self.assertTrue(isinstance(value, str))
 
     def test_encoding_integrity(self):
         # type: () -> None
@@ -1030,10 +1003,10 @@ Description: python modules to work with Debian-related data formats
                     ]:
                 p1 = next(paragraphs)
                 self.assertEqual(p1['maintainer'],
-                                six.u('Adeodato Sim\xf3 <dato@net.com.org.es>'))
+                                'Adeodato Sim\xf3 <dato@net.com.org.es>')
                 p2 = next(paragraphs)
                 self.assertEqual(p2['uploaders'],
-                                six.u('Frank K\xfcster <frank@debian.org>'))
+                                'Frank K\xfcster <frank@debian.org>')
 
     def test_dump_text_mode(self):
         # type: () -> None
@@ -1519,7 +1492,7 @@ class TestVersionAccessor(unittest.TestCase):
         v = Version(newver)
         p.set_version(v)
         self.assertEqual(p['Version'], newver)
-        self.assertTrue(isinstance(p['Version'], six.string_types))
+        self.assertTrue(isinstance(p['Version'], str))
 
 
 @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
