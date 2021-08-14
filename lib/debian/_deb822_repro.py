@@ -215,7 +215,7 @@ class _LinkedListNode(Generic[T]):
 class _LinkedList(Generic[T]):
     """Specialized linked list implementation to support the deb822 parser needs
 
-    We deliberately trade "encapsulation" for features needed by the by this library
+    We deliberately trade "encapsulation" for features needed by this library
     to facilitate their implementation.  Notably, we allow nodes to leak and assume
     well-behaved calls to remove_node - because that makes it easier to implement
     components like Deb822InvalidParagraphElement.
