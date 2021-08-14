@@ -176,11 +176,13 @@ ROUND_TRIP_CASES = [
 
 class FormatPreservingDeb822ParserTests(TestCase):
 
+    def setUp(self) -> None:
+
+        if sys.version_info < (3, 7):
+            raise SkipTest('The format preserving parser assume python 3.7')
+
     def test_round_trip_cases(self):
         # type: () -> None
-
-        if sys.version_info < (3, 9):
-            raise SkipTest('The format preserving parser assume python 3.9')
 
         for i, parse_case in enumerate(ROUND_TRIP_CASES, start=1):
             c = str(i)
@@ -216,9 +218,6 @@ class FormatPreservingDeb822ParserTests(TestCase):
     def test_deb822_emulation(self):
         # type: () -> None
 
-        if sys.version_info < (3, 9):
-            raise SkipTest('The format preserving parser assume python 3.9')
-
         for i, parse_case in enumerate(ROUND_TRIP_CASES, start=1):
             if not parse_case.is_valid_file:
                 continue
@@ -242,9 +241,6 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
     def test_duplicate_fields(self):
         # type: () -> None
-
-        if sys.version_info < (3, 9):
-            raise SkipTest('The format preserving parser assume python 3.9')
 
         original = textwrap.dedent('''\
         Source: foo
@@ -305,9 +301,6 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
     def test_sorting(self):
         # type: () -> None
-
-        if sys.version_info < (3, 9):
-            raise SkipTest('The format preserving parser assume python 3.9')
 
         name_order = {
             f: i
@@ -393,9 +386,6 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
     def test_interpretation(self):
         # type: () -> None
-
-        if sys.version_info < (3, 9):
-            raise SkipTest('The format preserving parser assume python 3.9')
 
         original = textwrap.dedent('''\
         Package: foo
