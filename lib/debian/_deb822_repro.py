@@ -15,12 +15,18 @@ from weakref import ReferenceType
 from .deb822 import _strI, OrderedSet
 
 
+# Used a generic type for any case where we need a generic type without any bounds
+# (e.g. for the LinkedList interface).
 T = TypeVar('T')
 TokenOrElement = Union['Deb822Element', 'Deb822Token']
-E = TypeVar('E', bound=TokenOrElement)
+# Used for a concrete but generic "Token or Element" subclass.
+TE = TypeVar('TE', bound=TokenOrElement)
+# Used as a resulting element for "mapping" functions that map TE -> R (see _combine_parts)
 R = TypeVar('R', bound='Deb822Element')
-S = TypeVar('S', bound=TokenOrElement)
 
+# The VT and ST TypeVars are used for the list interpretation.
+# VT = "Value Type" -> represent the type of token that is a value token in the list.
+# ST = "Separator Type" -> represent the type of token that is a separator.
 VT = TypeVar('VT', bound='Deb822Token')
 ST = TypeVar('ST', bound='Deb822Token')
 ParagraphKeyBase = Union['Deb822FieldNameToken', str]
@@ -299,7 +305,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         return super().__exit__(exc_type, exc_val, exc_tb)
 
     @property
-    def value_parts(self) -> Iterator[E]:
+    def value_parts(self) -> Iterator[TE]:
         yield from (v for v in self._token_list if isinstance(v, self._vtype))
 
     def append_separator(self,
@@ -1018,7 +1024,7 @@ class Deb822Element:
     def iter_parts(self) -> Iterable[TokenOrElement]:
         raise NotImplementedError  # pragma: no cover
 
-    def iter_parts_of_type(self, only_element_or_token_type: 'typing.Type[E]') -> 'Iterable[E]':
+    def iter_parts_of_type(self, only_element_or_token_type: 'typing.Type[TE]') -> 'Iterable[TE]':
         for part in self.iter_parts():
             if isinstance(part, only_element_or_token_type):
                 yield part
@@ -1031,11 +1037,11 @@ class Deb822Element:
                 yield part
 
     def iter_recurse(self, *,
-                     only_element_or_token_type: 'Optional[typing.Type[E]]' = None
-                     ) -> 'Iterable[E]':
+                     only_element_or_token_type: 'Optional[typing.Type[TE]]' = None
+                     ) -> 'Iterable[TE]':
         for part in self.iter_parts():
             if only_element_or_token_type is None or isinstance(part, only_element_or_token_type):
-                yield typing.cast('E', part)
+                yield typing.cast('TE', part)
             if isinstance(part, Deb822Element):
                 yield from part.iter_recurse(only_element_or_token_type=only_element_or_token_type)
 
@@ -2468,21 +2474,21 @@ def _tokenize_deb822_file(line_iter: Iterable[str]) -> Iterable[Deb822Token]:
 
 
 _combine_parts_ret_type = Callable[
-    [Iterable[Union[TokenOrElement, S]]],
+    [Iterable[Union[TokenOrElement, TE]]],
     Iterable[Union[TokenOrElement, R]]
 ]
 
 
-def _combine_parts(source_class: typing.Type[S], replacement_class: typing.Type[R],
+def _combine_parts(source_class: typing.Type[TE], replacement_class: typing.Type[R],
                    *,
-                   constructor: Optional[Callable[[List[S]], R]] = None
-                   ) -> _combine_parts_ret_type[S, R]:
+                   constructor: Optional[Callable[[List[TE]], R]] = None
+                   ) -> _combine_parts_ret_type[TE, R]:
     if constructor is None:
-        _constructor = typing.cast('Callable[[List[S]], R]', replacement_class)
+        _constructor = typing.cast('Callable[[List[TE]], R]', replacement_class)
     else:
         # Force mypy to see that constructor is no longer optional
         _constructor = constructor
-    def _impl(token_stream: Iterable[Union[TokenOrElement, S]]
+    def _impl(token_stream: Iterable[Union[TokenOrElement, TE]]
               ) -> Iterable[Union[TokenOrElement, R]]:
         tokens = []
         for token in token_stream:
