@@ -8,7 +8,6 @@ import sys
 import typing
 import weakref
 from abc import ABC
-from builtins import NotImplementedError
 from types import TracebackType
 from typing import Iterable, Iterator, List, Union, Dict, Optional, TypeVar, Callable, Any, Generic
 from weakref import ReferenceType
@@ -2338,9 +2337,9 @@ class Deb822FileElement(Deb822Element):
     def iter_parts(self) -> Iterable[TokenOrElement]:
         yield from self._token_and_elements
 
-    def write_to_fd(self, fd: typing.TextIO) -> None:
+    def dump(self, fd: typing.IO[bytes]) -> None:
         for token in self.iter_tokens():
-            fd.write(token.text)
+            fd.write(token.text.encode('utf-8'))
 
 
 class _BufferingIterator(collections.abc.Iterator[T]):
