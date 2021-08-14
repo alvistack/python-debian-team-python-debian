@@ -1,6 +1,7 @@
 import collections
 import collections.abc
 import contextlib
+import logging
 import operator
 import re
 import sys
@@ -2755,6 +2756,7 @@ def parse_deb822_file(line_iter: Iterable[str]) -> Deb822FileElement:
 
 def _print_ast(ast_tree: Union[Iterable[TokenOrElement], Deb822Element], *,
                end_marker_after: Optional[int] = 5,
+               output_function: Optional[Callable[[str], None]] = None,
                ) -> None:
     """Debugging aid, which can dump a Deb822Element or a list of tokens/elements
 
@@ -2766,6 +2768,9 @@ def _print_ast(ast_tree: Union[Iterable[TokenOrElement], Deb822Element], *,
       with by passing None as value. Use 0 for unconditionally marking all
       elements (note that tokens never get an "end of element" marker as they
       are not an elements).
+   :param output_function: Callable that receives a single str argument and is responsible
+     for "displaying" that line. The callable may be invoked multiple times (one per line
+     of output).  Defaults to logging.info if omitted.
 
     """
     prefix = None
@@ -2773,6 +2778,8 @@ def _print_ast(ast_tree: Union[Iterable[TokenOrElement], Deb822Element], *,
         ast_tree = [ast_tree]
     stack = [(0, '', iter(ast_tree))]
     current_no = 0
+    if output_function is None:
+        output_function = logging.info
     while stack:
         start_no, name, current_iter = stack[-1]
         for current in current_iter:
@@ -2781,10 +2788,10 @@ def _print_ast(ast_tree: Union[Iterable[TokenOrElement], Deb822Element], *,
                 prefix = '  ' * len(stack)
             if isinstance(current, Deb822Element):
                 stack.append((current_no, current.__class__.__name__, iter(current.iter_parts())))
-                print(f"{prefix}{current.__class__.__name__}")
+                output_function(f"{prefix}{current.__class__.__name__}")
                 prefix = None
                 break
-            print(f"{prefix}{current}")
+            output_function(f"{prefix}{current}")
         else:
             # current_iter is depleted
             stack.pop()
@@ -2792,7 +2799,7 @@ def _print_ast(ast_tree: Union[Iterable[TokenOrElement], Deb822Element], *,
             if end_marker_after is not None and start_no + end_marker_after <= current_no and name:
                 if prefix is None:
                     prefix = '  ' * len(stack)
-                print(f"{prefix}# <-- END OF {name}")
+                output_function(f"{prefix}# <-- END OF {name}")
 
 
 if __name__ == "__main__":  # pragma: no cover

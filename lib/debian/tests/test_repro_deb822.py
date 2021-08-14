@@ -20,6 +20,7 @@
 """Tests for format preserving deb822"""
 import collections
 import contextlib
+import logging
 import sys
 import textwrap
 from debian.deb822 import Deb822
@@ -190,7 +191,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             try:
                 deb822_file = parse_deb822_file(case_input.splitlines(keepends=True))
             except Exception:
-                print("Error while parsing case " + c)
+                logging.info("Error while parsing case " + c)
                 raise
             error_element_count = 0
             for token in deb822_file.iter_tokens():
@@ -201,9 +202,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
             # A la
             #
             # if i in (3, 4):
-            #   print(f" ---  CASE {i} --- ")
+            #   logging.info(f" ---  CASE {i} --- ")
             #   _print_ast(deb822_file)
-            #   print(f" ---  END CASE {i} --- ")
+            #   logging.info(f" ---  END CASE {i} --- ")
             self.assertEqual(parse_case.error_element_count, error_element_count,
                              "Correct number of error tokens for case " + c)
             self.assertEqual(parse_case.paragraph_count, paragraph_count,
@@ -213,7 +214,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                              " for case " + c)
             self.assertEqual(case_input, deb822_file.convert_to_text(),
                              "Input of case " + c + " is round trip safe")
-            print("Successfully passed case " + c)
+            logging.info("Successfully passed case " + c)
 
     def test_deb822_emulation(self):
         # type: () -> None
@@ -226,7 +227,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             try:
                 deb822_file = parse_deb822_file(case_input.splitlines(keepends=True))
             except Exception:
-                print("Error while parsing case " + c)
+                logging.info("Error while parsing case " + c)
                 raise
             deb822_paragraphs = list(Deb822.iter_paragraphs(case_input.splitlines()))
 
@@ -408,9 +409,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
             try:
                 self.assertEqual(expected_output, actual)
             except AssertionError:
-                print(" -- Debugging aid - START of AST for generated value --")
+                logging.info(" -- Debugging aid - START of AST for generated value --")
                 _print_ast(kvpair)
-                print(" -- Debugging aid - END of AST for generated value --")
+                logging.info(" -- Debugging aid - END of AST for generated value --")
                 raise
             # Reset of value
             kvpair.value_element = original_value_element
