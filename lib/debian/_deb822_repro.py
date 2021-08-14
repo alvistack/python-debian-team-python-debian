@@ -12,7 +12,7 @@ from types import TracebackType
 from typing import Iterable, Iterator, List, Union, Dict, Optional, TypeVar, Callable, Any, Generic
 from weakref import ReferenceType
 
-from .deb822 import _strI, OrderedSet
+from debian.deb822 import _strI, OrderedSet
 
 
 # Used a generic type for any case where we need a generic type without any bounds
