@@ -178,8 +178,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
     def setUp(self) -> None:
 
-        if sys.version_info < (3, 7):
-            raise SkipTest('The format preserving parser assume python 3.7')
+        if sys.version_info < (3, 9):
+            raise SkipTest('The format preserving parser assume python 3.9')
 
     def test_round_trip_cases(self):
         # type: () -> None
