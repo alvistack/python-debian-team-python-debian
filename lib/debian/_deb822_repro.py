@@ -16,23 +16,54 @@ from .deb822 import _strI, OrderedSet
 
 
 # Used a generic type for any case where we need a generic type without any bounds
-# (e.g. for the LinkedList interface).
+# (e.g. for the LinkedList interface and some super-classes/mixins).
 T = TypeVar('T')
+T.__doc__ = """
+Generic type
+"""
+
 TokenOrElement = Union['Deb822Element', 'Deb822Token']
-# Used for a concrete but generic "Token or Element" subclass.
 TE = TypeVar('TE', bound=TokenOrElement)
+TE.__doc__ = """
+Generic "Token or Element" type
+"""
+
 # Used as a resulting element for "mapping" functions that map TE -> R (see _combine_parts)
 R = TypeVar('R', bound='Deb822Element')
+R.__doc__ = """
+For internal usage in _deb822_repro
+"""
 
-# The VT and ST TypeVars are used for the list interpretation.
-# VT = "Value Type" -> represent the type of token that is a value token in the list.
-# ST = "Separator Type" -> represent the type of token that is a separator.
 VT = TypeVar('VT', bound='Deb822Token')
-ST = TypeVar('ST', bound='Deb822Token')
-ParagraphKeyBase = Union['Deb822FieldNameToken', str]
-ParagraphKey = Union[ParagraphKeyBase, typing.Tuple[str, int]]
-Commentish = Union[List[str], 'Deb822CommentElement']
+VT.__doc__ = """
+Value type/token in a list interpretation of a field value
+"""
 
+ST = TypeVar('ST', bound='Deb822Token')
+ST.__doc__ = """
+Separator type/token in a list interpretation of a field value
+"""
+
+# Internal type for part of the paragraph key.  Used to facility _unpack_key.
+ParagraphKeyBase = Union['Deb822FieldNameToken', str]
+ParagraphKeyBase.__doc__ = """
+For internal usage in _deb822_repro
+"""
+
+ParagraphKey = Union[ParagraphKeyBase, typing.Tuple[str, int]]
+ParagraphKey.__doc__ = """
+Anything accepted as a key for a paragraph field lookup.  The simple case being
+a str. Alternative variants are mostly interesting for paragraphs with repeated
+fields (to enable unambiguous lookups)
+"""
+
+Commentish = Union[List[str], 'Deb822CommentElement']
+Commentish.__doc__ = """
+Anything accepted as input for a Comment. The simple case is the list
+of string (each element being a line of comment). The alternative format is
+there for enable reuse of an existing element (e.g. to avoid "unpacking"
+only to "re-pack" an existing comment element).
+"""
 
 _RE_WHITESPACE_LINE = re.compile(r'^\s+$')
 _RE_WHITESPACE = re.compile(r'\s+')
