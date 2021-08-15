@@ -2929,8 +2929,8 @@ def parse_deb822_file(sequence: Iterable[Union[str, bytes]],
     if not accept_files_with_error_tokens:
         error_element = deb822_file.find_first_error_element()
         if error_element is not None:
-            raise ValueError('Syntax or Parse error on the line:'
-                             f' "{error_element.convert_to_text()}"')
+            error_as_text = error_element.convert_to_text().replace('\n', '\\n')
+            raise ValueError(f'Syntax or Parse error on the line: "{error_as_text}"')
 
     if not accept_files_with_duplicated_fields:
         for no, paragraph in enumerate(deb822_file):
