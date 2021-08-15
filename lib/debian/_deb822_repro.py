@@ -61,14 +61,14 @@ Converting from debian.deb822
 The following is a short example for how to migrate from debian.deb822 to
 the round-trip safe API. Given the following source text::
 
-    >>> dctrl_input = '''
+    >>> dctrl_input = b'''
     ... Source: foo
     ... Build-Depends: debhelper-compat (= 13)
     ...
     ... Package: bar
     ... Architecture: any
     ... Depends: ${misc:Depends},
-    ....         ${shlibs:Depends},
+    ...          ${shlibs:Depends},
     ... Description: provides some exciting feature
     ...  yada yada yada
     ...  .
@@ -2552,15 +2552,21 @@ def _check_line_is_covered(line_len: int, line: str, stream: Iterable[TokenOrEle
                          f' "{line}"')
 
 
-def _tokenize_deb822_file(line_iter: Iterable[str]) -> Iterable[Deb822Token]:
+def _tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb822Token]:
     """Tokenize a deb822 file
 
-    :param line_iter: An iterable of lines (a file open for reading will do)
+    :param sequence: An iterable of lines (a file open for reading will do)
     """
     current_field_name = None
     field_name_cache: Dict[str, _strI] = {}
 
-    text_stream: _BufferingIterator[str] = _BufferingIterator(line_iter)
+    def _as_str(s: Iterable[Union[str, bytes]]) -> Iterable[str]:
+        for x in s:
+            if isinstance(x, bytes):
+                x = x.decode('utf-8')
+            yield x
+
+    text_stream: _BufferingIterator[str] = _BufferingIterator(_as_str(sequence))
 
     for no, line in enumerate(text_stream, start=1):
 
@@ -2873,13 +2879,13 @@ def _build_field_with_value(token_stream: Iterable[Union[TokenOrElement, Deb822V
             yield token_or_element
 
 
-def parse_deb822_file(line_iter: Iterable[str]) -> Deb822FileElement:
+def parse_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Deb822FileElement:
     # The order of operations are important here.  As an example,
     # _build_value_line assumes that all comment tokens have been merged
     # into comment elements.  Likewise, _build_field_and_value assumes
     # that value tokens (along with their comments) have been combined
     # into elements.
-    tokens: Iterable[TokenOrElement] = _tokenize_deb822_file(line_iter)
+    tokens: Iterable[TokenOrElement] = _tokenize_deb822_file(sequence)
     tokens = _combine_comment_tokens_into_elements(tokens)
     tokens = _build_value_line(tokens)
     tokens = _combine_vl_elements_into_value_elements(tokens)
