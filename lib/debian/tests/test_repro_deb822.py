@@ -189,7 +189,10 @@ class FormatPreservingDeb822ParserTests(TestCase):
             c = str(i)
             case_input = parse_case.input.replace('¶', '')
             try:
-                deb822_file = parse_deb822_file(case_input.splitlines(keepends=True))
+                deb822_file = parse_deb822_file(case_input.splitlines(keepends=True),
+                                                accept_files_with_duplicated_fields=True,
+                                                accept_files_with_error_tokens=True,
+                                                )
             except Exception:
                 logging.info("Error while parsing case " + c)
                 raise
@@ -197,6 +200,15 @@ class FormatPreservingDeb822ParserTests(TestCase):
             for token in deb822_file.iter_tokens():
                 if isinstance(token, Deb822ErrorToken):
                     error_element_count += 1
+
+            if parse_case.error_element_count > 0:
+                with self.assertRaises(ValueError):
+                    # By default, we would reject this file.
+                    parse_deb822_file(case_input.splitlines(keepends=True))
+            else:
+                # The field should be accepted without any errors by default
+                parse_deb822_file(case_input.splitlines(keepends=True))
+
             paragraph_count = len(list(deb822_file))
             # Remember you can use _print_ast(deb822_file) if you need to debug the test cases.
             # A la
@@ -251,7 +263,16 @@ class FormatPreservingDeb822ParserTests(TestCase):
         Standards-Version: 1.2.3
         Rules-Requires-Root: binary-targets
         ''')
+        # By default, the file is accepted
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        with self.assertRaises(ValueError):
+            # But the parser should raise an error if explicitly requested
+            parse_deb822_file(original.splitlines(keepends=True),
+                              accept_files_with_error_tokens=True,
+                              accept_files_with_duplicated_fields=False,
+                              )
+
         source_paragraph = next(iter(deb822_file))
         as_dict = source_paragraph.configured_view(auto_resolve_ambiguous_fields=False)
         # Non-ambiguous fields are fine

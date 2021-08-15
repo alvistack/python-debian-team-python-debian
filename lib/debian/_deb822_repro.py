@@ -2879,7 +2879,35 @@ def _build_field_with_value(token_stream: Iterable[Union[TokenOrElement, Deb822V
             yield token_or_element
 
 
-def parse_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Deb822FileElement:
+def parse_deb822_file(sequence: Iterable[Union[str, bytes]],
+                      /,
+                      *,
+                      accept_files_with_error_tokens: bool = False,
+                      accept_files_with_duplicated_fields: bool = True,
+                      ) -> Deb822FileElement:
+    """
+
+    :param sequence: An iterable over lines of str or bytes (an open file for
+      reading will do).  The lines must include the trailing line ending ("\n").
+    :param accept_files_with_error_tokens: If True, files with critical syntax
+      or parse errors will be returned as "successfully" parsed. Usually,
+      working on files with these kind of errors are not desirable as it is
+      hard to make sense of such files (and they might in fact not be a deb822
+      file at all).  When set to False (the default) a ValueError is raised if
+      there is a critical syntax or parse error.
+      Note that duplicated fields in a paragraph is not considered a critical
+      parse error by this parser as the implementation can gracefully cope
+      with these. Use accept_files_with_duplicated_fields to determine if
+      such files should be accepted.
+    :param accept_files_with_duplicated_fields: If True (the default), then
+      files containing paragraphs with duplicated fields will be returned as
+      "successfully" parsed even though they are invalid according to the
+      specification.  The paragraphs will prefer the first appearance of the
+      field unless caller explicitly requests otherwise (e.g., via
+      Deb822ParagraphElement.configured_view).  If False, then this method
+      will raise a ValueError if any duplicated fields are seen inside any
+      paragraph.
+    """
     # The order of operations are important here.  As an example,
     # _build_value_line assumes that all comment tokens have been merged
     # into comment elements.  Likewise, _build_field_and_value assumes
@@ -2896,7 +2924,31 @@ def parse_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Deb822FileElemen
     # tokens in their error elements if they discover something is wrong.
     tokens = _combine_error_tokens_into_elements(tokens)
 
-    return Deb822FileElement(list(tokens))
+    deb822_file = Deb822FileElement(list(tokens))
+
+    if not accept_files_with_error_tokens:
+        error_element = deb822_file.find_first_error_element()
+        if error_element is not None:
+            raise ValueError('Syntax or Parse error on the line:'
+                             f' "{error_element.convert_to_text()}"')
+
+    if not accept_files_with_duplicated_fields:
+        for no, paragraph in enumerate(deb822_file):
+            if isinstance(paragraph, Deb822InvalidParagraphElement):
+                field_names = set()
+                dup_field = None
+                for field in paragraph.keys():
+                    field_name, _ = _unpack_key(field, resolve_field_name=True)
+                    # assert for mypy
+                    assert isinstance(field_name, str)
+                    if field_name in field_names:
+                        dup_field = field_name
+                        break
+                    field_names.add(field_name)
+                if dup_field is not None:
+                    raise ValueError(f'Duplicate field "{dup_field}" in paragraph number {no}')
+
+    return deb822_file
 
 
 def _print_ast(ast_tree: Union[Iterable[TokenOrElement], Deb822Element], *,
