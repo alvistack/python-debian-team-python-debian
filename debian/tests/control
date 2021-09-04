@@ -1,9 +1,18 @@
 Tests: python3-debian
 Restrictions: allow-stderr
 Depends:
- binutils (>= 2.23),
+ binutils,
  python3-all,
  python3-apt,
+ python3-debian,
+ debian-keyring,
+ debian-archive-keyring
+
+Tests: python3-debian-no-apt-pkg
+Restrictions: allow-stderr
+Depends:
+ binutils,
+ python3-all,
  python3-debian,
  debian-keyring,
  debian-archive-keyring

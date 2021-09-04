@@ -29,7 +29,12 @@ import tempfile
 import unittest
 import warnings
 
-import apt_pkg
+try:
+    # skip tests that require apt_pkg if it is not available
+    import apt_pkg
+    _have_apt_pkg = True
+except (ImportError, AttributeError):
+    _have_apt_pkg = False
 
 from debian import deb822
 from debian.debian_support import Version
@@ -518,6 +523,11 @@ with open("test_deb822.pickle", "wb") as fh:
         for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=False):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
+    @unittest.skipUnless(_have_apt_pkg, "apt_pkg is not available")
+    def test_iter_paragraphs_file_io_apt_pkg(self):
+        # type: () -> None
+        text = io.StringIO(UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
+
         with self.assertWarns(UserWarning):
             # The io.StringIO is not a real file so this will raise a warning
             for d in deb822.Deb822.iter_paragraphs(text, use_apt_pkg=True):
@@ -538,10 +548,21 @@ with open("test_deb822.pickle", "wb") as fh:
             for d in deb822.Deb822.iter_paragraphs(fh, use_apt_pkg=False):
                 self.assertWellParsed(d, PARSED_PACKAGE)
 
+    @unittest.skipUnless(_have_apt_pkg, "apt_pkg is not available")
+    def test_iter_paragraphs_file_apt_pkg(self):
+        # type: () -> None
+        text = io.StringIO()
+        text.write(UNPARSED_PACKAGE)
+        text.write('\n\n\n')
+        text.write(UNPARSED_PACKAGE)
+
+        with tempfile.NamedTemporaryFile() as fh:
+            txt = text.getvalue().encode('UTF-8')
+            fh.write(txt)
+
             fh.seek(0)
             for d in deb822.Deb822.iter_paragraphs(fh, use_apt_pkg=True):
                 self.assertWellParsed(d, PARSED_PACKAGE)
-
 
     def test_iter_paragraphs_with_gpg(self):
         # type: () -> None
@@ -564,8 +585,21 @@ with open("test_deb822.pickle", "wb") as fh:
         for d in deb822.Deb822.iter_paragraphs(binary):
             self.assertWellParsed(d, PARSED_PACKAGE)
 
-    def test_iter_paragraphs_with_extra_whitespace(self):
-        # type: () -> None
+    def _test_iter_paragraphs_count(self, filename, cmd, expected, *args, **kwargs):
+        # type: (str, Callable[..., Any], int, *Any, **Any) -> None
+        with open_utf8(filename) as fh:
+            count = len(list(cmd(fh, *args, **kwargs)))
+            self.assertEqual(
+                expected,
+                count,
+                "Wrong number paragraphs were found: expected {expected}, got {count}".format(
+                    count=count,
+                    expected=expected,
+                )
+            )
+
+    def _test_iter_paragraphs_with_extra_whitespace(self, tests):
+        # type: (Callable[[str], None]) -> None
         """ Paragraphs splitting when stray whitespace is between
 
         From policy §5.1:
@@ -592,46 +626,57 @@ with open("test_deb822.pickle", "wb") as fh:
             fp.write(text.encode('utf-8'))
             fp.close()
 
-            def test_count(cmd, expected, *args, **kwargs):
-                # type: (Callable[..., Any], int, *Any, **Any) -> None
-                #print("\n", cmd.__class__, expected)
-                with open_utf8(filename) as fh:
-                    count = len(list(cmd(fh, *args, **kwargs)))
-                    self.assertEqual(
-                        expected,
-                        count,
-                        "Wrong number paragraphs were found: expected {expected}, got {count}".format(
-                            count=count,
-                            expected=expected,
-                        )
-                    )
-
             try:
-                # apt_pkg not used, should split
-                test_count(deb822.Deb822.iter_paragraphs, 2)
-                test_count(deb822.Deb822.iter_paragraphs, 2, use_apt_pkg=False)
-
-                # apt_pkg used, should not split
-                test_count(deb822.Deb822.iter_paragraphs, 1, use_apt_pkg=True)
-
-                # Specialised iter_paragraphs force use of apt_pkg and don't split
-                test_count(deb822.Packages.iter_paragraphs, 1, use_apt_pkg=True)
-                test_count(deb822.Sources.iter_paragraphs, 1, use_apt_pkg=True)
-                test_count(deb822.Packages.iter_paragraphs, 1, use_apt_pkg=False)
-                test_count(deb822.Sources.iter_paragraphs, 1, use_apt_pkg=False)
-
-                # Explicitly set internal parser to not split
-                strict = {'whitespace-separates-paragraphs': False}
-                test_count(deb822.Packages.iter_paragraphs, 1, use_apt_pkg=False, strict=strict)
-                test_count(deb822.Sources.iter_paragraphs, 1, use_apt_pkg=False, strict=strict)
-
-                # Explicitly set internal parser to split
-                strict = {'whitespace-separates-paragraphs': True}
-                test_count(deb822.Packages.iter_paragraphs, 2, use_apt_pkg=False, strict=strict)
-                test_count(deb822.Sources.iter_paragraphs, 2, use_apt_pkg=False, strict=strict)
-
+                tests(filename)
             finally:
                 os.remove(filename)
+
+    def test_iter_paragraphs_with_extra_whitespace_default(self):
+        # type: () -> None
+        """ Paragraphs splitting with stray whitespace (default options) """
+        def tests(filename): # type: (str) -> None
+            # apt_pkg not used, should split
+            self._test_iter_paragraphs_count(filename, deb822.Deb822.iter_paragraphs, 2)
+
+        self._test_iter_paragraphs_with_extra_whitespace(tests)
+
+    def test_iter_paragraphs_with_extra_whitespace_no_apt_pkg(self):
+        # type: () -> None
+        """ Paragraphs splitting with stray whitespace (without apt_pkg)"""
+        def tests(filename): # type: (str) -> None
+            # apt_pkg not used, should split
+            self._test_iter_paragraphs_count(filename, deb822.Deb822.iter_paragraphs, 2, use_apt_pkg=False)
+
+            # Specialised iter_paragraphs force use of apt_pkg and don't split
+            self._test_iter_paragraphs_count(filename, deb822.Packages.iter_paragraphs, 1, use_apt_pkg=False)
+            self._test_iter_paragraphs_count(filename, deb822.Sources.iter_paragraphs, 1, use_apt_pkg=False)
+
+            # Explicitly set internal parser to not split
+            strict = {'whitespace-separates-paragraphs': False}
+            self._test_iter_paragraphs_count(filename, deb822.Packages.iter_paragraphs, 1, use_apt_pkg=False, strict=strict)
+            self._test_iter_paragraphs_count(filename, deb822.Sources.iter_paragraphs, 1, use_apt_pkg=False, strict=strict)
+
+            # Explicitly set internal parser to split
+            strict = {'whitespace-separates-paragraphs': True}
+            self._test_iter_paragraphs_count(filename, deb822.Packages.iter_paragraphs, 2, use_apt_pkg=False, strict=strict)
+            self._test_iter_paragraphs_count(filename, deb822.Sources.iter_paragraphs, 2, use_apt_pkg=False, strict=strict)
+
+        self._test_iter_paragraphs_with_extra_whitespace(tests)
+
+    @unittest.skipUnless(_have_apt_pkg, "apt_pkg is not available")
+    def test_iter_paragraphs_with_extra_whitespace_apt_pkg(self):
+        # type: () -> None
+        """ Paragraphs splitting with stray whitespace (with apt_pkg) """
+        def tests(filename): # type: (str) -> None
+
+            # apt_pkg used, should not split
+            self._test_iter_paragraphs_count(filename, deb822.Deb822.iter_paragraphs, 1, use_apt_pkg=True)
+
+            # Specialised iter_paragraphs force use of apt_pkg and don't split
+            self._test_iter_paragraphs_count(filename, deb822.Packages.iter_paragraphs, 1, use_apt_pkg=True)
+            self._test_iter_paragraphs_count(filename, deb822.Sources.iter_paragraphs, 1, use_apt_pkg=True)
+
+        self._test_iter_paragraphs_with_extra_whitespace(tests)
 
     def _test_iter_paragraphs(self, filename, cls, **kwargs):
         # type: (str, Type[deb822.Deb822], **Any) -> None
@@ -1062,6 +1107,7 @@ Description: python modules to work with Debian-related data formats
             self.assertWellParsed(paragraphs[i],
                                   PARSED_PARAGRAPHS_WITH_COMMENTS[i])
 
+    @unittest.skipUnless(_have_apt_pkg, "apt_pkg is not available")
     def test_iter_paragraphs_comments_use_apt_pkg(self):
         # type: () -> None
         """ apt_pkg does not support comments within multiline fields
