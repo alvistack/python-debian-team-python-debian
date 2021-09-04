@@ -141,7 +141,6 @@ Things that might change in an incompatible way include:
 import collections
 import collections.abc
 import contextlib
-import logging
 import operator
 import re
 import sys
@@ -149,61 +148,23 @@ import typing
 import weakref
 from abc import ABC
 from types import TracebackType
-from typing import Iterable, Iterator, List, Union, Dict, Optional, TypeVar, Callable, Any, Generic
+from typing import Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic
 from weakref import ReferenceType
 
 from debian.deb822 import _strI, OrderedSet
 
-
-# Used a generic type for any case where we need a generic type without any bounds
-# (e.g. for the LinkedList interface and some super-classes/mixins).
-T = TypeVar('T')
-T.__doc__ = """
-Generic type
-"""
-
-TokenOrElement = Union['Deb822Element', 'Deb822Token']
-TE = TypeVar('TE', bound=TokenOrElement)
-TE.__doc__ = """
-Generic "Token or Element" type
-"""
-
-# Used as a resulting element for "mapping" functions that map TE -> R (see _combine_parts)
-R = TypeVar('R', bound='Deb822Element')
-R.__doc__ = """
-For internal usage in _deb822_repro
-"""
-
-VT = TypeVar('VT', bound='Deb822Token')
-VT.__doc__ = """
-Value type/token in a list interpretation of a field value
-"""
-
-ST = TypeVar('ST', bound='Deb822Token')
-ST.__doc__ = """
-Separator type/token in a list interpretation of a field value
-"""
-
-# Internal type for part of the paragraph key.  Used to facility _unpack_key.
-ParagraphKeyBase = Union['Deb822FieldNameToken', str]
-ParagraphKeyBase.__doc__ = """
-For internal usage in _deb822_repro
-"""
-
-ParagraphKey = Union[ParagraphKeyBase, typing.Tuple[str, int]]
-ParagraphKey.__doc__ = """
-Anything accepted as a key for a paragraph field lookup.  The simple case being
-a str. Alternative variants are mostly interesting for paragraphs with repeated
-fields (to enable unambiguous lookups)
-"""
-
-Commentish = Union[List[str], 'Deb822CommentElement']
-Commentish.__doc__ = """
-Anything accepted as input for a Comment. The simple case is the list
-of string (each element being a line of comment). The alternative format is
-there for enable reuse of an existing element (e.g. to avoid "unpacking"
-only to "re-pack" an existing comment element).
-"""
+from debian._deb822_repro.tokens import (
+    Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
+    Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
+    Deb822ValueContinuationToken, Deb822NewlineAfterValueToken, Deb822CommaToken,
+    Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
+)
+from debian._deb822_repro.types import (
+    T, ST, VT, TE, R,
+    ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
+    AmbiguousDeb822FieldKeyError,
+)
+from debian._deb822_repro._util import resolve_ref, LinkedList, LinkedListNode
 
 _RE_WHITESPACE_LINE = re.compile(r'^\s+$')
 _RE_WHITESPACE = re.compile(r'\s+')
@@ -274,169 +235,6 @@ _RE_FIELD_LINE = re.compile(r'''
 ''', re.VERBOSE)
 
 
-class AmbiguousDeb822FieldKeyError(KeyError):
-    """Specialized version of KeyError to denote a valid but ambiguous field name
-
-    This exception occurs if:
-      * the field is accessed via a str on a configured view that does not automatically
-        resolve ambiguous field names (see Deb822ParagraphElement.configured_view), AND
-      * a concrete paragraph contents a repeated field (which is not valid in deb822
-        but the module supports parsing them)
-
-    Note that the default is to automatically resolve ambiguous fields. Accordingly
-    you will only see this exception if you have "opted in" on wanting to know that
-    the lookup was ambiguous.
-
-    The ambiguity can be resolved by using a tuple of (<field-name>, <filed-index>)
-    instead of <field-name>.
-    """
-
-
-def _resolve_ref(ref: Optional[ReferenceType[T]]) -> Optional[T]:
-    return ref() if ref is not None else None
-
-
-class _LinkedListNode(Generic[T]):
-
-    __slots__ = ('_previous_node', 'value', 'next_node', '__weakref__')
-
-    def __init__(self, value: T):
-        self._previous_node: 'Optional[ReferenceType[_LinkedListNode[T]]]' = None
-        self.next_node: 'Optional[_LinkedListNode[T]]' = None
-        self.value = value
-
-    @property
-    def previous_node(self) -> 'Optional[_LinkedListNode[T]]':
-        return _resolve_ref(self._previous_node)
-
-    @previous_node.setter
-    def previous_node(self, node: '_LinkedListNode[T]') -> None:
-        self._previous_node = weakref.ref(node) if node is not None else None
-
-    def remove(self) -> T:
-        _LinkedListNode.link_nodes(self.previous_node, self.next_node)
-        self.previous_node = None
-        self.next_node = None
-        return self.value
-
-    def iter_next(self, *, skip_current: bool = False) -> Iterator['_LinkedListNode[T]']:
-        node = self.next_node if skip_current else self
-        while node:
-            yield node
-            node = node.next_node
-
-    def iter_previous(self, *, skip_current: bool = False) -> Iterator['_LinkedListNode[T]']:
-        node = self.previous_node if skip_current else self
-        while node:
-            yield node
-            node = node.previous_node
-
-    @staticmethod
-    def link_nodes(previous_node: Optional['_LinkedListNode[T]'],
-                   next_node: Optional['_LinkedListNode[T]']) -> None:
-        if next_node:
-            next_node.previous_node = previous_node
-        if previous_node:
-            previous_node.next_node = next_node
-
-    @staticmethod
-    def _insert_link(first_node: Optional['_LinkedListNode[T]'],
-                     new_node: '_LinkedListNode[T]',
-                     last_node: Optional['_LinkedListNode[T]']
-                     ) -> None:
-        _LinkedListNode.link_nodes(first_node, new_node)
-        _LinkedListNode.link_nodes(new_node, last_node)
-
-    def insert_after(self, new_node: '_LinkedListNode[T]') -> None:
-        assert self is not new_node and new_node is not self.next_node
-        _LinkedListNode._insert_link(self, new_node, self.next_node)
-
-
-class _LinkedList(Generic[T]):
-    """Specialized linked list implementation to support the deb822 parser needs
-
-    We deliberately trade "encapsulation" for features needed by this library
-    to facilitate their implementation.  Notably, we allow nodes to leak and assume
-    well-behaved calls to remove_node - because that makes it easier to implement
-    components like Deb822InvalidParagraphElement.
-    """
-
-    __slots__ = ('head_node', 'tail_node', '_size')
-
-    def __init__(self, values: Optional[Iterable[T]] = None, /) -> None:
-        self.head_node: Optional[_LinkedListNode[T]] = None
-        self.tail_node: Optional[_LinkedListNode[T]] = None
-        self._size = 0
-        if values is not None:
-            self.extend(values)
-
-    def __bool__(self) -> bool:
-        return self.head_node is not None
-
-    def __len__(self) -> int:
-        return self._size
-
-    @property
-    def tail(self) -> Optional[T]:
-        return self.tail_node.value if self.tail_node is not None else None
-
-    def pop(self) -> None:
-        if self.tail_node is None:
-            raise IndexError('pop from empty list')
-        self.remove_node(self.tail_node)
-
-    def iter_nodes(self) -> typing.Iterator[_LinkedListNode[T]]:
-        head_node = self.head_node
-        if head_node is None:
-            return
-        yield from head_node.iter_next()
-
-    def __iter__(self) -> typing.Iterator[T]:
-        yield from (node.value for node in self.iter_nodes())
-
-    def __reversed__(self) -> typing.Iterator[T]:
-        tail_node = self.tail_node
-        if tail_node is None:
-            return
-        yield from (n.value for n in tail_node.iter_previous())
-
-    def remove_node(self, node: _LinkedListNode[T]) -> None:
-        if node is self.head_node:
-            self.head_node = node.next_node
-            if self.head_node is None:
-                self.tail_node = None
-        elif node is self.tail_node:
-            self.tail_node = node.previous_node
-            # That case should have happened in the "if node is self._head"
-            # part
-            assert self.tail_node is not None
-        assert self._size > 0
-        self._size -= 1
-        node.remove()
-
-    def append(self, value: T) -> _LinkedListNode[T]:
-        node = _LinkedListNode(value)
-        if self.head_node is None:
-            self.head_node = node
-            self.tail_node = node
-        else:
-            # Primarily as a hint to mypy
-            assert self.tail_node is not None
-            self.tail_node.insert_after(node)
-            self.tail_node = node
-        self._size += 1
-        return node
-
-    def extend(self, values: Iterable[T]) -> None:
-        for v in values:
-            self.append(v)
-
-    def clear(self) -> None:
-        self.head_node = None
-        self.tail_node = None
-        self._size = 0
-
-
 class Deb822ParsedTokenList(Generic[VT, ST],
                             contextlib.AbstractContextManager['Deb822ParsedTokenList[VT, ST]']
                             ):
@@ -450,7 +248,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
                  default_separator_factory: Callable[[], ST],
                  ) -> None:
         self._kvpair_element = kvpair_element
-        self._token_list = _LinkedList(interpreted_value_element)
+        self._token_list = LinkedList(interpreted_value_element)
         self._vtype = vtype
         self._stype = stype
         self._tokenizer = tokenizer
@@ -586,8 +384,8 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         #     (leaving you with the value of the form "\n# ...\n      bar")
         #
 
-        first_value_on_lhs: Optional[_LinkedListNode[Deb822Token]] = None
-        first_value_on_rhs: Optional[_LinkedListNode[Deb822Token]] = None
+        first_value_on_lhs: Optional[LinkedListNode[Deb822Token]] = None
+        first_value_on_rhs: Optional[LinkedListNode[Deb822Token]] = None
         comment_before_previous_value = False
         comment_before_next_value = False
         for past_node in node_to_remove.iter_previous(skip_current=True):
@@ -638,7 +436,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
             self._token_list.head_node = first_remain_rhs
         if first_remain_rhs is None:
             self._token_list.tail_node = first_remain_lhs
-        _LinkedListNode.link_nodes(first_remain_lhs, first_remain_rhs)
+        LinkedListNode.link_nodes(first_remain_lhs, first_remain_rhs)
 
     def append(self, value: str) -> None:
         vt = self._value_factory(value)
@@ -1006,198 +804,6 @@ def _comma_separated_list_of_tokens(v: str) -> 'Iterable[Deb822Token]':
             yield Deb822WhitespaceToken(sys.intern(space_after_word))
 
 
-class Deb822Token:
-    """A token is an atomic syntactical element from a deb822 file
-
-    A file is parsed into a series of tokens.  If these tokens are converted to
-    text in exactly the same order, you get exactly the same file - bit-for-bit.
-    Accordingly ever bit of text in a file must be assigned to exactly one
-    Deb822Token.
-    """
-
-    __slots__ = ('_text', '_hash', '_parent_element', '__weakref__')
-
-    def __init__(self, text: str) -> None:
-        if text == '':  # pragma: no cover
-            raise ValueError("Tokens must have content")
-        self._text: str = text
-        self._hash: Optional[int] = None
-        self._parent_element: Optional[ReferenceType['Deb822Element']] = None
-        if '\n' in self._text:
-            is_single_line_token = False
-            if self.is_comment or isinstance(self, Deb822ErrorToken):
-                is_single_line_token = True
-            if not is_single_line_token and not self.is_whitespace:
-                raise ValueError("Only whitespace, error and comment tokens may contain newlines")
-            if not self.text.endswith("\n"):
-                raise ValueError("Tokens containing whitespace must end on a newline")
-            if is_single_line_token and '\n' in self.text[:-1]:
-                raise ValueError("Comments and error tokens must not contain embedded newlines"
-                                 " (only end on one)")
-
-    def __repr__(self) -> str:
-        if self._text != "":
-            return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
-                                                text=self._text.replace('\n', '\\n')
-                                                )
-        return self.__class__.__name__
-
-    @property
-    def is_whitespace(self) -> bool:
-        return False
-
-    @property
-    def is_comment(self) -> bool:
-        return False
-
-    @property
-    def text(self) -> str:
-        return self._text
-
-    # To support callers that want a simple interface for converting tokens and elements to text
-    def convert_to_text(self) -> str:
-        return self._text
-
-    @property
-    def parent_element(self) -> 'Optional[Deb822Element]':
-        return _resolve_ref(self._parent_element)
-
-    @parent_element.setter
-    def parent_element(self, new_parent: 'Optional[Deb822Element]') -> None:
-        self._parent_element = weakref.ref(new_parent) if new_parent is not None else None
-
-    def clear_parent_if_parent(self, parent: 'Deb822Element') -> None:
-        if parent is self.parent_element:
-            self._parent_element = None
-
-
-class Deb822WhitespaceToken(Deb822Token):
-    """The token is a kind of whitespace.
-
-    Some whitespace tokens are critical for the format (such as the Deb822ValueContinuationToken,
-    spaces that separate words in list separated by spaces or newlines), while other whitespace
-    tokens are truly insignificant (space before a newline, space after a comma in a comma
-    list, etc.).
-    """
-
-    __slots__ = ()
-
-    @property
-    def is_whitespace(self) -> bool:
-        return True
-
-
-class Deb822SemanticallySignificantWhiteSpace(Deb822WhitespaceToken):
-    """Whitespace that (if removed) would change the meaning of the file (or cause syntax errors)"""
-
-    __slots__ = ()
-
-
-class Deb822NewlineAfterValueToken(Deb822SemanticallySignificantWhiteSpace):
-    """The newline after a value token.
-
-    If not followed by a continuation token, this also marks the end of the field.
-    """
-
-    __slots__ = ()
-
-    def __init__(self) -> None:
-        super().__init__('\n')
-
-
-class Deb822ValueContinuationToken(Deb822SemanticallySignificantWhiteSpace):
-    """The whitespace denoting a value spanning an additional line (the first space on a line)"""
-
-    __slots__ = ()
-
-    def __init__(self) -> None:
-        super().__init__(' ')
-
-
-class Deb822SpaceSeparatorToken(Deb822SemanticallySignificantWhiteSpace):
-    """Whitespace between values in a space list (e.g. "Architectures")"""
-
-    __slots__ = ()
-
-
-class Deb822ErrorToken(Deb822Token):
-    """Token that represents a syntactical error"""
-
-    __slots__ = ()
-
-
-class Deb822CommentToken(Deb822Token):
-
-    __slots__ = ()
-
-    @property
-    def is_comment(self) -> bool:
-        return True
-
-
-class Deb822FieldNameToken(Deb822Token):
-
-    __slots__ = ()
-
-    def __init__(self, text: str) -> None:
-        if not isinstance(text, _strI):
-            text = _strI(sys.intern(text))
-        super().__init__(text)
-
-    @property
-    def text(self) -> _strI:
-        return typing.cast('_strI', self._text)
-
-
-# The colon after the field name, parenthesis, etc.
-class Deb822SeparatorToken(Deb822Token):
-
-    __slots__ = ()
-
-
-class Deb822FieldSeparatorToken(Deb822Token):
-
-    __slots__ = ()
-
-    def __init__(self) -> None:
-        super().__init__(':')
-
-
-class Deb822CommaToken(Deb822SeparatorToken):
-    """Used by the comma-separated list value parsers to denote a comma between two value tokens."""
-
-    __slots__ = ()
-
-    def __init__(self) -> None:
-        super().__init__(',')
-
-
-class Deb822PipeToken(Deb822SeparatorToken):
-    """Used in some dependency fields as OR relation"""
-
-    __slots__ = ()
-
-    def __init__(self) -> None:
-        super().__init__('|')
-
-
-class Deb822ValueToken(Deb822Token):
-    """A field value can be split into multi "Deb822ValueToken"s (as well as separator tokens)"""
-
-    __slots__ = ()
-
-
-class Deb822ValueDependencyToken(Deb822Token):
-    """Package name, architecture name, a version number, or a profile name in a dependency field"""
-
-    __slots__ = ()
-
-
-class Deb822ValueDependencyVersionRelationOperatorToken(Deb822Token):
-
-    __slots__ = ()
-
-
 class Deb822Element:
     """Composite elements (consists of 1 or more tokens)"""
 
@@ -1232,7 +838,7 @@ class Deb822Element:
 
     @property
     def parent_element(self) -> 'Optional[Deb822Element]':
-        return _resolve_ref(self._parent_element)
+        return resolve_ref(self._parent_element)
 
     @parent_element.setter
     def parent_element(self, new_parent: 'Optional[Deb822Element]') -> None:
@@ -2240,8 +1846,8 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
 
     def __init__(self, kvpair_elements: List[Deb822KeyValuePairElement]) -> None:
         super().__init__()
-        self._kvpair_order: _LinkedList[Deb822KeyValuePairElement] = _LinkedList()
-        self._kvpair_elements: Dict[_strI, List[_LinkedListNode[Deb822KeyValuePairElement]]] = {}
+        self._kvpair_order: LinkedList[Deb822KeyValuePairElement] = LinkedList()
+        self._kvpair_elements: Dict[_strI, List[LinkedListNode[Deb822KeyValuePairElement]]] = {}
         self._init_kvpair_fields(kvpair_elements)
         self._init_parent_of_parts()
 
@@ -2304,8 +1910,8 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
 
     @staticmethod
     def _find_node_via_name_token(name_token: Deb822FieldNameToken,
-                                  elements: Iterable['_LinkedListNode[Deb822KeyValuePairElement]'],
-                                  ) -> 'Optional[_LinkedListNode[Deb822KeyValuePairElement]]':
+                                  elements: Iterable['LinkedListNode[Deb822KeyValuePairElement]'],
+                                  ) -> 'Optional[LinkedListNode[Deb822KeyValuePairElement]]':
         # if we are given a name token, then it is non-ambiguous if we have exactly
         # that name token in our list of nodes.  It will be an O(n) lookup but we
         # probably do not have that many duplicate fields (and even if do, it is not
@@ -2439,7 +2045,7 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
             break
 
         sorted_kvpair_list = sorted(self._kvpair_order, key=actual_key)
-        self._kvpair_order = _LinkedList()
+        self._kvpair_order = LinkedList()
         self._kvpair_elements = {}
         self._init_kvpair_fields(sorted_kvpair_list)
 
@@ -2949,54 +2555,6 @@ def parse_deb822_file(sequence: Iterable[Union[str, bytes]],
                     raise ValueError(f'Duplicate field "{dup_field}" in paragraph number {no}')
 
     return deb822_file
-
-
-def _print_ast(ast_tree: Union[Iterable[TokenOrElement], Deb822Element], *,
-               end_marker_after: Optional[int] = 5,
-               output_function: Optional[Callable[[str], None]] = None,
-               ) -> None:
-    """Debugging aid, which can dump a Deb822Element or a list of tokens/elements
-
-    :param ast_tree: Either a Deb822Element or an iterable Deb822Token/Deb822Element entries
-      (both types may be mixed in the same iterable, which enable it to dump the
-      ast tree at different stages of parse_deb822_file method)
-    :param end_marker_after: The dump will add "end of element" markers if a
-      given element spans at least this many tokens/elements. Can be disabled
-      with by passing None as value. Use 0 for unconditionally marking all
-      elements (note that tokens never get an "end of element" marker as they
-      are not an elements).
-   :param output_function: Callable that receives a single str argument and is responsible
-     for "displaying" that line. The callable may be invoked multiple times (one per line
-     of output).  Defaults to logging.info if omitted.
-
-    """
-    prefix = None
-    if isinstance(ast_tree, Deb822Element):
-        ast_tree = [ast_tree]
-    stack = [(0, '', iter(ast_tree))]
-    current_no = 0
-    if output_function is None:
-        output_function = logging.info
-    while stack:
-        start_no, name, current_iter = stack[-1]
-        for current in current_iter:
-            current_no += 1
-            if prefix is None:
-                prefix = '  ' * len(stack)
-            if isinstance(current, Deb822Element):
-                stack.append((current_no, current.__class__.__name__, iter(current.iter_parts())))
-                output_function(f"{prefix}{current.__class__.__name__}")
-                prefix = None
-                break
-            output_function(f"{prefix}{current}")
-        else:
-            # current_iter is depleted
-            stack.pop()
-            prefix = None
-            if end_marker_after is not None and start_no + end_marker_after <= current_no and name:
-                if prefix is None:
-                    prefix = '  ' * len(stack)
-                output_function(f"{prefix}# <-- END OF {name}")
 
 
 if __name__ == "__main__":  # pragma: no cover
