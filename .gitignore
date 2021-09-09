@@ -18,3 +18,4 @@ docs/api
 *~
 .coverage
 .idea
+htmlcov

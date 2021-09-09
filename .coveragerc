@@ -1,0 +1,13 @@
+[run]
+branch = True
+omit =
+  *_boot*.py
+  */lib/python*/*
+  */dist-packages/*
+  */tests/*
+source = lib
+
+[report]
+exclude_lines =
+  pragma: no cover
+  if __name__ == .__main__.:

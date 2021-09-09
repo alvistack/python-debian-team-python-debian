@@ -4,13 +4,19 @@ default:
   before_script:
   - apt-get update
   - apt-get -y install make dpkg-dev
-  - apt-get -y install python3 python3-apt python3-chardet python3-setuptools python3-pytest
+  - apt-get -y install python3 python3-apt python3-chardet python3-setuptools python3-pytest python3-pytest-cov python3-coverage
 
 unit-tests:
   script:
   - ./debian/rules lib/debian/__init__.py
-  - LC_ALL=C py.test-3 --doctest-modules --verbose lib/
-  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules --verbose lib/
+  - LC_ALL=C py.test-3 --doctest-modules --cov --cov-branch --cov-append --cov-report= --verbose lib/
+  # Omit --cov-report here to generate a report that gitlab can pick up with its log parser
+  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules --cov --cov-branch --cov-append --verbose lib/
+  # Generate a coverage report for the pages
+  - python3-coverage html
+  artifacts:
+    paths:
+      - htmlcov
 
 style:
   script:
@@ -19,12 +25,16 @@ style:
   - rm lib/debian/_version.py
 
 pages:
+  stage: deploy
   script:
   - apt-get update && apt-get install -y make python3-sphinx
   - rm -f docs/api/*
   - cd lib && sphinx-apidoc -e --private -H python-debian -o ../docs/api/ . deb822.py debian/tests/ debian_bundle/ && cd ..
   - PYTHONPATH=$PWD/lib make -C docs/ SPHINXOPTS="-a -v -n" html
   - mv build/sphinx/html/ public/
+  - mv htmlcov public/
+  dependencies:
+    - unit-tests
   artifacts:
     paths:
     - public
