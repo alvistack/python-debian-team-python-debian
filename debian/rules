@@ -29,8 +29,8 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	  echo "----------------------------------------------"; \
 	  echo "Testing with $$py"; \
 	  echo "----------------------------------------------"; \
-	  LC_ALL=C $$py -m unittest discover --verbose lib/; \
-	  LC_ALL=C.UTF-8 $$py -m unittest discover --verbose lib/; \
+	  LC_ALL=C $$py -m pytest --doctest-modules --verbose lib/; \
+	  LC_ALL=C.UTF-8 $$py -m pytest --doctest-modules --verbose lib/; \
 	done
 endif
 
