@@ -28,18 +28,15 @@ from unittest import TestCase, SkipTest
 
 if sys.version_info >= (3, 9):
     from debian._deb822_repro import (parse_deb822_file,
-                                      Deb822ErrorToken,
-                                      Deb822Token,
                                       AmbiguousDeb822FieldKeyError,
                                       LIST_SPACE_SEPARATED_INTERPRETATION,
                                       LIST_COMMA_SEPARATED_INTERPRETATION,
                                       Interpretation,
-                                      Deb822KeyValuePairElement,
-                                      _print_ast,
-                                      Deb822ParsedTokenList,
-                                      VT,
-                                      ST,
                                       )
+    from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList
+    from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
+    from debian._deb822_repro.types import VT, ST
+    from debian._deb822_repro._util import print_ast
     from typing import Any, Iterator, Tuple
 else:
     parse_deb822_file = None
@@ -431,7 +428,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 self.assertEqual(expected_output, actual)
             except AssertionError:
                 logging.info(" -- Debugging aid - START of AST for generated value --")
-                _print_ast(kvpair)
+                print_ast(kvpair)
                 logging.info(" -- Debugging aid - END of AST for generated value --")
                 raise
             # Reset of value
