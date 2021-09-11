@@ -28,9 +28,9 @@ def print_ast(ast_tree: Union[Iterable[TokenOrElement], 'Deb822Element'], *,
       with by passing None as value. Use 0 for unconditionally marking all
       elements (note that tokens never get an "end of element" marker as they
       are not an elements).
-   :param output_function: Callable that receives a single str argument and is responsible
-     for "displaying" that line. The callable may be invoked multiple times (one per line
-     of output).  Defaults to logging.info if omitted.
+    :param output_function: Callable that receives a single str argument and is responsible
+      for "displaying" that line. The callable may be invoked multiple times (one per line
+      of output).  Defaults to logging.info if omitted.
 
     """
     # Avoid circular dependency

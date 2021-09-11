@@ -1707,16 +1707,16 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         :param preserve_original_field_comment: If True, then if there is an
           existing field and that has a comment, then the comment will remain
           after this operation.  This is the default is the `field_comment`
-          paramter is omitted.
+          parameter is omitted.
         :param field_comment: If not None, add or replace the comment for
           the field.  Each string in the in the list will become one comment
-          line (insered directly before the field name). Will appear in the
+          line (inserted directly before the field name). Will appear in the
           same order as they do in the list.
 
           If you want complete control over the formatting of the comments,
-          then ensure that each line start with "#" and end with "\n" before
+          then ensure that each line start with "#" and end with "\\n" before
           the call.  Otherwise, leading/trailing whitespace is normalized
-          and the missing "#"/"\n" character is inserted.
+          and the missing "#"/"\\n" character is inserted.
         """
 
         new_content: List[str] = []
@@ -2494,7 +2494,7 @@ def parse_deb822_file(sequence: Iterable[Union[str, bytes]],
     """
 
     :param sequence: An iterable over lines of str or bytes (an open file for
-      reading will do).  The lines must include the trailing line ending ("\n").
+      reading will do).  The lines must include the trailing line ending ("\\n").
     :param accept_files_with_error_tokens: If True, files with critical syntax
       or parse errors will be returned as "successfully" parsed. Usually,
       working on files with these kind of errors are not desirable as it is
