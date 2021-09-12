@@ -157,6 +157,7 @@ from debian._deb822_repro.tokens import (
     Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
     Deb822ValueContinuationToken, Deb822NewlineAfterValueToken, Deb822CommaToken,
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
+    _RE_WHITESPACE_LINE, tokenize_deb822_file,
 )
 from debian._deb822_repro.types import (
     T, ST, VT, TE,
@@ -168,7 +169,6 @@ from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
                                         flatten_with_len_check,
 )
 
-_RE_WHITESPACE_LINE = re.compile(r'^\s+$')
 _RE_WHITESPACE = re.compile(r'\s+')
 # Consume whitespace and a single word.
 _RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
@@ -209,31 +209,6 @@ _RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
     (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma separated list.
                                              # But surrounding whitespace is ignored
     (?P<space_after_word>\s*)
-''', re.VERBOSE)
-
-# From Policy 5.1:
-#
-#    The field name is composed of US-ASCII characters excluding control
-#    characters, space, and colon (i.e., characters in the ranges U+0021
-#    (!) through U+0039 (9), and U+003B (;) through U+007E (~),
-#    inclusive). Field names must not begin with the comment character
-#    (U+0023 #), nor with the hyphen character (U+002D -).
-#
-# That combines to this regex of questionable readability
-_RE_FIELD_LINE = re.compile(r'''
-    ^                                          # Start of line
-    (?P<field_name>                            # Capture group for the field name
-        [\x21\x22\x24-\x2C\x2F-\x39\x3B-\x7F]  # First character
-        [\x21-\x39\x3B-\x7F]*                  # Subsequent characters (if any)
-    )
-    (?P<separator> : )
-    (?P<space_before_value> \s* )
-    (?:                                        # Field values are not mandatory on the same line
-                                               # as the field name.
-
-      (?P<value>  \S(?:.*\S)?  )               # Values must start and end on a "non-space"
-      (?P<space_after_value> \s* )             # We can have optional space after the value
-    )?
 ''', re.VERBOSE)
 
 
@@ -2089,118 +2064,6 @@ class Deb822FileElement(Deb822Element):
             fd.write(token.text.encode('utf-8'))
 
 
-def _tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb822Token]:
-    """Tokenize a deb822 file
-
-    :param sequence: An iterable of lines (a file open for reading will do)
-    """
-    current_field_name = None
-    field_name_cache: Dict[str, _strI] = {}
-
-    def _as_str(s: Iterable[Union[str, bytes]]) -> Iterable[str]:
-        for x in s:
-            if isinstance(x, bytes):
-                x = x.decode('utf-8')
-            yield x
-
-    text_stream: BufferingIterator[str] = BufferingIterator(_as_str(sequence))
-
-    for no, line in enumerate(text_stream, start=1):
-
-        if not line.endswith("\n"):
-            # We expect newlines at the end of each line except the last.
-            if text_stream.peek() is not None:
-                raise ValueError(f"Invalid line iterator: Line {no} did not end on a newline and"
-                                 " it is not the last line in the stream!")
-            if line == '':
-                raise ValueError(f"Line {no} was completely empty.  The tokenizer expects"
-                                 " whitespace (including newlines) to be present")
-        if _RE_WHITESPACE_LINE.match(line):
-            if current_field_name:
-                # Blank lines terminate fields
-                current_field_name = None
-
-            # If there are multiple whitespace-only lines, we combine them
-            # into one token.
-            r = list(text_stream.takewhile(lambda x: _RE_WHITESPACE_LINE.match(x) is not None))
-            if r:
-                line = line + "".join(r)
-
-            # whitespace tokens are likely to have duplicate cases (like
-            # single newline tokens), so we intern the strings there.
-            yield Deb822WhitespaceToken(sys.intern(line))
-            continue
-
-        if line[0] == '#':
-            yield Deb822CommentToken(line)
-            continue
-
-        if line[0] == ' ':
-            if current_field_name is not None:
-                # We emit a separate whitespace token for the newline as it makes some
-                # things easier later (see _build_value_line)
-                if line.endswith('\n'):
-                    line = line[1:-1]
-                    emit_newline_token = True
-                else:
-                    line = line[1:]
-                    emit_newline_token = False
-
-                yield Deb822ValueContinuationToken()
-                yield Deb822ValueToken(line)
-                if emit_newline_token:
-                    yield Deb822NewlineAfterValueToken()
-            else:
-                yield Deb822ErrorToken(line)
-            continue
-
-        field_line_match = _RE_FIELD_LINE.match(line)
-        if field_line_match:
-            # The line is a field, which means there is a bit to unpack
-            # - note that by definition, leading and trailing whitespace is insignificant
-            #   on the value part directly after the field separator
-            (field_name, _, space_before, value, space_after) = field_line_match.groups()
-
-            current_field_name = field_name_cache.get(field_name)
-            emit_newline_token = False
-
-            if value is None or value == '':
-                # If there is no value, then merge the two space elements into space_after
-                # as it makes it easier to handle the newline.
-                space_after = space_before + space_after if space_after else space_before
-                space_before = ''
-
-            if space_after:
-                # We emit a separate whitespace token for the newline as it makes some
-                # things easier later (see _build_value_line)
-                emit_newline_token = space_after.endswith('\n')
-                if emit_newline_token:
-                    space_after = space_after[:-1]
-
-            if current_field_name is None:
-                field_name = sys.intern(field_name)
-                current_field_name = _strI(field_name)
-                field_name_cache[field_name] = current_field_name
-
-            # We use current_field_name from here as it is a _strI.
-            # Delete field_name to avoid accidentally using it and getting bugs
-            # that should not happen.
-            del field_name
-
-            yield Deb822FieldNameToken(current_field_name)
-            yield Deb822FieldSeparatorToken()
-            if space_before:
-                yield Deb822WhitespaceToken(sys.intern(space_before))
-            if value:
-                yield Deb822ValueToken(value)
-            if space_after:
-                yield Deb822WhitespaceToken(sys.intern(space_after))
-            if emit_newline_token:
-                yield Deb822NewlineAfterValueToken()
-        else:
-            yield Deb822ErrorToken(line)
-
-
 _combine_error_tokens_into_elements = combine_into_replacement(Deb822ErrorToken, Deb822ErrorElement)
 _combine_comment_tokens_into_elements = combine_into_replacement(Deb822CommentToken,
                                                                  Deb822CommentElement)
@@ -2417,7 +2280,7 @@ def parse_deb822_file(sequence: Iterable[Union[str, bytes]],
     # into comment elements.  Likewise, _build_field_and_value assumes
     # that value tokens (along with their comments) have been combined
     # into elements.
-    tokens: Iterable[TokenOrElement] = _tokenize_deb822_file(sequence)
+    tokens: Iterable[TokenOrElement] = tokenize_deb822_file(sequence)
     tokens = _combine_comment_tokens_into_elements(tokens)
     tokens = _build_value_line(tokens)
     tokens = _combine_vl_elements_into_value_elements(tokens)
