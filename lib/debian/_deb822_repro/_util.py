@@ -1,23 +1,29 @@
 import logging
 import weakref
-from typing import Optional, Union, Iterable, Callable, TYPE_CHECKING, Generic, Iterator
 from weakref import ReferenceType
 
-from debian._deb822_repro.types import T, TokenOrElement
+try:
+    from typing import Optional, Union, Iterable, Callable, TYPE_CHECKING, Generic, Iterator
+    from debian._deb822_repro.types import T, TokenOrElement
+except ImportError:
+    TYPE_CHECKING = False
 
 
 if TYPE_CHECKING:
     from debian._deb822_repro.parsing import Deb822Element
 
 
-def resolve_ref(ref: Optional[ReferenceType[T]]) -> Optional[T]:
+def resolve_ref(ref):
+    # type: (Optional[ReferenceType[T]]) -> Optional[T]
     return ref() if ref is not None else None
 
 
-def print_ast(ast_tree: Union[Iterable[TokenOrElement], 'Deb822Element'], *,
-              end_marker_after: Optional[int] = 5,
-              output_function: Optional[Callable[[str], None]] = None,
-              ) -> None:
+def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element']
+              *,
+              end_marker_after=5,  # type: Optional[int]
+              output_function=None,  # type: Optional[Callable[[str], None]]
+              ):
+    # type: (...) -> None
     """Debugging aid, which can dump a Deb822Element or a list of tokens/elements
 
     :param ast_tree: Either a Deb822Element or an iterable Deb822Token/Deb822Element entries
@@ -51,10 +57,10 @@ def print_ast(ast_tree: Union[Iterable[TokenOrElement], 'Deb822Element'], *,
                 prefix = '  ' * len(stack)
             if isinstance(current, Deb822Element):
                 stack.append((current_no, current.__class__.__name__, iter(current.iter_parts())))
-                output_function(f"{prefix}{current.__class__.__name__}")
+                output_function(prefix + current.__class__.__name__)
                 prefix = None
                 break
-            output_function(f"{prefix}{current}")
+            output_function(prefix + str(current))
         else:
             # current_iter is depleted
             stack.pop()
@@ -62,61 +68,73 @@ def print_ast(ast_tree: Union[Iterable[TokenOrElement], 'Deb822Element'], *,
             if end_marker_after is not None and start_no + end_marker_after <= current_no and name:
                 if prefix is None:
                     prefix = '  ' * len(stack)
-                output_function(f"{prefix}# <-- END OF {name}")
+                output_function(prefix + "# <-- END OF " + name)
 
 
 class LinkedListNode(Generic[T]):
 
     __slots__ = ('_previous_node', 'value', 'next_node', '__weakref__')
 
-    def __init__(self, value: T):
-        self._previous_node: 'Optional[ReferenceType[LinkedListNode[T]]]' = None
-        self.next_node: 'Optional[LinkedListNode[T]]' = None
+    def __init__(self, value):
+        # type: (T) -> None
+        self._previous_node = None  # type: Optional[ReferenceType[LinkedListNode[T]]]
+        self.next_node = None  # type: Optional[LinkedListNode[T]]
         self.value = value
 
     @property
-    def previous_node(self) -> 'Optional[LinkedListNode[T]]':
+    def previous_node(self):
+        # type: () -> Optional[LinkedListNode[T]]
         return resolve_ref(self._previous_node)
 
     @previous_node.setter
-    def previous_node(self, node: 'LinkedListNode[T]') -> None:
+    def previous_node(self, node):
+        # type: (LinkedListNode[T]) -> None
         self._previous_node = weakref.ref(node) if node is not None else None
 
-    def remove(self) -> T:
+    def remove(self):
+        # type: () -> T
         LinkedListNode.link_nodes(self.previous_node, self.next_node)
         self.previous_node = None
         self.next_node = None
         return self.value
 
-    def iter_next(self, *, skip_current: bool = False) -> Iterator['LinkedListNode[T]']:
+    def iter_next(self, *,
+                  skip_current=False  # type: Optional[bool]
+                  ):
+        # type: (...) -> Iterator[LinkedListNode[T]]
         node = self.next_node if skip_current else self
         while node:
             yield node
             node = node.next_node
 
-    def iter_previous(self, *, skip_current: bool = False) -> Iterator['LinkedListNode[T]']:
+    def iter_previous(self, *,
+                      skip_current=False  # type: Optional[bool]
+                      ):
+        # type: (...) -> Iterator[LinkedListNode[T]]
         node = self.previous_node if skip_current else self
         while node:
             yield node
             node = node.previous_node
 
     @staticmethod
-    def link_nodes(previous_node: Optional['LinkedListNode[T]'],
-                   next_node: Optional['LinkedListNode[T]']) -> None:
+    def link_nodes(previous_node, next_node):
+        # type: (Optional[LinkedListNode[T]], Optional['LinkedListNode[T]']) -> None
         if next_node:
             next_node.previous_node = previous_node
         if previous_node:
             previous_node.next_node = next_node
 
     @staticmethod
-    def _insert_link(first_node: Optional['LinkedListNode[T]'],
-                     new_node: 'LinkedListNode[T]',
-                     last_node: Optional['LinkedListNode[T]']
-                     ) -> None:
+    def _insert_link(first_node,  # type: Optional[LinkedListNode[T]]
+                     new_node,  # type: LinkedListNode[T]
+                     last_node,  # type: Optional[LinkedListNode[T]]
+                     ):
+        # type: (...) -> None
         LinkedListNode.link_nodes(first_node, new_node)
         LinkedListNode.link_nodes(new_node, last_node)
 
-    def insert_after(self, new_node: 'LinkedListNode[T]') -> None:
+    def insert_after(self, new_node):
+        # type: (LinkedListNode[T]) -> None
         assert self is not new_node and new_node is not self.next_node
         LinkedListNode._insert_link(self, new_node, self.next_node)
 
@@ -132,44 +150,53 @@ class LinkedList(Generic[T]):
 
     __slots__ = ('head_node', 'tail_node', '_size')
 
-    def __init__(self, values: Optional[Iterable[T]] = None, /) -> None:
-        self.head_node: Optional[LinkedListNode[T]] = None
-        self.tail_node: Optional[LinkedListNode[T]] = None
+    def __init__(self, values=None):
+        # type: (Optional[Iterable[T]]) -> None
+        self.head_node = None  # type: Optional[LinkedListNode[T]]
+        self.tail_node = None  # type: Optional[LinkedListNode[T]]
         self._size = 0
         if values is not None:
             self.extend(values)
 
-    def __bool__(self) -> bool:
+    def __bool__(self):
+        # type: () -> bool
         return self.head_node is not None
 
-    def __len__(self) -> int:
+    def __len__(self):
+        # type: () -> int
         return self._size
 
     @property
-    def tail(self) -> Optional[T]:
+    def tail(self):
+        # type: () -> Optional[T]
         return self.tail_node.value if self.tail_node is not None else None
 
-    def pop(self) -> None:
+    def pop(self):
+        # type: () -> None
         if self.tail_node is None:
             raise IndexError('pop from empty list')
         self.remove_node(self.tail_node)
 
-    def iter_nodes(self) -> Iterator[LinkedListNode[T]]:
+    def iter_nodes(self):
+        # type: () -> Iterator[LinkedListNode[T]]
         head_node = self.head_node
         if head_node is None:
             return
         yield from head_node.iter_next()
 
-    def __iter__(self) -> Iterator[T]:
+    def __iter__(self):
+        # type: () -> Iterator[T]
         yield from (node.value for node in self.iter_nodes())
 
-    def __reversed__(self) -> Iterator[T]:
+    def __reversed__(self):
+        # type: () -> Iterator[T]
         tail_node = self.tail_node
         if tail_node is None:
             return
         yield from (n.value for n in tail_node.iter_previous())
 
-    def remove_node(self, node: LinkedListNode[T]) -> None:
+    def remove_node(self, node):
+        # type: (LinkedListNode[T]) -> None
         if node is self.head_node:
             self.head_node = node.next_node
             if self.head_node is None:
@@ -183,7 +210,8 @@ class LinkedList(Generic[T]):
         self._size -= 1
         node.remove()
 
-    def append(self, value: T) -> LinkedListNode[T]:
+    def append(self, value):
+        # type: (T) -> LinkedListNode[T]
         node = LinkedListNode(value)
         if self.head_node is None:
             self.head_node = node
@@ -196,11 +224,13 @@ class LinkedList(Generic[T]):
         self._size += 1
         return node
 
-    def extend(self, values: Iterable[T]) -> None:
+    def extend(self, values):
+        # type: (Iterable[T]) -> None
         for v in values:
             self.append(v)
 
-    def clear(self) -> None:
+    def clear(self):
+        # type: () -> None
         self.head_node = None
         self.tail_node = None
         self._size = 0

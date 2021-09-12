@@ -1,11 +1,15 @@
 import sys
 from weakref import ReferenceType
-from typing import Optional, cast, TYPE_CHECKING
 import weakref
 
 from debian._deb822_repro._util import resolve_ref
 from debian.deb822 import _strI
 
+try:
+    from typing import Optional, cast, TYPE_CHECKING
+except ImportError:
+    TYPE_CHECKING = False
+    cast = lambda t, v: v
 
 if TYPE_CHECKING:
     from debian._deb822_repro.parsing import Deb822Element
@@ -22,12 +26,13 @@ class Deb822Token:
 
     __slots__ = ('_text', '_hash', '_parent_element', '__weakref__')
 
-    def __init__(self, text: str) -> None:
+    def __init__(self, text):
+        # type: (str) -> None
         if text == '':  # pragma: no cover
             raise ValueError("Tokens must have content")
-        self._text: str = text
-        self._hash: Optional[int] = None
-        self._parent_element: Optional[ReferenceType['Deb822Element']] = None
+        self._text = text  # type: str
+        self._hash = None  # type: Optional[int]
+        self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
         if '\n' in self._text:
             is_single_line_token = False
             if self.is_comment or isinstance(self, Deb822ErrorToken):
@@ -40,7 +45,8 @@ class Deb822Token:
                 raise ValueError("Comments and error tokens must not contain embedded newlines"
                                  " (only end on one)")
 
-    def __repr__(self) -> str:
+    def __repr__(self):
+        # type: () -> str
         if self._text != "":
             return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
                                                 text=self._text.replace('\n', '\\n')
@@ -48,30 +54,37 @@ class Deb822Token:
         return self.__class__.__name__
 
     @property
-    def is_whitespace(self) -> bool:
+    def is_whitespace(self):
+        # type: () -> bool
         return False
 
     @property
-    def is_comment(self) -> bool:
+    def is_comment(self):
+        # type: () -> bool
         return False
 
     @property
-    def text(self) -> str:
+    def text(self):
+        # type: () -> str
         return self._text
 
     # To support callers that want a simple interface for converting tokens and elements to text
-    def convert_to_text(self) -> str:
+    def convert_to_text(self):
+        # type: () -> str
         return self._text
 
     @property
-    def parent_element(self) -> 'Optional[Deb822Element]':
+    def parent_element(self):
+        # type: () -> Optional[Deb822Element]
         return resolve_ref(self._parent_element)
 
     @parent_element.setter
-    def parent_element(self, new_parent: 'Optional[Deb822Element]') -> None:
+    def parent_element(self, new_parent):
+        # type: (Optional[Deb822Element]) -> None
         self._parent_element = weakref.ref(new_parent) if new_parent is not None else None
 
-    def clear_parent_if_parent(self, parent: 'Deb822Element') -> None:
+    def clear_parent_if_parent(self, parent):
+        # type: (Deb822Element) -> None
         if parent is self.parent_element:
             self._parent_element = None
 
@@ -88,7 +101,8 @@ class Deb822WhitespaceToken(Deb822Token):
     __slots__ = ()
 
     @property
-    def is_whitespace(self) -> bool:
+    def is_whitespace(self):
+        # type: () -> bool
         return True
 
 
@@ -106,7 +120,8 @@ class Deb822NewlineAfterValueToken(Deb822SemanticallySignificantWhiteSpace):
 
     __slots__ = ()
 
-    def __init__(self) -> None:
+    def __init__(self):
+        # type: () -> None
         super().__init__('\n')
 
 
@@ -115,7 +130,8 @@ class Deb822ValueContinuationToken(Deb822SemanticallySignificantWhiteSpace):
 
     __slots__ = ()
 
-    def __init__(self) -> None:
+    def __init__(self):
+        # type: () -> None
         super().__init__(' ')
 
 
@@ -136,7 +152,8 @@ class Deb822CommentToken(Deb822Token):
     __slots__ = ()
 
     @property
-    def is_comment(self) -> bool:
+    def is_comment(self):
+        # type: () -> bool
         return True
 
 
@@ -144,13 +161,15 @@ class Deb822FieldNameToken(Deb822Token):
 
     __slots__ = ()
 
-    def __init__(self, text: str) -> None:
+    def __init__(self, text):
+        # type: (str) -> None
         if not isinstance(text, _strI):
             text = _strI(sys.intern(text))
         super().__init__(text)
 
     @property
-    def text(self) -> _strI:
+    def text(self):
+        # type: () -> _strI
         return cast('_strI', self._text)
 
 
