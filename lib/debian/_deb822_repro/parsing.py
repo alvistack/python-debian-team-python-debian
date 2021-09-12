@@ -138,7 +138,6 @@ Things that might change in an incompatible way include:
 
 """
 
-import collections
 import collections.abc
 import contextlib
 import operator
@@ -160,11 +159,14 @@ from debian._deb822_repro.tokens import (
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
 )
 from debian._deb822_repro.types import (
-    T, ST, VT, TE, R,
+    T, ST, VT, TE,
     ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
     AmbiguousDeb822FieldKeyError,
 )
-from debian._deb822_repro._util import resolve_ref, LinkedList, LinkedListNode
+from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
+                                        combine_into_replacement, BufferingIterator,
+                                        flatten_with_len_check,
+)
 
 _RE_WHITESPACE_LINE = re.compile(r'^\s+$')
 _RE_WHITESPACE = re.compile(r'\s+')
@@ -709,8 +711,7 @@ class LineByLineBasedInterpretation(Interpretation[T]):
         for vl in kvpair_element.value_element.value_lines:
             content_text = vl.convert_content_to_text()
 
-            value_parts = list(_check_line_is_covered(len(content_text),
-                                                      content_text,
+            value_parts = list(flatten_with_len_check(content_text,
                                                       code(content_text)
                                                       ))
             if vl.comment_element:
@@ -2088,76 +2089,6 @@ class Deb822FileElement(Deb822Element):
             fd.write(token.text.encode('utf-8'))
 
 
-class _BufferingIterator(collections.abc.Iterator[T]):
-
-    def __init__(self, stream: Iterable[T]) -> None:
-        self._stream: typing.Iterator[T] = iter(stream)
-        self._buffer: collections.deque[T] = collections.deque()
-        self._expired: bool = False
-
-    def __next__(self) -> T:
-        if self._buffer:
-            return self._buffer.popleft()
-        if self._expired:
-            raise StopIteration
-        return next(self._stream)
-
-    def takewhile(self, predicate: Callable[[T], bool]) -> Iterable[T]:
-        """Variant of itertools.takewhile except it does not discard the first non-matching token"""
-        buffer = self._buffer
-        while buffer or self._fill_buffer(5):
-            v = buffer[0]
-            if predicate(v):
-                buffer.popleft()
-                yield v
-            else:
-                break
-
-    def _fill_buffer(self, number: int) -> bool:
-        if not self._expired:
-            while len(self._buffer) < number:
-                try:
-                    self._buffer.append(next(self._stream))
-                except StopIteration:
-                    self._expired = True
-                    break
-        return bool(self._buffer)
-
-    def peek(self) -> Optional[T]:
-        return self.peek_at(1)
-
-    def peek_at(self, tokens_ahead: int) -> Optional[T]:
-        self._fill_buffer(tokens_ahead)
-        return self._buffer[tokens_ahead - 1] if self._buffer else None
-
-    def peek_many(self, number: int) -> List[T]:
-        self._fill_buffer(number)
-        return list(self._buffer)
-
-
-def _check_line_is_covered(line_len: int, line: str, stream: Iterable[TokenOrElement]
-                           ) -> Iterable[Deb822Token]:
-    # Fail-safe to ensure none of the value parsers incorrectly parse a value.
-    covered = 0
-    for token_or_element in stream:
-        if isinstance(token_or_element, Deb822Element):
-            for token in token_or_element.iter_tokens():
-                covered += len(token.text)
-                yield token
-        else:
-            token = token_or_element
-            covered += len(token.text)
-            yield token
-    if covered != line_len:
-        if covered < line_len:
-            raise ValueError(f"Value parser did not fully cover the entire line with tokens ("
-                             f'missing range {covered}..{line_len}).  Occurred when parsing'
-                             f' "{line}"')
-        raise ValueError(f"Value parser emitted tokens for more text than was present?  Should have"
-                         f' emitted {line_len} characters, got {covered}. Occurred when parsing'
-                         f' "{line}"')
-
-
 def _tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb822Token]:
     """Tokenize a deb822 file
 
@@ -2172,7 +2103,7 @@ def _tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb
                 x = x.decode('utf-8')
             yield x
 
-    text_stream: _BufferingIterator[str] = _BufferingIterator(_as_str(sequence))
+    text_stream: BufferingIterator[str] = BufferingIterator(_as_str(sequence))
 
     for no, line in enumerate(text_stream, start=1):
 
@@ -2270,45 +2201,12 @@ def _tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb
             yield Deb822ErrorToken(line)
 
 
-_combine_parts_ret_type = Callable[
-    [Iterable[Union[TokenOrElement, TE]]],
-    Iterable[Union[TokenOrElement, R]]
-]
-
-
-def _combine_parts(source_class: typing.Type[TE], replacement_class: typing.Type[R],
-                   *,
-                   constructor: Optional[Callable[[List[TE]], R]] = None
-                   ) -> _combine_parts_ret_type[TE, R]:
-    if constructor is None:
-        _constructor = typing.cast('Callable[[List[TE]], R]', replacement_class)
-    else:
-        # Force mypy to see that constructor is no longer optional
-        _constructor = constructor
-    def _impl(token_stream: Iterable[Union[TokenOrElement, TE]]
-              ) -> Iterable[Union[TokenOrElement, R]]:
-        tokens = []
-        for token in token_stream:
-            if isinstance(token, source_class):
-                tokens.append(token)
-                continue
-
-            if tokens:
-                yield _constructor(list(tokens))
-                tokens.clear()
-            yield token
-
-        if tokens:
-            yield _constructor(tokens)
-
-    return _impl
-
-
-_combine_error_tokens_into_elements = _combine_parts(Deb822ErrorToken, Deb822ErrorElement)
-_combine_comment_tokens_into_elements = _combine_parts(Deb822CommentToken, Deb822CommentElement)
-_combine_vl_elements_into_value_elements = _combine_parts(Deb822ValueLineElement,
-                                                          Deb822ValueElement)
-_combine_kvp_elements_into_paragraphs = _combine_parts(
+_combine_error_tokens_into_elements = combine_into_replacement(Deb822ErrorToken, Deb822ErrorElement)
+_combine_comment_tokens_into_elements = combine_into_replacement(Deb822CommentToken,
+                                                                 Deb822CommentElement)
+_combine_vl_elements_into_value_elements = combine_into_replacement(Deb822ValueLineElement,
+                                                                    Deb822ValueElement)
+_combine_kvp_elements_into_paragraphs = combine_into_replacement(
     Deb822KeyValuePairElement,
     Deb822ParagraphElement,
     constructor=Deb822ParagraphElement.from_kvpairs
@@ -2335,7 +2233,7 @@ def _non_end_of_line_token(v: TokenOrElement) -> bool:
 def _build_value_line(token_stream: Iterable[Union[TokenOrElement, Deb822CommentElement]]
                       ) -> Iterable[Union[TokenOrElement, Deb822ValueLineElement]]:
     """Parser helper - consumes tokens part of a Deb822ValueEntryElement and turns them into one"""
-    buffered_stream = _BufferingIterator(token_stream)
+    buffered_stream = BufferingIterator(token_stream)
 
     # Deb822ValueLineElement is a bit tricky because of how we handle whitespace
     # and comments.
@@ -2429,7 +2327,7 @@ def _build_value_line(token_stream: Iterable[Union[TokenOrElement, Deb822Comment
 
 def _build_field_with_value(token_stream: Iterable[Union[TokenOrElement, Deb822ValueElement]]
                             ) -> Iterable[Union[TokenOrElement, Deb822KeyValuePairElement]]:
-    buffered_stream = _BufferingIterator(token_stream)
+    buffered_stream = BufferingIterator(token_stream)
     for token_or_element in buffered_stream:
         start_of_field = False
         comment_element = None

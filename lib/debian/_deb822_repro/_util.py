@@ -1,16 +1,29 @@
+import collections
+import collections.abc
 import logging
+import textwrap
 import weakref
 from weakref import ReferenceType
 
 try:
-    from typing import Optional, Union, Iterable, Callable, TYPE_CHECKING, Generic, Iterator
-    from debian._deb822_repro.types import T, TokenOrElement
+    from typing import (
+        Optional, Union, Iterable, Callable, TYPE_CHECKING, Generic, Iterator,
+        Type, cast, List,
+    )
+    from debian._deb822_repro.types import T, TE, R, TokenOrElement
+
+    _combine_parts_ret_type = Callable[
+        [Iterable[Union[TokenOrElement, TE]]],
+        Iterable[Union[TokenOrElement, R]]
+    ]
 except ImportError:
     TYPE_CHECKING = False
+    cast = lambda t, v: v
 
 
 if TYPE_CHECKING:
     from debian._deb822_repro.parsing import Deb822Element
+    from debian._deb822_repro.tokens import Deb822Token
 
 
 def resolve_ref(ref):
@@ -234,3 +247,129 @@ class LinkedList(Generic[T]):
         self.head_node = None
         self.tail_node = None
         self._size = 0
+
+
+def combine_into_replacement(source_class,  # type: Type[TE]
+                             replacement_class,  # type: Type[R]
+                             *,
+                             constructor=None,  # type: Optional[Callable[[List[TE]], R]]
+                             ):
+    # type: (...) -> _combine_parts_ret_type[TE, R]
+    """Combines runs of one type into another type
+
+    This is primarily useful for transforming tokens (e.g, Comment tokens) into
+    the relevant element (such as the Comment element).
+    """
+    if constructor is None:
+        _constructor = cast('Callable[[List[TE]], R]', replacement_class)
+    else:
+        # Force mypy to see that constructor is no longer optional
+        _constructor = constructor
+
+    def _impl(token_stream):
+        # type: (Iterable[Union[TokenOrElement, TE]]) -> Iterable[Union[TokenOrElement, R]]
+        tokens = []
+        for token in token_stream:
+            if isinstance(token, source_class):
+                tokens.append(token)
+                continue
+
+            if tokens:
+                yield _constructor(list(tokens))
+                tokens.clear()
+            yield token
+
+        if tokens:
+            yield _constructor(tokens)
+
+    return _impl
+
+
+class BufferingIterator(collections.abc.Iterator[T]):
+
+    def __init__(self, stream: Iterable[T]) -> None:
+        self._stream = iter(stream)  # type: Iterator[T]
+        self._buffer = collections.deque()  # type: collections.deque[T]
+        self._expired = False  # type: bool
+
+    def __next__(self):
+        # type: () -> T
+        if self._buffer:
+            return self._buffer.popleft()
+        if self._expired:
+            raise StopIteration
+        return next(self._stream)
+
+    def takewhile(self, predicate):
+        # type: (Callable[[T], bool]) -> Iterable[T]
+        """Variant of itertools.takewhile except it does not discard the first non-matching token"""
+        buffer = self._buffer
+        while buffer or self._fill_buffer(5):
+            v = buffer[0]
+            if predicate(v):
+                buffer.popleft()
+                yield v
+            else:
+                break
+
+    def _fill_buffer(self, number):
+        # type: (int) -> bool
+        if not self._expired:
+            while len(self._buffer) < number:
+                try:
+                    self._buffer.append(next(self._stream))
+                except StopIteration:
+                    self._expired = True
+                    break
+        return bool(self._buffer)
+
+    def peek(self):
+        # type: () -> Optional[T]
+        return self.peek_at(1)
+
+    def peek_at(self, tokens_ahead):
+        # type: (int) -> Optional[T]
+        self._fill_buffer(tokens_ahead)
+        return self._buffer[tokens_ahead - 1] if self._buffer else None
+
+    def peek_many(self, number):
+        # type: (int) -> List[T]
+        self._fill_buffer(number)
+        return list(self._buffer)
+
+
+def flatten_with_len_check(line,  # type: str
+                           stream,  # type: Iterable[TokenOrElement]
+                           line_len=None,  # type: Optional[int]
+                           ):
+    # type: (...) -> Iterable[Deb822Token]
+    """Flatten a parser's output into tokens and verify it covers the entire line/text"""
+    if line_len is None:
+        line_len = len(line)
+    # Fail-safe to ensure none of the value parsers incorrectly parse a value.
+    covered = 0
+    for token_or_element in stream:
+        # We use the AttributeError to discriminate between elements and tokens
+        # The cast()s are here to assist / workaround mypy not realizing that.
+        try:
+            tokens = cast('Deb822Element', token_or_element).iter_tokens()
+        except AttributeError:
+            token = cast('Deb822Token', token_or_element)
+            covered += len(token.text)
+            yield token
+        else:
+            for token in tokens:
+                covered += len(token.text)
+                yield token
+    if covered != line_len:
+        if covered < line_len:
+            msg = textwrap.dedent("""\
+            Value parser did not fully cover the entire line with tokens (
+            missing range {covered}..{line_len}).  Occurred when parsing "{line}"
+            """).format(covered=covered, line_len=line_len, line=line)
+            raise ValueError(msg)
+        msg = textwrap.dedent("""\
+                    Value parser emitted tokens for more text than was present?  Should have
+                     emitted {line_len} characters, got {covered}. Occurred when parsing "{line}"
+                    """).format(covered=covered, line_len=line_len, line=line)
+        raise ValueError(msg)
