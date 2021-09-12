@@ -5,6 +5,7 @@ Depends:
  python3-all,
  python3-apt,
  python3-debian,
+ python3-pytest,
  debian-keyring,
  debian-archive-keyring
 
@@ -14,5 +15,6 @@ Depends:
  binutils,
  python3-all,
  python3-debian,
+ python3-pytest,
  debian-keyring,
  debian-archive-keyring
