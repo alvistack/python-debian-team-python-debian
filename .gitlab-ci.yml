@@ -24,16 +24,24 @@ style:
   - ./debian/rules qa
   - rm lib/debian/_version.py
 
-pages:
-  stage: deploy
+docs:
   script:
   - apt-get update && apt-get install -y make python3-sphinx
   - rm -f docs/api/*
   - cd lib && sphinx-apidoc -e --private -H python-debian -o ../docs/api/ . deb822.py debian/tests/ debian_bundle/ && cd ..
   - PYTHONPATH=$PWD/lib make -C docs/ SPHINXOPTS="-a -v -n" html
-  - mv build/sphinx/html/ public/
+  - mv build/sphinx/html/ docs/
+  artifacts:
+    paths:
+      - docs
+
+pages:
+  stage: deploy
+  script:
+  - mv docs public
   - mv htmlcov public/
   dependencies:
+    - docs
     - unit-tests
   artifacts:
     paths:
