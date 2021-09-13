@@ -26,23 +26,21 @@ import textwrap
 from debian.deb822 import Deb822
 from unittest import TestCase, SkipTest
 
-if sys.version_info >= (3, 9):
-    from debian._deb822_repro import (parse_deb822_file,
-                                      AmbiguousDeb822FieldKeyError,
-                                      LIST_SPACE_SEPARATED_INTERPRETATION,
-                                      LIST_COMMA_SEPARATED_INTERPRETATION,
-                                      Interpretation,
-                                      )
-    from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList
-    from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
-    from debian._deb822_repro.types import VT, ST
-    from debian._deb822_repro._util import print_ast
+from debian._deb822_repro import (parse_deb822_file,
+                                  AmbiguousDeb822FieldKeyError,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  LIST_COMMA_SEPARATED_INTERPRETATION,
+                                  Interpretation,
+                                  )
+from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList
+from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
+from debian._deb822_repro._util import print_ast
+
+try:
     from typing import Any, Iterator, Tuple
-else:
-    parse_deb822_file = None
-    Deb822ErrorToken = None
-    Iterator = None
-    Tuple = None
+    from debian._deb822_repro.types import VT, ST
+except ImportError:
+    pass
 
 RoundTripParseCase = collections.namedtuple('RoundTripParseCase',
                                             ['input',
@@ -247,7 +245,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 # (the reverse is not true typing wise)
                 for k, ev in deb822_paragraph.items():
                     av = repro_paragraph[k]
-                    self.assertEqual(av, ev, f"Ensure value for " + k + " is the same, case " + c)
+                    self.assertEqual(av, ev, "Ensure value for " + k + " is the same, case " + c)
 
     def test_duplicate_fields(self):
         # type: () -> None
