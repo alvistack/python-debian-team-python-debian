@@ -152,8 +152,8 @@ from weakref import ReferenceType
 try:
     from typing import (
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
-        cast,
-    )
+        cast, overload,
+)
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
         T, ST, VT, TE,
@@ -161,6 +161,7 @@ try:
     )
 except ImportError:
     cast = lambda t, v: v
+    overload = lambda f: None
 
 from debian.deb822 import _strI, OrderedSet
 
@@ -1877,6 +1878,28 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             value.comment_element = field_comment
         self.set_kvpair_element(item, value)
 
+    @overload
+    def dump(self,
+             fd,  # type: IO[bytes]
+             ):
+        # type: (...) -> None
+        pass
+
+    @overload
+    def dump(self):
+        # type: () -> str
+        pass
+
+    def dump(self,
+             fd=None,  # type: Optional[IO[bytes]]
+             ):
+        # type: (...) -> Optional[str]
+        if fd is None:
+            return "".join(t.text for t in self.iter_tokens())
+        for token in self.iter_tokens():
+            fd.write(token.text.encode('utf-8'))
+        return None
+
 
 class Deb822ValidParagraphElement(Deb822ParagraphElement):
     """Paragraph implementation optimized for valid deb822 files
@@ -2235,10 +2258,27 @@ class Deb822FileElement(Deb822Element):
         # type: () -> Iterable[TokenOrElement]
         yield from self._token_and_elements
 
-    def dump(self, fd):
-        # type: (IO[bytes]) -> None
+    @overload
+    def dump(self,
+             fd,  # type: IO[bytes]
+             ):
+        # type: (...) -> None
+        pass
+
+    @overload
+    def dump(self):
+        # type: () -> str
+        pass
+
+    def dump(self,
+             fd=None,  # type: Optional[IO[bytes]]
+             ):
+        # type: (...) -> Optional[str]
+        if fd is None:
+            return "".join(t.text for t in self.iter_tokens())
         for token in self.iter_tokens():
             fd.write(token.text.encode('utf-8'))
+        return None
 
 
 _combine_error_tokens_into_elements = combine_into_replacement(Deb822ErrorToken, Deb822ErrorElement)
