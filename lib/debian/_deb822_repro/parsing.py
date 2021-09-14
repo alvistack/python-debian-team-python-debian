@@ -221,6 +221,84 @@ _RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
 ''', re.VERBOSE)
 
 
+class ValueReference(Generic[VT]):
+
+    """Reference to a value inside a Deb822 paragraph
+
+    This is useful for cases where want to modify values "in-place" or maybe
+    conditionally remove a value after looking at it.
+
+    ValueReferences can be invalidated by various changes or actions performed
+    to the underlying provider of the value reference.  As an example, sorting
+    a list of values will generally invalidate all ValueReferences related to
+    that list.
+
+    The ValueReference will raise validity issues where it detects them but most
+    of the time it will not notice.  As a means to this end,  the ValueReference
+    will *not* keep a strong reference to the underlying value.  This enables it
+    to detect when the container goes out of scope.  However, keep in mind that
+    the timeliness of garbage collection is implementation defined (e.g., pypy
+    does not use ref-counting).
+    """
+
+    __slots__ = ('_node', '_value_factory', '_removal_handler', '_mutation_notifier')
+
+    def __init__(self,
+                 node,  # type: LinkedListNode[VT]
+                 value_factory,  # type: Callable[[str], VT]
+                 removal_handler,  # type: Callable[[LinkedListNode[Deb822Token]], None]
+                 mutation_notifier,  # type: Optional[Callable[[], None]]
+                 ):
+        self._node = weakref.ref(node)  # type: Optional[ReferenceType[LinkedListNode[VT]]]
+        self._value_factory = value_factory
+        self._removal_handler = removal_handler
+        self._mutation_notifier = mutation_notifier
+
+    def _resolve_node(self):
+        # type: () -> LinkedListNode[VT]
+        # NB: We check whether the "ref" itself is None (instead of the ref resolving to None)
+        # This enables us to tell the difference between "known removal" vs. "garbage collected"
+        if self._node is None:
+            raise RuntimeError("Cannot use ValueReference after remove()")
+        node = self._node()
+        if node is None:
+            raise RuntimeError("ValueReference is invalid (garbage collected)")
+        return node
+
+    @property
+    def value(self):
+        # type: () -> str
+        """Resolve the reference into a str"""
+        return self._resolve_node().value.convert_to_text()
+
+    @value.setter
+    def value(self, new_value):
+        # type: (str) -> None
+        """Update the reference value
+
+        Updating the value via this method will *not* invalidate the reference (or other
+        references to the same container).
+
+        This can raise an exception of the new value does not follow the requirements
+        for the referenced values.  As an example, values in whitespace separated
+        lists cannot contain spaces and would trigger an exception.
+        """
+        self._resolve_node().value = self._value_factory(new_value)
+        if self._mutation_notifier is not None:
+            self._mutation_notifier()
+
+    def remove(self):
+        # type: () -> None
+        """Remove the underlying value
+
+        This will invalidate the ValueReference (and any other ValueReferences pointing
+        to that exact value).  The validity of other ValueReferences to that container
+        remains unaffected.
+        """
+        self._removal_handler(cast('LinkedListNode[Deb822Token]', self._resolve_node()))
+        self._node = None
+
+
 class Deb822ParsedTokenList(Generic[VT, ST],
                             contextlib.AbstractContextManager['Deb822ParsedTokenList[VT, ST]']
                             ):
@@ -282,6 +360,27 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         # type: () -> Iterator[TE]
         yield from (v for v in self._token_list if isinstance(v, self._vtype))
 
+    def _mark_changed(self):
+        # type: () -> None
+        self._changed = True
+
+    def iter_value_references(self):
+        # type: () -> Iterator[ValueReference[VT]]
+        """Iterate over all values in the list (as ValueReferences)
+
+        This is useful for doing inplace modification of the values or even
+        streaming removal of field values.  It is in general also more
+        efficient when more than one value is updated or removed.
+        """
+        yield from (ValueReference(
+            cast('LinkedListNode[VT]', n),
+            self._value_factory,
+            self._remove_node,
+            self._mark_changed,
+        ) for n in self._token_list.iter_nodes()
+            if isinstance(n.value, self._vtype)
+        )
+
     def append_separator(self, space_after_separator=True):
         # type: (bool) -> None
 
@@ -298,7 +397,10 @@ class Deb822ParsedTokenList(Generic[VT, ST],
 
     def replace(self, orig_value, new_value):
         # type: (str, str) -> None
-        """Replace the first instance of a value with another"""
+        """Replace the first instance of a value with another
+
+        This method will *not* affect the validity of ValueReferences.
+        """
         for node in self._token_list.iter_nodes():
             if node.value.text == orig_value:
                 node.value = self._value_factory(new_value)
@@ -309,6 +411,11 @@ class Deb822ParsedTokenList(Generic[VT, ST],
 
     def remove(self, value):
         # type: (str) -> None
+        """Remove the first instance of a value
+
+        Removal will invalidate ValueReferences to the value being removed.
+        ValueReferences to other values will be unaffected.
+        """
         vtype = self._vtype
         for node in self._token_list.iter_nodes():
             if node.value.text == value and isinstance(node.value, vtype):
@@ -317,6 +424,11 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         else:
             raise ValueError("list.remove(x): x not in list")
 
+        return self._remove_node(node_to_remove)
+
+    def _remove_node(self, node_to_remove):
+        # type: (LinkedListNode[Deb822Token]) -> None
+        vtype = self._vtype
         self._changed = True
 
         # We naively want to remove the node and every thing to the left of it
@@ -632,7 +744,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         whitespace. Therefore, you almost always want to apply reformatting
         such as the reformat_when_finished() method.
 
-
+        Sorting will invalidate all ValueReferences.
         """
         comment_start_node = None
         vtype = self._vtype

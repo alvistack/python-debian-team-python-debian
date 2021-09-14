@@ -623,6 +623,39 @@ class FormatPreservingDeb822ParserTests(TestCase):
             arch_list.remove('amd64')
             arch_list.remove('kfreebsd-i386')
 
+        # Same, just using value references
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.no_reformatting_when_finished()
+            for value_ref in arch_list.iter_value_references():
+                if value_ref.value in ('amd64', 'kfreebsd-i386'):
+                    value_ref.remove()
+                    # Ensure that a second call fails
+                    with self.assertRaises(RuntimeError):
+                        value_ref.remove()
+
+                    # As does attempting to fetch the value
+                    with self.assertRaises(RuntimeError):
+                        _ = value_ref.value
+
+                    # As does attempting to mutate the value
+                    with self.assertRaises(RuntimeError):
+                        value_ref.value = "foo"
+
+        expected_result = textwrap.dedent('''\
+            Architecture: linux-amd64  linux-i386
+            # Also on kfreebsd
+              kfreebsd-amd64  kfreebsd-i386
+        ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            for value_ref in arch_list.iter_value_references():
+                value = value_ref.value
+                if '-' not in value:
+                    value_ref.value = 'linux-' + value
+
         # Test removal of first line without comment will hoist up the next line
         # - note eventually we might support keeping the comment by doing a
         #   "\n# ...\n value".
