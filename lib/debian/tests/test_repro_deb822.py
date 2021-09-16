@@ -247,6 +247,58 @@ class FormatPreservingDeb822ParserTests(TestCase):
                     av = repro_paragraph[k]
                     self.assertEqual(av, ev, "Ensure value for " + k + " is the same, case " + c)
 
+    def test_regular_fields(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          # Comment for S-V
+          Standards-Version: 1.2.3
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        source_paragraph = next(iter(deb822_file))
+        self.assertEqual("foo", source_paragraph['Source'])
+        self.assertEqual("1.2.3", source_paragraph['Standards-Version'])
+        self.assertEqual("no", source_paragraph['Rules-Requires-Root'])
+
+        # Test setter and deletion while we are at it
+        source_paragraph["Rules-Requires-Root"] = "binary-targets"
+        source_paragraph["New-Field"] = "value"
+        del source_paragraph["Standards-Version"]
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: binary-targets
+          New-Field: value
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving comments")
+
+        # As an alternative, we can also fix the problem if we discard comments
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file))
+        as_dict_discard_comments = source_paragraph.configured_view(
+            preserve_field_comments_on_field_updates=False,
+            auto_resolve_ambiguous_fields=False,
+        )
+        # Test setter and deletion while we are at it
+        as_dict_discard_comments["Rules-Requires-Root"] = "binary-targets"
+        as_dict_discard_comments["New-Field"] = "value"
+        del as_dict_discard_comments["Standards-Version"]
+        expected = textwrap.dedent('''\
+          Source: foo
+          Rules-Requires-Root: binary-targets
+          New-Field: value
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while but discarded comments")
+
     def test_duplicate_fields(self):
         # type: () -> None
 

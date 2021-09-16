@@ -1909,6 +1909,7 @@ class Deb822ValidParagraphElement(Deb822ParagraphElement):
         key, _ = _unpack_key(key, resolve_field_name=True, raise_if_indexed=True)
         key = cast('_strI', key)
         del self._kvpair_elements[key]
+        self._kvpair_order.remove(key)
 
     def contains_kvpair_element(self, item):
         # type: (object) -> bool
