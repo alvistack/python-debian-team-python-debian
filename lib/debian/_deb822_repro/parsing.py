@@ -2572,6 +2572,7 @@ def _build_field_with_value(
                 nl = buffered_stream.peek()
                 # Take the newline as well if present
                 if nl and isinstance(nl, Deb822NewlineAfterValueToken):
+                    next(buffered_stream, None)
                     error_tokens.append(nl)
                 yield Deb822ErrorElement(error_tokens)
         else:
