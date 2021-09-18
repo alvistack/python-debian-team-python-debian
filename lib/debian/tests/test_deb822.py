@@ -1415,6 +1415,7 @@ class TestPkgRelations(unittest.TestCase):
         pkg1 = next(pkgs)
         rel1 = {'build-conflicts': [],
                 'build-conflicts-indep': [],
+                'build-conflicts-arch': [],
                 'build-depends': [
                         [rel({'name': 'apache2-src', 'version': ('>=', '2.2.9')})],
                         [rel({'name': 'libaprutil1-dev'})],
@@ -1424,6 +1425,7 @@ class TestPkgRelations(unittest.TestCase):
                         [rel({'name': 'debhelper', 'version': ('>>', '5.0.0')})],
                     ],
                 'build-depends-indep': [],
+                'build-depends-arch': [],
                 'binary': [
                         [rel({'name': 'apache2-mpm-itk'})]
                     ]
@@ -1432,6 +1434,7 @@ class TestPkgRelations(unittest.TestCase):
         pkg2 = next(pkgs)
         rel2 = {'build-conflicts': [],
                 'build-conflicts-indep': [],
+                'build-conflicts-arch': [],
                 'build-depends': [
                         [rel({'name': 'dpkg-dev', 'version': ('>=', '1.13.9')})],
                         [rel({'name': 'autoconf', 'version': ('>=', '2.13')})],
@@ -1455,6 +1458,7 @@ class TestPkgRelations(unittest.TestCase):
                         [rel({'name': 'lsb-release'})],
                     ],
                 'build-depends-indep': [],
+                'build-depends-arch': [],
                 'binary': [
                         [rel({'name': 'binutils'})],
                         [rel({'name': 'binutils-dev'})],
