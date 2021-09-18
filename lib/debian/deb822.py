@@ -451,7 +451,7 @@ class OrderedSet(object):
     append = add
 
     def extend(self, iterable):
-        # type: (List[str]) -> None
+        # type: (Iterable[str]) -> None
         for item in iterable:
             self.add(item)
     # ###
