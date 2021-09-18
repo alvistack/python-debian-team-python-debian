@@ -962,6 +962,8 @@ class Deb822Element:
     def iter_tokens(self):
         # type: () -> Iterable[Deb822Token]
         for part in self.iter_parts():
+            # Control check to catch bugs early
+            assert part._parent_element is not None
             if isinstance(part, Deb822Element):
                 yield from part.iter_tokens()
             else:
@@ -1073,6 +1075,7 @@ class Deb822ValueLineElement(Deb822Element):
         # type: () -> None
         if self._newline_token is None:
             self._newline_token = Deb822NewlineAfterValueToken()
+            self._newline_token.parent_element = self
 
     def _iter_content_parts(self):
         # type: () -> Iterable[TokenOrElement]
