@@ -32,7 +32,8 @@ from debian._deb822_repro import (parse_deb822_file,
                                   LIST_COMMA_SEPARATED_INTERPRETATION,
                                   Interpretation,
                                   )
-from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList
+from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
+    Deb822FileElement
 from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
 from debian._deb822_repro._util import print_ast
 
@@ -298,6 +299,261 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
         self.assertEqual(expected, deb822_file.convert_to_text(),
                          "Mutation should have worked while but discarded comments")
+
+    def test_append_paragraph(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'bar'
+        binary_paragraph['Description'] = 'Binary package bar'
+
+        deb822_file.append(binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          Package: bar
+          Description: Binary package bar
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+    def test_append_paragraph_existing_trailing_newline(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'bar'
+        binary_paragraph['Description'] = 'Binary package bar'
+
+        deb822_file.append(binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          Package: bar
+          Description: Binary package bar
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+    def test_append_empty_paragraph(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+
+        deb822_file.append(binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+    def test_append_tailing_comment(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          # Foo
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'bar'
+        binary_paragraph['Description'] = 'Binary package bar'
+
+        deb822_file.append(binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          # Foo
+
+          Package: bar
+          Description: Binary package bar
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+    def test_insert_paragraph(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'bar'
+        binary_paragraph['Description'] = 'Binary package bar'
+
+        deb822_file.insert(0, binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Package: bar
+          Description: Binary package bar
+
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+        # Insert after the existing paragraphs
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'blah'
+        binary_paragraph['Description'] = 'Binary package blah'
+
+        deb822_file.insert(5, binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Package: bar
+          Description: Binary package bar
+
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          Package: blah
+          Description: Binary package blah
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+    def test_insert_paragraph_with_comments(self):
+        # type: () -> None
+
+        # Note that it is unspecified where the "Package: bar"-paragraph is
+        # inserted relative to the "# Initial comment"-comment.  This test case
+        # only asserts that it does not change unknowingly.
+
+        original = textwrap.dedent('''\
+          # Initial comment
+
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          # Comment
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'bar'
+        binary_paragraph['Description'] = 'Binary package bar'
+
+        deb822_file.insert(0, binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Package: bar
+          Description: Binary package bar
+
+          # Initial comment
+
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          # Comment
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+        # Insert after the existing paragraphs
+
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'blah'
+        binary_paragraph['Description'] = 'Binary package blah'
+
+        deb822_file.insert(5, binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Package: bar
+          Description: Binary package bar
+
+          # Initial comment
+
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          # Comment
+
+          Package: blah
+          Description: Binary package blah
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+    def test_insert_paragraph_in_empty_file(self):
+        # type: () -> None
+
+        deb822_file = Deb822FileElement.new_empty_file()
+        binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
+        binary_paragraph['Package'] = 'bar'
+        binary_paragraph['Description'] = 'Binary package bar'
+        # There is a special-case for idx == 0 and that should be well-behaved
+        # for empty files too.
+        deb822_file.insert(0, binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Package: bar
+          Description: Binary package bar
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
 
     def test_duplicate_fields(self):
         # type: () -> None

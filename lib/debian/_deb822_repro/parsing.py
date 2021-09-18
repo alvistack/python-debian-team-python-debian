@@ -152,7 +152,7 @@ from weakref import ReferenceType
 try:
     from typing import (
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
-        cast, overload,
+        cast, overload, Mapping,
 )
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
@@ -722,7 +722,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
             # _print_ast(deb822_file)
             raise ValueError("Syntax error in new field value for " + field_name)
         paragraph = next(iter(deb822_file))
-        assert isinstance(paragraph, Deb822ValidParagraphElement)
+        assert isinstance(paragraph, Deb822NoDuplicateFieldsParagraphElement)
         new_kvpair_element = paragraph.get_kvpair_element(field_name)
         assert new_kvpair_element is not None
         kvpair_element.value_element = new_kvpair_element.value_element
@@ -962,6 +962,8 @@ class Deb822Element:
     def iter_tokens(self):
         # type: () -> Iterable[Deb822Token]
         for part in self.iter_parts():
+            # Control check to catch bugs early
+            assert part._parent_element is not None
             if isinstance(part, Deb822Element):
                 yield from part.iter_tokens()
             else:
@@ -1073,6 +1075,7 @@ class Deb822ValueLineElement(Deb822Element):
         # type: () -> None
         if self._newline_token is None:
             self._newline_token = Deb822NewlineAfterValueToken()
+            self._newline_token.parent_element = self
 
     def _iter_content_parts(self):
         # type: () -> Iterable[TokenOrElement]
@@ -1525,6 +1528,19 @@ class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str],
 class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, ABC):
 
     @classmethod
+    def new_empty_paragraph(cls):
+        # type: () -> Deb822ParagraphElement
+        return Deb822NoDuplicateFieldsParagraphElement([], OrderedSet())
+
+    @classmethod
+    def from_dict(cls, mapping):
+        # type: (Mapping[str, str]) -> Deb822ParagraphElement
+        paragraph = cls.new_empty_paragraph()
+        for k, v in mapping.items():
+            paragraph[k] = v
+        return paragraph
+
+    @classmethod
     def from_kvpairs(cls, kvpair_elements):
         # type: (List[Deb822KeyValuePairElement]) -> Deb822ParagraphElement
         if not kvpair_elements:
@@ -1534,10 +1550,16 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             # Each field occurs at most once, which is good because that
             # means it is a valid paragraph and we can use the optimized
             # implementation.
-            return Deb822ValidParagraphElement(kvpair_elements, kvpair_order)
+            return Deb822NoDuplicateFieldsParagraphElement(kvpair_elements, kvpair_order)
         # Fallback implementation, that can cope with the repeated field names
         # at the cost of complexity.
-        return Deb822InvalidParagraphElement(kvpair_elements)
+        return Deb822DuplicateFieldsParagraphElement(kvpair_elements)
+
+    @property
+    def has_duplicate_fields(self):
+        # type: () -> bool
+        """Tell whether this paragragh has duplicate fields"""
+        return False
 
     def as_interpreted_dict_view(self,
                                  interpretation,  # type: Interpretation[T]
@@ -1978,7 +2000,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         if error_token:
             raise ValueError("Syntax error in new field value for " + field_name)
         paragraph = next(iter(deb822_file))
-        assert isinstance(paragraph, Deb822ValidParagraphElement)
+        assert isinstance(paragraph, Deb822NoDuplicateFieldsParagraphElement)
         value = paragraph.get_kvpair_element(field_name)
         assert value is not None
         if preserve_original_field_comment:
@@ -2013,7 +2035,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         return None
 
 
-class Deb822ValidParagraphElement(Deb822ParagraphElement):
+class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
     """Paragraph implementation optimized for valid deb822 files
 
     When there are no duplicated fields, we can use simpler and faster
@@ -2102,7 +2124,7 @@ class Deb822ValidParagraphElement(Deb822ParagraphElement):
                     for x in cast('Iterable[_strI]', self._kvpair_order))
 
 
-class Deb822InvalidParagraphElement(Deb822ParagraphElement):
+class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def __init__(self, kvpair_elements):
         # type: (List[Deb822KeyValuePairElement]) -> None
@@ -2112,6 +2134,13 @@ class Deb822InvalidParagraphElement(Deb822ParagraphElement):
             {}  # type: Dict[_strI, List[LinkedListNode[Deb822KeyValuePairElement]]]
         self._init_kvpair_fields(kvpair_elements)
         self._init_parent_of_parts()
+
+    @property
+    def has_duplicate_fields(self):
+        # type: () -> bool
+        # Most likely, the answer is "True" but if the caller "fixes" the problem
+        # then this can return "False"
+        return len(self._kvpair_order) > len(self._kvpair_elements)
 
     def _init_kvpair_fields(self, kvpairs):
         # type: (Iterable[Deb822KeyValuePairElement]) -> None
@@ -2336,10 +2365,19 @@ class Deb822FileElement(Deb822Element):
     """Represents the entire deb822 file"""
 
     def __init__(self, token_and_elements):
-        # type: (List[TokenOrElement]) -> None
+        # type: (LinkedList[TokenOrElement]) -> None
         super().__init__()
         self._token_and_elements = token_and_elements
         self._init_parent_of_parts()
+
+    @classmethod
+    def new_empty_file(cls):
+        # type: () -> Deb822FileElement
+        """Creates a new Deb822FileElement with no contents
+
+        Note that a deb822 file must be non-empty to be considered valid
+        """
+        return cls(LinkedList())
 
     @property
     def is_valid_file(self):
@@ -2350,11 +2388,15 @@ class Deb822FileElement(Deb822Element):
         issues such as paragraphs with duplicate fields or "empty" files
         (a valid deb822 file contains at least one paragraph).
         """
-        paragraphs = list(self)
-        if not paragraphs:
+        had_paragraph = False
+        for paragraph in self:
+            had_paragraph = True
+            if not paragraph or paragraph.has_duplicate_fields:
+                return False
+
+        if not had_paragraph:
             return False
-        if any(p for p in paragraphs if not isinstance(p, Deb822ValidParagraphElement)):
-            return False
+
         return self.find_first_error_element() is None
 
     def find_first_error_element(self):
@@ -2369,6 +2411,118 @@ class Deb822FileElement(Deb822Element):
     def iter_parts(self):
         # type: () -> Iterable[TokenOrElement]
         yield from self._token_and_elements
+
+    def insert(self, idx, para):
+        # type: (int, Deb822ParagraphElement) -> None
+        """Inserts a paragraph into the file at the given "index" of paragraphs
+
+        Note that if the index is between two paragraphs containing a "free
+        floating" comment (e.g. paragrah/start-of-file, empty line, comment,
+        empty line, paragraph) then it is unspecified which "side" of the
+        comment the new paragraph will appear and this may change between
+        versions of python-debian.
+
+
+        >>> original = '''
+        ... Package: libfoo-dev
+        ... Depends: libfoo1 (= ${binary:Version}), ${shlib:Depends}, ${misc:Depends}
+        ... '''.lstrip()
+        >>> deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        >>> para1 = Deb822ParagraphElement.new_empty_paragraph()
+        >>> para1["Source"] = "foo"
+        >>> para1["Build-Depends"] = "debhelper-compat (= 13)"
+        >>> para2 = Deb822ParagraphElement.new_empty_paragraph()
+        >>> para2["Package"] = "libfoo1"
+        >>> para2["Depends"] = "${shlib:Depends}, ${misc:Depends}"
+        >>> deb822_file.insert(0, para1)
+        >>> deb822_file.insert(1, para2)
+        >>> expected = '''
+        ... Source: foo
+        ... Build-Depends: debhelper-compat (= 13)
+        ...
+        ... Package: libfoo1
+        ... Depends: ${shlib:Depends}, ${misc:Depends}
+        ...
+        ... Package: libfoo-dev
+        ... Depends: libfoo1 (= ${binary:Version}), ${shlib:Depends}, ${misc:Depends}
+        ... '''.lstrip()
+        >>> deb822_file.dump() == expected
+        True
+        """
+
+        anchor_node = None
+        needs_newline = True
+        if idx == 0:
+            # Special-case, if idx is 0, then we insert it before everything else.
+            # This is mostly a cosmetic choice for corner cases involving free-floating
+            # comments in the file.
+            if not self._token_and_elements:
+                self.append(para)
+                return
+            anchor_node = self._token_and_elements.head_node
+            needs_newline = bool(self._token_and_elements)
+        else:
+            i = 0
+            for node in self._token_and_elements.iter_nodes():
+                entry = node.value
+                if isinstance(entry, Deb822ParagraphElement):
+                    i += 1
+                if idx == i - 1:
+                    anchor_node = node
+                    break
+
+        if anchor_node is None:
+            # Empty list or idx after the last paragraph both degenerate into append
+            self.append(para)
+        else:
+            if needs_newline:
+                # Remember to inject the "separating" newline between two paragraphs
+                nl_token = self._set_parent(Deb822WhitespaceToken('\n'))
+                anchor_node = self._token_and_elements.insert_before(nl_token, anchor_node)
+            self._token_and_elements.insert_before(self._set_parent(para), anchor_node)
+
+    def append(self, paragraph):
+        # type: (Deb822ParagraphElement) -> None
+        """Appends a paragraph to the file
+
+        >>> deb822_file = Deb822FileElement.new_empty_file()
+        >>> para1 = Deb822ParagraphElement.new_empty_paragraph()
+        >>> para1["Source"] = "foo"
+        >>> para1["Build-Depends"] = "debhelper-compat (= 13)"
+        >>> para2 = Deb822ParagraphElement.new_empty_paragraph()
+        >>> para2["Package"] = "foo"
+        >>> para2["Depends"] = "${shlib:Depends}, ${misc:Depends}"
+        >>> deb822_file.append(para1)
+        >>> deb822_file.append(para2)
+        >>> expected = '''
+        ... Source: foo
+        ... Build-Depends: debhelper-compat (= 13)
+        ...
+        ... Package: foo
+        ... Depends: ${shlib:Depends}, ${misc:Depends}
+        ... '''.lstrip()
+        >>> deb822_file.dump() == expected
+        True
+        """
+        tail_element = self._token_and_elements.tail
+        if paragraph.parent_element is not None:
+            if paragraph.parent_element is self:
+                raise ValueError("Paragraph is already a part of this file")
+            raise ValueError("Paragraph is already part of another Deb822File")
+
+        # We need a separating newline if there not a whitespace token at the end of the file.
+        # Note the special case where the file ends on a comment; here we insert a whitespace too
+        # to be sure.  Otherwise we would have to check that there is an empty line before that
+        # comment and that is too much effort.
+        if tail_element and not isinstance(tail_element, Deb822WhitespaceToken):
+            self._token_and_elements.append(self._set_parent(Deb822WhitespaceToken('\n')))
+        self._token_and_elements.append(self._set_parent(paragraph))
+        paragraph.parent_element = self
+
+    def _set_parent(self, t):
+        # type: (TE) -> TE
+        t.parent_element = self
+        return t
 
     @overload
     def dump(self,
@@ -2572,6 +2726,7 @@ def _build_field_with_value(
                 nl = buffered_stream.peek()
                 # Take the newline as well if present
                 if nl and isinstance(nl, Deb822NewlineAfterValueToken):
+                    next(buffered_stream, None)
                     error_tokens.append(nl)
                 yield Deb822ErrorElement(error_tokens)
         else:
@@ -2624,7 +2779,7 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
     # tokens in their error elements if they discover something is wrong.
     tokens = _combine_error_tokens_into_elements(tokens)
 
-    deb822_file = Deb822FileElement(list(tokens))
+    deb822_file = Deb822FileElement(LinkedList(tokens))
 
     if not accept_files_with_error_tokens:
         error_element = deb822_file.find_first_error_element()
@@ -2636,7 +2791,7 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
 
     if not accept_files_with_duplicated_fields:
         for no, paragraph in enumerate(deb822_file):
-            if isinstance(paragraph, Deb822InvalidParagraphElement):
+            if isinstance(paragraph, Deb822DuplicateFieldsParagraphElement):
                 field_names = set()
                 dup_field = None
                 for field in paragraph.keys():

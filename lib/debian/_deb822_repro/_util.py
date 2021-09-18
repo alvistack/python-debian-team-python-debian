@@ -146,6 +146,11 @@ class LinkedListNode(Generic[T]):
         LinkedListNode.link_nodes(first_node, new_node)
         LinkedListNode.link_nodes(new_node, last_node)
 
+    def insert_before(self, new_node):
+        # type: (LinkedListNode[T]) -> None
+        assert self is not new_node and new_node is not self.previous_node
+        LinkedListNode._insert_link(self.previous_node, new_node, self)
+
     def insert_after(self, new_node):
         # type: (LinkedListNode[T]) -> None
         assert self is not new_node and new_node is not self.next_node
@@ -236,6 +241,17 @@ class LinkedList(Generic[T]):
             self.tail_node = node
         self._size += 1
         return node
+
+    def insert_before(self, value, existing_node):
+        # type: (T, LinkedListNode[T]) -> LinkedListNode[T]
+        new_node = LinkedListNode(value)
+        if self.head_node is None:
+            raise ValueError("List is empty; node argument cannot be valid")
+        existing_node.insert_before(new_node)
+        if existing_node is self.head_node:
+            self.head_node = new_node
+        self._size += 1
+        return new_node
 
     def extend(self, values):
         # type: (Iterable[T]) -> None
