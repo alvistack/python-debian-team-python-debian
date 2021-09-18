@@ -1,3 +1,22 @@
+python-debian (0.1.41) UNRELEASED; urgency=medium
+
+  [ Stuart Prescott ]
+  * Drop some old python version checks (Closes: #986550)
+  * Skip tests that use apt_pkg if unavailable
+  * Run tests in absense of recommended packages
+  * Drop use of six.
+  * Drop old version constraints in autopkgtest tests
+  * Generate .deb packages for tests on-demand
+  * Add contextmanager to DebFile
+  * Fix sphinx _static config
+
+  [ Niels Thykier ]
+  * Added format/comment preserving deb822 parser as debian._deb822_repro.
+  * CI: Add coverage reports
+  * Use py.test for running tests
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 18 Sep 2021 22:36:23 +0100
+
 python-debian (0.1.40) experimental; urgency=medium
 
   [ Jelmer Vernooĳ ]
