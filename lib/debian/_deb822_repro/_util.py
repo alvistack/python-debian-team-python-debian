@@ -402,14 +402,14 @@ class BufferingIterator(collections.abc.Iterator[T]):
         return ret
 
 
-def flatten_with_len_check(line,  # type: str
-                           stream,  # type: Iterable[TokenOrElement]
-                           line_len=None,  # type: Optional[int]
-                           ):
-    # type: (...) -> Iterable[Deb822Token]
+def len_check_iterator(content,  # type: str
+                       stream,  # type: Iterable[TE]
+                       content_len=None,  # type: Optional[int]
+                       ):
+    # type: (...) -> Iterable[TE]
     """Flatten a parser's output into tokens and verify it covers the entire line/text"""
-    if line_len is None:
-        line_len = len(line)
+    if content_len is None:
+        content_len = len(content)
     # Fail-safe to ensure none of the value parsers incorrectly parse a value.
     covered = 0
     for token_or_element in stream:
@@ -420,20 +420,20 @@ def flatten_with_len_check(line,  # type: str
         except AttributeError:
             token = cast('Deb822Token', token_or_element)
             covered += len(token.text)
-            yield token
         else:
             for token in tokens:
                 covered += len(token.text)
-                yield token
-    if covered != line_len:
-        if covered < line_len:
+        yield token_or_element
+    if covered != content_len:
+        if covered < content_len:
             msg = textwrap.dedent("""\
             Value parser did not fully cover the entire line with tokens (
-            missing range {covered}..{line_len}).  Occurred when parsing "{line}"
-            """).format(covered=covered, line_len=line_len, line=line)
+            missing range {covered}..{content_len}).  Occurred when parsing "{content}"
+            """).format(covered=covered, content_len=content_len, line=content)
             raise ValueError(msg)
         msg = textwrap.dedent("""\
                     Value parser emitted tokens for more text than was present?  Should have
-                     emitted {line_len} characters, got {covered}. Occurred when parsing "{line}"
-                    """).format(covered=covered, line_len=line_len, line=line)
+                     emitted {content_len} characters, got {covered}. Occurred when parsing
+                     "{content}"
+                    """).format(covered=covered, content_len=content_len, content=content)
         raise ValueError(msg)

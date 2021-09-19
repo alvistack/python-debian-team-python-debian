@@ -141,8 +141,6 @@ Things that might change in an incompatible way include:
 import collections.abc
 import contextlib
 import operator
-import re
-import sys
 import textwrap
 import weakref
 from abc import ABC
@@ -157,12 +155,12 @@ from debian._deb822_repro.tokens import (
     Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
     Deb822ValueContinuationToken, Deb822NewlineAfterValueToken, Deb822CommaToken,
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
-    _RE_WHITESPACE_LINE, tokenize_deb822_file,
+    tokenize_deb822_file, comma_split_tokenizer, whitespace_split_tokenizer,
 )
 from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
                                         combine_into_replacement, BufferingIterator,
-                                        flatten_with_len_check,
-)
+                                        len_check_iterator,
+                                        )
 
 try:
     from typing import (
@@ -179,49 +177,6 @@ try:
 except ImportError:
     cast = lambda t, v: v
     overload = lambda f: None
-
-
-_RE_WHITESPACE = re.compile(r'\s+')
-# Consume whitespace and a single word.
-_RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
-    (?P<space_before>\s*)                # Consume any whitespace before the word
-                                         # The space only occurs in practise if the line starts
-                                         # with space.
-
-                                         # Optionally consume a word (needed to handle the case
-                                         # when there are no words left and someone applies this
-                                         # pattern to the remaining text). This is mostly here as
-                                         # a fail-safe.
-
-    (?P<word>\S+)                        # Consume the word (if present)
-    (?P<trailing_whitespace>\s*)         # Consume trailing whitespace
-''', re.VERBOSE)
-_RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
-    # This regex is slightly complicated by the fact that it should work with
-    # finditer and comsume the entire value.
-    #
-    # To do this, we structure the regex so it always starts on a comma (except
-    # for the first iteration, where we permit the absence of a comma)
-
-    (?:                                      # Optional space followed by a mandatory comma unless
-                                             # it is the start of the "line" (in which case, we
-                                             # allow the comma to be omitted)
-        ^
-        |
-        (?:
-            (?P<space_before_comma>\s*)      # This space only occurs in practise if the line
-                                             # starts with space + comma.
-            (?P<comma> ,)
-        )
-    )
-
-    # From here it is "optional space, maybe a word and then optional space" again.  One reason why
-    # all of it is optional is to gracefully cope with trailing commas.
-    (?P<space_before_word>\s*)
-    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma separated list.
-                                             # But surrounding whitespace is ignored
-    (?P<space_after_word>\s*)
-''', re.VERBOSE)
 
 
 class ValueReference(Generic[TE]):
@@ -888,21 +843,6 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
         # type: (...) -> T
         raise NotImplementedError  # pragma: no cover
 
-    def _value_lines_tokenization(
-            self,
-            value_lines,  # type: List[Deb822ValueLineElement]
-    ):
-        # type: (...) -> Iterable[Deb822Token]
-        for vl in value_lines:
-            if vl.comment_element:
-                yield from vl.comment_element.iter_tokens()
-            if vl.continuation_line_token:
-                yield vl.continuation_line_token
-            content = vl.convert_content_to_text()
-            yield from flatten_with_len_check(content, self._tokenizer(content))
-            if vl.newline_token:
-                yield vl.newline_token
-
     def _parse_stream(self,
                       buffered_iterator,  # type: BufferingIterator[Deb822Token]
                       ):
@@ -920,14 +860,19 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
             kvpair,  # type: Deb822KeyValuePairElement
     ):
         # type: (...) -> Iterable[Union[Deb822Token, VE]]
-        vlines = kvpair.value_element.value_lines
-        buffered_iterator = BufferingIterator(self._value_lines_tokenization(vlines))
-        yield from self._parse_stream(buffered_iterator)
+        content = kvpair.value_element.convert_to_text()
+        yield from self._parse_str(content)
 
     def _parse_str(self, content):
         # type: (str) -> Iterable[Union[Deb822Token, VE]]
-        biter = BufferingIterator(flatten_with_len_check(content, self._tokenizer(content)))
-        yield from self._parse_stream(biter)
+        content_len = len(content)
+        biter = BufferingIterator(len_check_iterator(content,
+                                                     self._tokenizer(content),
+                                                     content_len=content_len,))
+        yield from len_check_iterator(content,
+                                      self._parse_stream(biter),
+                                      content_len=content_len,
+                                      )
 
     def interpret(self,
                   kvpair_element,  # type: Deb822KeyValuePairElement
@@ -1014,35 +959,6 @@ class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList
         )
 
 
-def _whitespace_separated_list_of_tokens(v):
-    # type: (str) -> Iterable[Deb822Token]
-    assert not _RE_WHITESPACE_LINE.match(v)
-    for match in _RE_WHITESPACE_SEPARATED_WORD_LIST.finditer(v):
-        space_before, word, space_after = match.groups()
-        if space_before:
-            yield Deb822SpaceSeparatorToken(sys.intern(space_before))
-        yield Deb822ValueToken(word)
-        if space_after:
-            yield Deb822SpaceSeparatorToken(sys.intern(space_after))
-
-
-def _comma_separated_list_of_tokens(v):
-    # type: (str) -> Iterable[Deb822Token]
-    assert not _RE_WHITESPACE_LINE.match(v)
-    for match in _RE_COMMA_SEPARATED_WORD_LIST.finditer(v):
-        space_before_comma, comma, space_before_word, word, space_after_word = match.groups()
-        if space_before_comma:
-            yield Deb822WhitespaceToken(sys.intern(space_before_comma))
-        if comma:
-            yield Deb822CommaToken()
-        if space_before_word:
-            yield Deb822WhitespaceToken(sys.intern(space_before_word))
-        if word:
-            yield Deb822ValueToken(word)
-        if space_after_word:
-            yield Deb822WhitespaceToken(sys.intern(space_after_word))
-
-
 def _parse_whitespace_list_value(token, _):
     # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822ParsedValueElement
     return Deb822ParsedValueElement([token])
@@ -1069,6 +985,54 @@ def _parse_comma_list_value(token, buffered_iterator):
         value_parts.pop()
 
     buffered_iterator.consume_many(len(value_parts) - 1)
+    return Deb822ParsedValueElement(value_parts)
+
+
+def _parse_uploaders_list_value(token, buffered_iterator):
+    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822ParsedValueElement
+
+    # This is similar to _parse_comma_list_value *except* that there is an extra special
+    # case.  Namely comma only counts as a true separator if it follows ">"
+    value_parts = [token]
+    comma_offset = -1  # type: Optional[int]
+    while comma_offset is not None:
+        comma_offset = buffered_iterator.peek_find(_is_comma_token)
+        if comma_offset is not None:
+            # The value is followed by a comma.  Verify that this is a terminating
+            # comma (comma may appear in the name or email)
+            #
+            # We include value_parts[-1] to easily cope with the common case of
+            # "foo <a@b.com>," where we will have 0 peeked element to examine.
+            peeked_elements = [value_parts[-1]]
+            peeked_elements.extend(buffered_iterator.peek_many(comma_offset - 1))
+            comma_was_separator = False
+            i = len(peeked_elements) - 1
+            while i >= 0:
+                token = peeked_elements[i]
+                if isinstance(token, Deb822ValueToken):
+                    if token.text.endswith(">"):
+                        # The comma terminates the value
+                        value_parts.extend(buffered_iterator.consume_many(i))
+                        assert isinstance(value_parts[-1], Deb822ValueToken) and \
+                               value_parts[-1].text.endswith('>'), "Got: " + str(value_parts)
+                        comma_was_separator = True
+                    break
+                i -= 1
+            if comma_was_separator:
+                break
+            value_parts.extend(buffered_iterator.consume_many(comma_offset))
+            assert isinstance(value_parts[-1], Deb822CommaToken)
+        else:
+            # The value is the last value there is.  Consume all remaining tokens
+            # and then trim from the right.
+            remaining_part = buffered_iterator.peek_buffer()
+            consume_elements = len(remaining_part)
+            value_parts.extend(remaining_part)
+            while value_parts and not isinstance(value_parts[-1], Deb822ValueToken):
+                value_parts.pop()
+                consume_elements -= 1
+            buffered_iterator.consume_many(consume_elements)
+
     return Deb822ParsedValueElement(value_parts)
 
 
@@ -2747,20 +2711,27 @@ def _parsed_value_render_factory(discard_comments):
         else Deb822ParsedValueElement.convert_to_text
 
 
-LIST_SPACE_SEPARATED_INTERPRETATION = ListInterpretation(_whitespace_separated_list_of_tokens,
+LIST_SPACE_SEPARATED_INTERPRETATION = ListInterpretation(whitespace_split_tokenizer,
                                                          _parse_whitespace_list_value,
                                                          Deb822ParsedValueElement,
                                                          Deb822SemanticallySignificantWhiteSpace,
                                                          lambda: Deb822SpaceSeparatorToken(' '),
                                                          _parsed_value_render_factory,
                                                          )
-LIST_COMMA_SEPARATED_INTERPRETATION = ListInterpretation(_comma_separated_list_of_tokens,
+LIST_COMMA_SEPARATED_INTERPRETATION = ListInterpretation(comma_split_tokenizer,
                                                          _parse_comma_list_value,
                                                          Deb822ParsedValueElement,
                                                          Deb822CommaToken,
                                                          Deb822CommaToken,
                                                          _parsed_value_render_factory,
                                                          )
+LIST_UPLOADERS_INTERPRETATION = ListInterpretation(comma_split_tokenizer,
+                                                   _parse_uploaders_list_value,
+                                                   Deb822ParsedValueElement,
+                                                   Deb822CommaToken,
+                                                   Deb822CommaToken,
+                                                   _parsed_value_render_factory,
+                                                   )
 
 
 def _non_end_of_line_token(v):

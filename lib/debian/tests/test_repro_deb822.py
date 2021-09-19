@@ -33,7 +33,7 @@ from debian._deb822_repro import (parse_deb822_file,
                                   Interpretation,
                                   )
 from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
-    Deb822FileElement, Deb822ParsedValueElement
+    Deb822FileElement, Deb822ParsedValueElement, LIST_UPLOADERS_INTERPRETATION
 from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
 from debian._deb822_repro._util import print_ast
 
@@ -725,6 +725,15 @@ class FormatPreservingDeb822ParserTests(TestCase):
            ,commas
         # Comments in final value
              >:)
+        Uploaders: Someone <nobody@example.org>,
+        # Comment that should not be visible in the list
+          Margrete, I, Ruler <1@margrete.dk>
+        # Some remark that should not be visible in the list even though
+        # the comma is on the other side
+          ,
+          Margrete, II, Queen
+        # We could list additional names here
+          <2@margrete.dk>
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
@@ -756,8 +765,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
         arch_kvpair = source_paragraph.get_kvpair_element('Architecture')
         comma_list_kvpair = source_paragraph.get_kvpair_element('Some-Comma-List')
         multiline_comma_list_kvpair = source_paragraph.get_kvpair_element('Multiline-Comma-List')
+        uploaders_kvpair = source_paragraph.get_kvpair_element('Uploaders')
         assert arch_kvpair is not None and comma_list_kvpair is not None \
-            and multiline_comma_list_kvpair is not None
+            and multiline_comma_list_kvpair is not None and uploaders_kvpair is not None
         archs = arch_kvpair.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
         comma_list_misread = comma_list_kvpair.interpret_as(
             LIST_SPACE_SEPARATED_INTERPRETATION
@@ -777,6 +787,13 @@ class FormatPreservingDeb822ParserTests(TestCase):
             LIST_COMMA_SEPARATED_INTERPRETATION,
             discard_comments_on_read=False
         )
+        uploaders_list = uploaders_kvpair.interpret_as(
+            LIST_UPLOADERS_INTERPRETATION,
+        )
+        uploaders_list_with_comments = uploaders_kvpair.interpret_as(
+            LIST_UPLOADERS_INTERPRETATION,
+            discard_comments_on_read=False
+        )
 
         self.assertEqual(['a', 'b', 'c d', 'e'], list(comma_list_correctly_read))
 
@@ -792,6 +809,23 @@ class FormatPreservingDeb822ParserTests(TestCase):
                           "separated by",
                           "commas\n# Comments in final value\n     >:)"],
                          list(ml_comma_list_w_comments))
+
+        self.assertEqual(
+            [
+                "Someone <nobody@example.org>",
+                "Margrete, I, Ruler <1@margrete.dk>",
+                "Margrete, II, Queen\n  <2@margrete.dk>",
+            ],
+            list(uploaders_list)
+        )
+        self.assertEqual(
+            [
+                "Someone <nobody@example.org>",
+                "Margrete, I, Ruler <1@margrete.dk>",
+                "Margrete, II, Queen\n# We could list additional names here\n  <2@margrete.dk>",
+            ],
+            list(uploaders_list_with_comments)
+        )
 
         # Interpretation must not change the content
         self.assertEqual(original, deb822_file.convert_to_text())
