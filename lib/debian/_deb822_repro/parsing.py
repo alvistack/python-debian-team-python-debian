@@ -988,6 +988,54 @@ def _parse_comma_list_value(token, buffered_iterator):
     return Deb822ParsedValueElement(value_parts)
 
 
+def _parse_uploaders_list_value(token, buffered_iterator):
+    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822ParsedValueElement
+
+    # This is similar to _parse_comma_list_value *except* that there is an extra special
+    # case.  Namely comma only counts as a true separator if it follows ">"
+    value_parts = [token]
+    comma_offset = -1  # type: Optional[int]
+    while comma_offset is not None:
+        comma_offset = buffered_iterator.peek_find(_is_comma_token)
+        if comma_offset is not None:
+            # The value is followed by a comma.  Verify that this is a terminating
+            # comma (comma may appear in the name or email)
+            #
+            # We include value_parts[-1] to easily cope with the common case of
+            # "foo <a@b.com>," where we will have 0 peeked element to examine.
+            peeked_elements = [value_parts[-1]]
+            peeked_elements.extend(buffered_iterator.peek_many(comma_offset - 1))
+            comma_was_separator = False
+            i = len(peeked_elements) - 1
+            while i >= 0:
+                token = peeked_elements[i]
+                if isinstance(token, Deb822ValueToken):
+                    if token.text.endswith(">"):
+                        # The comma terminates the value
+                        value_parts.extend(buffered_iterator.consume_many(i))
+                        assert isinstance(value_parts[-1], Deb822ValueToken) and \
+                               value_parts[-1].text.endswith('>'), "Got: " + str(value_parts)
+                        comma_was_separator = True
+                    break
+                i -= 1
+            if comma_was_separator:
+                break
+            value_parts.extend(buffered_iterator.consume_many(comma_offset))
+            assert isinstance(value_parts[-1], Deb822CommaToken)
+        else:
+            # The value is the last value there is.  Consume all remaining tokens
+            # and then trim from the right.
+            remaining_part = buffered_iterator.peek_buffer()
+            consume_elements = len(remaining_part)
+            value_parts.extend(remaining_part)
+            while value_parts and not isinstance(value_parts[-1], Deb822ValueToken):
+                value_parts.pop()
+                consume_elements -= 1
+            buffered_iterator.consume_many(consume_elements)
+
+    return Deb822ParsedValueElement(value_parts)
+
+
 class Deb822Element:
     """Composite elements (consists of 1 or more tokens)"""
 
@@ -2677,6 +2725,13 @@ LIST_COMMA_SEPARATED_INTERPRETATION = ListInterpretation(comma_split_tokenizer,
                                                          Deb822CommaToken,
                                                          _parsed_value_render_factory,
                                                          )
+LIST_UPLOADERS_INTERPRETATION = ListInterpretation(comma_split_tokenizer,
+                                                   _parse_uploaders_list_value,
+                                                   Deb822ParsedValueElement,
+                                                   Deb822CommaToken,
+                                                   Deb822CommaToken,
+                                                   _parsed_value_render_factory,
+                                                   )
 
 
 def _non_end_of_line_token(v):
