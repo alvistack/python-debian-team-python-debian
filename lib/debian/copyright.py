@@ -27,9 +27,9 @@ Copyright Classes
 
 import collections
 import itertools
+import logging
 import io
 import re
-import warnings
 
 try:
     # pylint: disable=unused-import
@@ -65,6 +65,9 @@ _KNOWN_FORMATS = frozenset([
 ])
 
 
+logger = logging.getLogger(__name__)
+
+
 class Error(Exception):
     """Base class for exceptions in this module."""
 
@@ -85,7 +88,7 @@ def _complain(msg, strict):
     # type: (str, bool) -> None
     if strict:
         raise MachineReadableFormatError(msg)
-    warnings.warn(msg)
+    logger.warning(msg)
 
 
 class Copyright(object):
@@ -639,8 +642,8 @@ class Header(deb822.RestrictedWrapper):
             data['Format'] = _CURRENT_FORMAT
 
         if 'Format-Specification' in data:
-            warnings.warn('use of deprecated "Format-Specification" field;'
-                          ' rewriting as "Format"')
+            logger.warning('use of deprecated "Format-Specification" field;'
+                           ' rewriting as "Format"')
             data['Format'] = data['Format-Specification']
             del data['Format-Specification']
 
@@ -658,14 +661,14 @@ class Header(deb822.RestrictedWrapper):
                 fmt = "https:%s" % fmt[5:]
 
             if fmt in _KNOWN_FORMATS:
-                warnings.warn('Fixing Format URL')
+                logger.warning('Fixing Format URL')
                 self.format = fmt   # type: ignore
 
         if fmt is None:
             raise NotMachineReadableError(
                 'input is not a machine-readable debian/copyright')
         if fmt not in _KNOWN_FORMATS:
-            warnings.warn('format not known: %r' % fmt)
+            logger.warning('format not known: %r' % fmt)
 
     def known_format(self):
         # type: () -> bool

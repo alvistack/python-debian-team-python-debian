@@ -1,3 +1,10 @@
+python-debian (0.1.42) UNRELEASED; urgency=medium
+
+  * Use logging for warnings about data that's being read, rather than
+    the warnings module.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 19 Sep 2021 12:53:57 +0100
+
 python-debian (0.1.41) experimental; urgency=medium
 
   [ Stuart Prescott ]
