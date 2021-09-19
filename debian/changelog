@@ -1,4 +1,4 @@
-python-debian (0.1.41) UNRELEASED; urgency=medium
+python-debian (0.1.41) experimental; urgency=medium
 
   [ Stuart Prescott ]
   * Drop some old python version checks (Closes: #986550)
