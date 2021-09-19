@@ -244,15 +244,17 @@ class ValueReference(Generic[TE]):
     does not use ref-counting).
     """
 
-    __slots__ = ('_node', '_value_factory', '_removal_handler', '_mutation_notifier')
+    __slots__ = ('_node', '_render', '_value_factory', '_removal_handler', '_mutation_notifier')
 
     def __init__(self,
                  node,  # type: LinkedListNode[TE]
+                 render,  # type: Callable[[TE], str]
                  value_factory,  # type: Callable[[str], TE]
                  removal_handler,  # type: Callable[[LinkedListNode[TokenOrElement]], None]
                  mutation_notifier,  # type: Optional[Callable[[], None]]
                  ):
         self._node = weakref.ref(node)  # type: Optional[ReferenceType[LinkedListNode[TE]]]
+        self._render = render
         self._value_factory = value_factory
         self._removal_handler = removal_handler
         self._mutation_notifier = mutation_notifier
@@ -272,7 +274,7 @@ class ValueReference(Generic[TE]):
     def value(self):
         # type: () -> str
         """Resolve the reference into a str"""
-        return self._resolve_node().value.convert_to_text()
+        return self._render(self._resolve_node().value)
 
     @value.setter
     def value(self, new_value):
@@ -313,6 +315,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
                  stype,  # type: Type[ST]
                  str2value_parser,  # type: StrToValueParser[VE]
                  default_separator_factory,  # type: Callable[[], ST]
+                 render,  # type: Callable[[VE], str]
                  ):
         # type: (...) -> None
         self._kvpair_element = kvpair_element
@@ -322,6 +325,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         self._str2value_parser = str2value_parser
         self._default_separator_factory = default_separator_factory
         self._value_factory = _parser_to_value_factory(str2value_parser, vtype)
+        self._render = render
         self._format_preserve_original_formatting = True
         self._format_one_value_per_line = False
         self._format_with_leading_whitespace_matching_field_length = False
@@ -342,7 +346,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
     def __iter__(self):
         # type: () -> Iterator[str]
-        yield from (v.convert_to_text() for v in self.value_parts)
+        yield from (self._render(v) for v in self.value_parts)
 
     def __bool__(self):
         # type: () -> bool
@@ -377,6 +381,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         """
         yield from (ValueReference(
             cast('LinkedListNode[VE]', n),
+            self._render,
             self._value_factory,
             self._remove_node,
             self._mark_changed,
@@ -404,8 +409,9 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
         This method will *not* affect the validity of ValueReferences.
         """
+        vtype = self._vtype
         for node in self._token_list.iter_nodes():
-            if node.value.convert_to_text() == orig_value:
+            if isinstance(node.value, vtype) and self._render(node.value) == orig_value:
                 node.value = self._value_factory(new_value)
                 self._changed = True
                 break
@@ -421,7 +427,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         """
         vtype = self._vtype
         for node in self._token_list.iter_nodes():
-            if node.value.convert_to_text() == value and isinstance(node.value, vtype):
+            if isinstance(node.value, vtype) and self._render(node.value) == value:
                 node_to_remove = node
                 break
         else:
@@ -831,8 +837,11 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
 class Interpretation(Generic[T]):
 
-    def interpret(self, kvpair_element):
-        # type: (Deb822KeyValuePairElement) -> T
+    def interpret(self,
+                  kvpair_element,  # type: Deb822KeyValuePairElement
+                  discard_comments_on_read=True,  # type: bool
+                  ):
+        # type: (...) -> T
         raise NotImplementedError  # pragma: no cover
 
 
@@ -847,8 +856,12 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
         self._tokenizer = tokenizer
         self._value_parser = value_parser
 
-    def _high_level_interpretation(self, kvpair_element, token_list):
-        # type: (Deb822KeyValuePairElement, List['TokenOrElement']) -> T
+    def _high_level_interpretation(self,
+                                   kvpair_element,  # type: Deb822KeyValuePairElement
+                                   token_list,  # type: List['TokenOrElement']
+                                   discard_comments_on_read=True,  # type: bool
+                                   ):
+        # type: (...) -> T
         raise NotImplementedError  # pragma: no cover
 
     def _value_lines_tokenization(
@@ -892,11 +905,17 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
         biter = BufferingIterator(flatten_with_len_check(content, self._tokenizer(content)))
         yield from self._parse_stream(biter)
 
-    def interpret(self, kvpair_element):
-        # type: (Deb822KeyValuePairElement) -> T
+    def interpret(self,
+                  kvpair_element,  # type: Deb822KeyValuePairElement
+                  discard_comments_on_read=True,  # type: bool
+                  ):
+        # type: (...) -> T
         token_list = []  # type: List['TokenOrElement']
         token_list.extend(self._parse_kvpair(kvpair_element))
-        return self._high_level_interpretation(kvpair_element, token_list)
+        return self._high_level_interpretation(kvpair_element,
+                                               token_list,
+                                               discard_comments_on_read=discard_comments_on_read,
+                                               )
 
 
 def _parser_to_value_factory(parser,  # type: StrToValueParser[VE]
@@ -945,16 +964,19 @@ class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList
                  vtype,  # type: Type[VE]
                  stype,  # type: Type[ST]
                  default_separator_factory,  # type: Callable[[], ST]
+                 render_factory,  # type: Callable[[bool], Callable[[VE], str]]
                  ):
         # type: (...) -> None
         super().__init__(tokenizer, value_parser)
         self._vtype = vtype
         self._stype = stype
         self._default_separator_factory = default_separator_factory
+        self._render_factory = render_factory
 
     def _high_level_interpretation(self,
                                    kvpair_element,  # type: Deb822KeyValuePairElement
                                    token_list,  # type: List['TokenOrElement']
+                                   discard_comments_on_read=True,  # type: bool
                                    ):
         # type: (...) -> Deb822ParsedTokenList[VE, ST]
         return Deb822ParsedTokenList(
@@ -964,6 +986,7 @@ class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList
             self._stype,
             self._parse_str,
             self._default_separator_factory,
+            self._render_factory(discard_comments_on_read)
         )
 
 
@@ -1329,9 +1352,12 @@ class Deb822KeyValuePairElement(Deb822Element):
         self._value_element = new_value
         new_value.parent_element = self
 
-    def interpret_as(self, interpreter):
-        # type: (Interpretation[T]) -> T
-        return interpreter.interpret(self)
+    def interpret_as(self,
+                     interpreter,  # type: Interpretation[T]
+                     discard_comments_on_read=True,  # type: bool
+                     ):
+        # type: (...) -> T
+        return interpreter.interpret(self, discard_comments_on_read=discard_comments_on_read)
 
     @property
     def comment_element(self):
@@ -1576,15 +1602,22 @@ class AbstractDeb822ParagraphWrapper(AutoResolvingMixin[T], ABC):
                  paragraph,  # type: Deb822ParagraphElement
                  *,
                  auto_resolve_ambiguous_fields=False,  # type: bool
+                 discard_comments_on_read=True,  # type: bool
                  ):
         # type: (...) -> None
         self.__paragraph = paragraph
         self.__auto_resolve_ambiguous_fields = auto_resolve_ambiguous_fields
+        self.__discard_comments_on_read = discard_comments_on_read
 
     @property
     def _paragraph(self):
         # type: () -> Deb822ParagraphElement
         return self.__paragraph
+
+    @property
+    def _discard_comments_on_read(self):
+        # type: () -> bool
+        return self.__discard_comments_on_read
 
     @property
     def _auto_resolve_ambiguous_fields(self):
@@ -1599,8 +1632,12 @@ class Deb822InterpretingParagraphWrapper(AbstractDeb822ParagraphWrapper[T]):
                  interpretation,  # type: Interpretation[T]
                  *,
                  auto_resolve_ambiguous_fields=False,  # type: bool
+                 discard_comments_on_read=True,  # type: bool
                  ) -> None:
-        super().__init__(paragraph, auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields)
+        super().__init__(paragraph,
+                         auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields,
+                         discard_comments_on_read=discard_comments_on_read,
+                         )
         self._interpretation = interpretation
 
     def _interpret_value(self, key, value):
@@ -1621,8 +1658,10 @@ class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str],
                  auto_map_final_newline_in_multiline_values=True,  # type: bool
                  ):
         # type: (...) -> None
-        super().__init__(paragraph, auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields)
-        self.__discard_comments_on_read = discard_comments_on_read
+        super().__init__(paragraph,
+                         auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields,
+                         discard_comments_on_read=discard_comments_on_read,
+                         )
         self.__auto_map_initial_line_whitespace = auto_map_initial_line_whitespace
         self.__preserve_field_comments_on_field_updates = preserve_field_comments_on_field_updates
         self.__auto_map_final_newline_in_multiline_values = \
@@ -1632,11 +1671,6 @@ class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str],
     def _auto_map_initial_line_whitespace(self):
         # type: () -> bool
         return self.__auto_map_initial_line_whitespace
-
-    @property
-    def _discard_comments_on_read(self):
-        # type: () -> bool
-        return self.__discard_comments_on_read
 
     @property
     def _preserve_field_comments_on_field_updates(self):
@@ -2683,17 +2717,25 @@ _combine_kvp_elements_into_paragraphs = combine_into_replacement(
     )
 
 
+def _parsed_value_render_factory(discard_comments):
+    # type: (bool) -> Callable[[Deb822ParsedValueElement], str]
+    return Deb822ParsedValueElement.convert_to_text_without_comments if discard_comments \
+        else Deb822ParsedValueElement.convert_to_text
+
+
 LIST_SPACE_SEPARATED_INTERPRETATION = ListInterpretation(_whitespace_separated_list_of_tokens,
                                                          _parse_whitespace_list_value,
                                                          Deb822ParsedValueElement,
                                                          Deb822SemanticallySignificantWhiteSpace,
                                                          lambda: Deb822SpaceSeparatorToken(' '),
+                                                         _parsed_value_render_factory,
                                                          )
 LIST_COMMA_SEPARATED_INTERPRETATION = ListInterpretation(_comma_separated_list_of_tokens,
                                                          _parse_comma_list_value,
                                                          Deb822ParsedValueElement,
                                                          Deb822CommaToken,
                                                          Deb822CommaToken,
+                                                         _parsed_value_render_factory,
                                                          )
 
 

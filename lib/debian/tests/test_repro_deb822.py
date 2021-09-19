@@ -773,15 +773,25 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ml_comma_list = multiline_comma_list_kvpair.interpret_as(
             LIST_COMMA_SEPARATED_INTERPRETATION
         )
+        ml_comma_list_w_comments = multiline_comma_list_kvpair.interpret_as(
+            LIST_COMMA_SEPARATED_INTERPRETATION,
+            discard_comments_on_read=False
+        )
 
         self.assertEqual(['a', 'b', 'c d', 'e'], list(comma_list_correctly_read))
 
         self.assertEqual(["some",
                           "fun",
+                          "with\n  multi-line\n  values",
+                          "separated by",
+                          "commas\n     >:)"],
+                         list(ml_comma_list))
+        self.assertEqual(["some",
+                          "fun",
                           "with\n  multi-line\n# With a comment inside it for added fun\n  values",
                           "separated by",
                           "commas\n# Comments in final value\n     >:)"],
-                         list(ml_comma_list))
+                         list(ml_comma_list_w_comments))
 
         # Interpretation must not change the content
         self.assertEqual(original, deb822_file.convert_to_text())
