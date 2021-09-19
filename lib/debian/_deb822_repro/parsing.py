@@ -157,7 +157,7 @@ from debian._deb822_repro.tokens import (
     Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
     Deb822ValueContinuationToken, Deb822NewlineAfterValueToken, Deb822CommaToken,
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
-    _RE_WHITESPACE_LINE, tokenize_deb822_file, Deb822ParsedMultilineValueToken,
+    _RE_WHITESPACE_LINE, tokenize_deb822_file,
 )
 from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
                                         combine_into_replacement, BufferingIterator,
@@ -171,10 +171,11 @@ try:
 )
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
-        T, ST, VT, TE,
+        T, ST, VE, TE,
         ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
     )
-    ValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], Deb822Token]
+    StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
+    StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
 except ImportError:
     cast = lambda t, v: v
     overload = lambda f: None
@@ -223,7 +224,7 @@ _RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
 ''', re.VERBOSE)
 
 
-class ValueReference(Generic[VT]):
+class ValueReference(Generic[TE]):
 
     """Reference to a value inside a Deb822 paragraph
 
@@ -246,18 +247,18 @@ class ValueReference(Generic[VT]):
     __slots__ = ('_node', '_value_factory', '_removal_handler', '_mutation_notifier')
 
     def __init__(self,
-                 node,  # type: LinkedListNode[VT]
-                 value_factory,  # type: Callable[[str], VT]
-                 removal_handler,  # type: Callable[[LinkedListNode[Deb822Token]], None]
+                 node,  # type: LinkedListNode[TE]
+                 value_factory,  # type: Callable[[str], TE]
+                 removal_handler,  # type: Callable[[LinkedListNode[TokenOrElement]], None]
                  mutation_notifier,  # type: Optional[Callable[[], None]]
                  ):
-        self._node = weakref.ref(node)  # type: Optional[ReferenceType[LinkedListNode[VT]]]
+        self._node = weakref.ref(node)  # type: Optional[ReferenceType[LinkedListNode[TE]]]
         self._value_factory = value_factory
         self._removal_handler = removal_handler
         self._mutation_notifier = mutation_notifier
 
     def _resolve_node(self):
-        # type: () -> LinkedListNode[VT]
+        # type: () -> LinkedListNode[TE]
         # NB: We check whether the "ref" itself is None (instead of the ref resolving to None)
         # This enables us to tell the difference between "known removal" vs. "garbage collected"
         if self._node is None:
@@ -297,20 +298,20 @@ class ValueReference(Generic[VT]):
         to that exact value).  The validity of other ValueReferences to that container
         remains unaffected.
         """
-        self._removal_handler(cast('LinkedListNode[Deb822Token]', self._resolve_node()))
+        self._removal_handler(cast('LinkedListNode[TokenOrElement]', self._resolve_node()))
         self._node = None
 
 
-class Deb822ParsedTokenList(Generic[VT, ST],
-                            contextlib.AbstractContextManager['Deb822ParsedTokenList[VT, ST]']
+class Deb822ParsedTokenList(Generic[VE, ST],
+                            contextlib.AbstractContextManager['Deb822ParsedTokenList[VE, ST]']
                             ):
 
     def __init__(self,
                  kvpair_element,  # type: 'Deb822KeyValuePairElement'
-                 interpreted_value_element,  # type: 'List[Deb822Token]'
-                 vtype,  # type: Type[VT]
+                 interpreted_value_element,  # type: 'List[TokenOrElement]'
+                 vtype,  # type: Type[VE]
                  stype,  # type: Type[ST]
-                 tokenizer,  # type: Callable[[str], Iterable['Deb822Token']]
+                 str2value_parser,  # type: StrToValueParser[VE]
                  default_separator_factory,  # type: Callable[[], ST]
                  ):
         # type: (...) -> None
@@ -318,9 +319,9 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         self._token_list = LinkedList(interpreted_value_element)
         self._vtype = vtype
         self._stype = stype
-        self._tokenizer = tokenizer
+        self._str2value_parser = str2value_parser
         self._default_separator_factory = default_separator_factory
-        self._value_factory = _tokenizer_to_value_factory(tokenizer, vtype)
+        self._value_factory = _parser_to_value_factory(str2value_parser, vtype)
         self._format_preserve_original_formatting = True
         self._format_one_value_per_line = False
         self._format_with_leading_whitespace_matching_field_length = False
@@ -359,7 +360,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
 
     @property
     def value_parts(self):
-        # type: () -> Iterator[TE]
+        # type: () -> Iterator[VE]
         yield from (v for v in self._token_list if isinstance(v, self._vtype))
 
     def _mark_changed(self):
@@ -367,7 +368,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         self._changed = True
 
     def iter_value_references(self):
-        # type: () -> Iterator[ValueReference[VT]]
+        # type: () -> Iterator[ValueReference[VE]]
         """Iterate over all values in the list (as ValueReferences)
 
         This is useful for doing inplace modification of the values or even
@@ -375,7 +376,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         efficient when more than one value is updated or removed.
         """
         yield from (ValueReference(
-            cast('LinkedListNode[VT]', n),
+            cast('LinkedListNode[VE]', n),
             self._value_factory,
             self._remove_node,
             self._mark_changed,
@@ -404,7 +405,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         This method will *not* affect the validity of ValueReferences.
         """
         for node in self._token_list.iter_nodes():
-            if node.value.text == orig_value:
+            if node.value.convert_to_text() == orig_value:
                 node.value = self._value_factory(new_value)
                 self._changed = True
                 break
@@ -420,7 +421,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         """
         vtype = self._vtype
         for node in self._token_list.iter_nodes():
-            if node.value.text == value and isinstance(node.value, vtype):
+            if node.value.convert_to_text() == value and isinstance(node.value, vtype):
                 node_to_remove = node
                 break
         else:
@@ -429,7 +430,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         return self._remove_node(node_to_remove)
 
     def _remove_node(self, node_to_remove):
-        # type: (LinkedListNode[Deb822Token]) -> None
+        # type: (LinkedListNode[TokenOrElement]) -> None
         vtype = self._vtype
         self._changed = True
 
@@ -490,13 +491,13 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         #     (leaving you with the value of the form "\n# ...\n      bar")
         #
 
-        first_value_on_lhs = None  # type: Optional[LinkedListNode[Deb822Token]]
-        first_value_on_rhs = None  # type: Optional[LinkedListNode[Deb822Token]]
+        first_value_on_lhs = None  # type: Optional[LinkedListNode[TokenOrElement]]
+        first_value_on_rhs = None  # type: Optional[LinkedListNode[TokenOrElement]]
         comment_before_previous_value = False
         comment_before_next_value = False
         for past_node in node_to_remove.iter_previous(skip_current=True):
             past_token = past_node.value
-            if past_token.is_comment:
+            if isinstance(past_token, Deb822Token) and past_token.is_comment:
                 comment_before_previous_value = True
                 continue
             if isinstance(past_token, vtype):
@@ -505,7 +506,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
 
         for future_node in node_to_remove.iter_next(skip_current=True):
             future_token = future_node.value
-            if future_token.is_comment:
+            if isinstance(future_token, Deb822Token) and future_token.is_comment:
                 comment_before_next_value = True
                 continue
             if isinstance(future_token, vtype):
@@ -550,7 +551,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         self.append_value(vt)
 
     def append_value(self, vt):
-        # type: (VT) -> None
+        # type: (VE) -> None
         value_parts = self._token_list
         if value_parts:
             needs_separator = False
@@ -575,7 +576,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
     def _previous_is_newline(self):
         # type: () -> bool
         tail = self._token_list.tail
-        return tail is not None and tail.text.endswith("\n")
+        return tail is not None and tail.convert_to_text().endswith("\n")
 
     def append_newline(self):
         # type: () -> None
@@ -586,7 +587,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
     def append_comment(self, comment_text):
         # type: (str) -> None
         tail = self._token_list.tail
-        if tail is None or not tail.text.endswith('\n'):
+        if tail is None or not tail.convert_to_text().endswith('\n'):
             self.append_newline()
         comment_token = Deb822CommentToken(_format_comment(comment_text))
         self._token_list.append(comment_token)
@@ -594,7 +595,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
     def _append_continuation_line_token_if_necessary(self):
         # type: () -> None
         tail = self._token_list.tail
-        if tail is not None and tail.text.endswith("\n"):
+        if tail is not None and tail.convert_to_text().endswith("\n"):
             self._token_list.append(Deb822ValueContinuationToken())
 
     def reformat_when_finished(self):
@@ -615,6 +616,14 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         self._format_with_leading_whitespace_matching_field_length = False
         self._format_trailing_separator_after_last_element = False
         self._format_preserve_original_formatting = True
+
+    def _iter_content_as_tokens(self):
+        # type: () -> Iterable[Deb822Token]
+        for te in self._token_list:
+            if isinstance(te, Deb822Element):
+                yield from te.iter_tokens()
+            else:
+                yield te
 
     def _generate_reformatted_field_content(self):
         # type: () -> str
@@ -640,45 +649,54 @@ class Deb822ParsedTokenList(Generic[VT, ST],
 
         vtype = self._vtype
         token_iter = (t for t in self._token_list
-                      if t.is_comment or isinstance(t, vtype)
-                      )  # type: Iterator[Deb822Token]
+                      if (isinstance(t, Deb822Token) and t.is_comment) or isinstance(t, vtype)
+                      )  # type: Iterator[Union[Deb822Token, VE]]
 
         def _token_iter():
             # type: () -> Iterable[str]
-            first_token = next(token_iter, None)  # type: Optional[Deb822Token]
-            assert first_token is not None and isinstance(first_token, vtype)
-            # Leading space after ":"
-            yield ' '
-            # Not sure why mypy concludes that first_token must be "<nothing>"
-            # when it is clearly typed as a Deb822Token plus it would have
-            # passed an "assert isinstance" check too.
-            yield first_token.text  # type: ignore
+            first_token = next(token_iter, None)  # type: Optional[Union[Deb822Token, VE]]
             pending_separator = True
             ended_on_a_newline = False
-            last_token = first_token  # type: Deb822Token
+            if isinstance(first_token, vtype):
+                # Leading space after ":"
+                yield ' '
+                yield first_token.convert_to_text()
+            else:
+                # Comment
+                assert isinstance(first_token, Deb822Token) and first_token.is_comment
+                yield "\n"
+                yield first_token.text
+                ended_on_a_newline = True
+                pending_separator = False
+
+            last_token = first_token  # type: Union[Deb822Token, VE]
             for t in token_iter:
-                if t.is_comment:
-                    if pending_separator:
-                        if separator_as_text:
-                            yield separator_as_text
-                    if not last_token.is_comment or not separator_includes_newline:
-                        yield "\n"
-                    yield t.text
-                    pending_separator = False
-                    ended_on_a_newline = True
-                else:
+                if isinstance(t, vtype):
                     if pending_separator:
                         yield separator_with_space
                         ended_on_a_newline = separator_includes_newline
                     if ended_on_a_newline:
                         yield space_after_newline
-                    yield t.text
+                    yield t.convert_to_text()
                     ended_on_a_newline = False
                     pending_separator = True
+                else:
+                    # Assert for mypy (and future changes)
+                    assert isinstance(t, Deb822Token) and t.is_comment
+                    if pending_separator and separator_as_text:
+                        yield separator_as_text
+                    if not separator_includes_newline or \
+                            (not isinstance(last_token, Deb822Token) or not last_token.is_comment):
+                        yield "\n"
+                    yield t.text
+                    pending_separator = False
+                    ended_on_a_newline = True
+
                 last_token = t
 
             # We do not support values ending on a comment
-            assert last_token is not None and not last_token.is_comment
+            assert last_token is not None
+            assert not isinstance(last_token, Deb822Token) or not last_token.is_comment
             if self._format_trailing_separator_after_last_element and separator_as_text:
                 yield separator_as_text
             yield '\n'
@@ -687,7 +705,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
 
     def _generate_field_content(self):
         # type: () -> str
-        return "".join(t.text for t in self._token_list)
+        return "".join(t.text for t in self._iter_content_as_tokens())
 
     def _update_field(self):
         # type: () -> None
@@ -696,16 +714,16 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         token_list = self._token_list
         tail = token_list.tail
 
-        for t in token_list:
+        for t in self._iter_content_as_tokens():
             if not t.is_comment and not t.is_whitespace:
                 break
         else:
             raise ValueError("Field must have content (i.e. non-whitespace and non-comments)")
 
         assert tail is not None
-        if tail.is_comment:
+        if isinstance(tail, Deb822Token) and tail.is_comment:
             raise ValueError("Fields must not end on a comment")
-        if not tail.text.endswith("\n"):
+        if not tail.convert_to_text().endswith("\n"):
             # Always end on a newline
             self.append_newline()
 
@@ -731,7 +749,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         self._changed = False
 
     def sort(self, *,
-             key=None,  # type: Optional[Callable[[VT], Any]]
+             key=None,  # type: Optional[Callable[[VE], Any]]
              reverse=False,  # type: bool
     ):
         # type: (...) -> None
@@ -753,7 +771,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
         stype = self._stype
 
         def key_func(x):
-            # type: (Tuple[VT, List[Deb822Token]]) -> Any
+            # type: (Tuple[VE, List[TokenOrElement]]) -> Any
             if key:
                 return key(x[0])
             return x[0].convert_to_text()
@@ -762,7 +780,7 @@ class Deb822ParsedTokenList(Generic[VT, ST],
 
         for node in self._token_list.iter_nodes():
             value = node.value
-            if value.is_comment:
+            if isinstance(value, Deb822Token) and value.is_comment:
                 if comment_start_node is None:
                     comment_start_node = node
                 continue
@@ -818,11 +836,11 @@ class Interpretation(Generic[T]):
         raise NotImplementedError  # pragma: no cover
 
 
-class GenericContentBasedInterpretation(Interpretation[T]):
+class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
 
     def __init__(self,
                  tokenizer,  # type: Callable[[str], Iterable['Deb822Token']]
-                 value_parser,  # type: ValueParser
+                 value_parser,  # type: StreamingValueParser[VE]
                  ):
         # type: (...) -> None
         super().__init__()
@@ -830,7 +848,7 @@ class GenericContentBasedInterpretation(Interpretation[T]):
         self._value_parser = value_parser
 
     def _high_level_interpretation(self, kvpair_element, token_list):
-        # type: (Deb822KeyValuePairElement, List['Deb822Token']) -> T
+        # type: (Deb822KeyValuePairElement, List['TokenOrElement']) -> T
         raise NotImplementedError  # pragma: no cover
 
     def _value_lines_tokenization(
@@ -848,13 +866,11 @@ class GenericContentBasedInterpretation(Interpretation[T]):
             if vl.newline_token:
                 yield vl.newline_token
 
-    def _parse_kvpair(
-            self,
-            kvpair,  # type: Deb822KeyValuePairElement
-    ):
-        # type: (...) -> Iterable[Deb822Token]
-        vlines = kvpair.value_element.value_lines
-        buffered_iterator = BufferingIterator(self._value_lines_tokenization(vlines))
+    def _parse_stream(self,
+                      buffered_iterator,  # type: BufferingIterator[Deb822Token]
+                      ):
+        # type: (...) -> Iterable[Union[Deb822Token, VE]]
+
         value_parser = self._value_parser
         for token in buffered_iterator:
             if isinstance(token, Deb822ValueToken):
@@ -862,52 +878,71 @@ class GenericContentBasedInterpretation(Interpretation[T]):
             else:
                 yield token
 
+    def _parse_kvpair(
+            self,
+            kvpair,  # type: Deb822KeyValuePairElement
+    ):
+        # type: (...) -> Iterable[Union[Deb822Token, VE]]
+        vlines = kvpair.value_element.value_lines
+        buffered_iterator = BufferingIterator(self._value_lines_tokenization(vlines))
+        yield from self._parse_stream(buffered_iterator)
+
+    def _parse_str(self, content):
+        # type: (str) -> Iterable[Union[Deb822Token, VE]]
+        biter = BufferingIterator(flatten_with_len_check(content, self._tokenizer(content)))
+        yield from self._parse_stream(biter)
+
     def interpret(self, kvpair_element):
         # type: (Deb822KeyValuePairElement) -> T
-        token_list = []  # type: List['Deb822Token']
+        token_list = []  # type: List['TokenOrElement']
         token_list.extend(self._parse_kvpair(kvpair_element))
         return self._high_level_interpretation(kvpair_element, token_list)
 
 
-def _tokenizer_to_value_factory(tokenizer,  # type: Callable[[str], Iterable['Deb822Token']]
-                                vtype,  # type: Type[VT]
-                                ):
-    # type: (...) -> Callable[[str], VT]
+def _parser_to_value_factory(parser,  # type: StrToValueParser[VE]
+                             vtype,  # type: Type[VE]
+                             ):
+    # type: (...) -> Callable[[str], VE]
     def _value_factory(v):
-        # type: (str) -> VT
+        # type: (str) -> VE
         if v == '':
             raise ValueError("The empty string is not a value")
-        token_iter = iter(tokenizer(v))
-        t1 = next(token_iter, None)  # type: Optional[Union[Deb822Token, VT]]
+        token_iter = iter(parser(v))
+        t1 = next(token_iter, None)  # type: Optional[Union[TokenOrElement]]
         t2 = next(token_iter, None)
-        assert t1 is not None, 'Bad tokenizer - it returned None (or no tokens) for "' + v + '"'
+        assert t1 is not None, 'Bad parser - it returned None (or no TE) for "' + v + '"'
         if t2 is not None:
             msg = textwrap.dedent("""\
-            The input "{v}" should have been exactly one token, but the tokenizer provided at
+            The input "{v}" should have been exactly one element, but the parser provided at
              least two.  This can happen with unnecessary leading/trailing whitespace
              or including commas the value for a comma list.
             """).format(v=v)
             raise ValueError(msg)
         if not isinstance(t1, vtype):
-            msg = 'The input "{v}" should have produced a token of type {vtype_name}, but' \
+            if isinstance(t1, Deb822Token) and (t1.is_comment or t1.is_whitespace):
+                raise ValueError('The input "{v}" is whitespace or a comment: Expected a value')
+            msg = 'The input "{v}" should have produced a element of type {vtype_name}, but' \
                   ' instead it produced {t1}'
             raise ValueError(msg.format(v=v, vtype_name=vtype.__name__, t1=t1))
 
-        assert len(t1.text) == len(v), "Bad tokenizer - the token did not cover the input text" \
-                                       " exactly ({t1_len} != {v_len}".format(
-            t1_len=len(t1.text), v_len=len(v)
-        )
-        return t1
+        # Indirection to work around mypy
+        value_element = cast('VE', t1)
+        assert len(value_element.convert_to_text()) == len(v), \
+            "Bad tokenizer - the token did not cover the input text" \
+            " exactly ({t1_len} != {v_len}".format(
+                t1_len=len(value_element.convert_to_text()), v_len=len(v)
+            )
+        return value_element
 
     return _value_factory
 
 
-class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList[VT, ST]]):
+class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList[VE, ST], VE]):
 
     def __init__(self,
                  tokenizer,  # type: Callable[[str], Iterable['Deb822Token']]
-                 value_parser,  # type: ValueParser
-                 vtype,  # type: Type[VT]
+                 value_parser,  # type: StreamingValueParser[VE]
+                 vtype,  # type: Type[VE]
                  stype,  # type: Type[ST]
                  default_separator_factory,  # type: Callable[[], ST]
                  ):
@@ -919,15 +954,15 @@ class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList
 
     def _high_level_interpretation(self,
                                    kvpair_element,  # type: Deb822KeyValuePairElement
-                                   token_list,  # type: List['Deb822Token']
+                                   token_list,  # type: List['TokenOrElement']
                                    ):
-        # type: (...) -> Deb822ParsedTokenList[VT, ST]
+        # type: (...) -> Deb822ParsedTokenList[VE, ST]
         return Deb822ParsedTokenList(
             kvpair_element,
             token_list,
             self._vtype,
             self._stype,
-            self._tokenizer,
+            self._parse_str,
             self._default_separator_factory,
         )
 
@@ -962,8 +997,8 @@ def _comma_separated_list_of_tokens(v):
 
 
 def _parse_whitespace_list_value(token, _):
-    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822Token
-    return token
+    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822ParsedValueElement
+    return Deb822ParsedValueElement([token])
 
 
 def _is_comma_token(v):
@@ -973,9 +1008,9 @@ def _is_comma_token(v):
 
 
 def _parse_comma_list_value(token, buffered_iterator):
-    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822Token
+    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822ParsedValueElement
     comma_offset = buffered_iterator.peek_find(_is_comma_token)
-    value_parts = []
+    value_parts = [token]
     if comma_offset is not None:
         # The value is followed by a comma and now we know where it ends
         value_parts.extend(buffered_iterator.peek_many(comma_offset - 1))
@@ -986,10 +1021,8 @@ def _parse_comma_list_value(token, buffered_iterator):
     while value_parts and not isinstance(value_parts[-1], Deb822ValueToken):
         value_parts.pop()
 
-    if not value_parts:
-        return token
-    buffered_iterator.consume_many(len(value_parts))
-    return Deb822ParsedMultilineValueToken(token.text + "".join(t.text for t in value_parts))
+    buffered_iterator.consume_many(len(value_parts) - 1)
+    return Deb822ParsedValueElement(value_parts)
 
 
 class Deb822Element:
@@ -1192,6 +1225,45 @@ class Deb822ValueElement(Deb822Element):
         # type: () -> None
         if self._value_entry_elements:
             self._value_entry_elements[-1].add_newline_if_missing()
+
+
+class Deb822ParsedValueElement(Deb822Element):
+
+    __slots__ = ('_text_cached', '_text_no_comments_cached', '_token_list')
+
+    def __init__(self, tokens):
+        # type: (List[Deb822Token]) -> None
+        super().__init__()
+        self._token_list = tokens
+        self._init_parent_of_parts()
+        if not isinstance(tokens[0], Deb822ValueToken) or \
+                not isinstance(tokens[-1], Deb822ValueToken):
+            raise ValueError(self.__class__.__name__ + " MUST start and end on a Deb822ValueToken")
+        if len(tokens) == 1:
+            token = tokens[0]
+            self._text_cached = token.text  # type: Optional[str]
+            self._text_no_comments_cached = token.text  # type: Optional[str]
+        else:
+            self._text_cached = None
+            self._text_no_comments_cached = None
+
+    def convert_to_text(self):
+        # type: () -> str
+        if self._text_no_comments_cached is None:
+            self._text_no_comments_cached = super().convert_to_text()
+        return self._text_no_comments_cached
+
+    def convert_to_text_without_comments(self):
+        # type: () -> str
+        if self._text_no_comments_cached is None:
+            self._text_no_comments_cached = "".join(t.text
+                                                    for t in self.iter_tokens()
+                                                    if not t.is_comment)
+        return self._text_no_comments_cached
+
+    def iter_parts(self):
+        # type: () -> Iterable[TokenOrElement]
+        yield from self._token_list
 
 
 class Deb822CommentElement(Deb822Element):
@@ -2613,13 +2685,13 @@ _combine_kvp_elements_into_paragraphs = combine_into_replacement(
 
 LIST_SPACE_SEPARATED_INTERPRETATION = ListInterpretation(_whitespace_separated_list_of_tokens,
                                                          _parse_whitespace_list_value,
-                                                         Deb822ValueToken,
+                                                         Deb822ParsedValueElement,
                                                          Deb822SemanticallySignificantWhiteSpace,
                                                          lambda: Deb822SpaceSeparatorToken(' '),
                                                          )
 LIST_COMMA_SEPARATED_INTERPRETATION = ListInterpretation(_comma_separated_list_of_tokens,
                                                          _parse_comma_list_value,
-                                                         Deb822ValueToken,
+                                                         Deb822ParsedValueElement,
                                                          Deb822CommaToken,
                                                          Deb822CommaToken,
                                                          )

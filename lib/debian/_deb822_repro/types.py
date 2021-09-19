@@ -3,7 +3,9 @@ try:
 
     if TYPE_CHECKING:
         from debian._deb822_repro.tokens import Deb822Token, Deb822FieldNameToken
-        from debian._deb822_repro.parsing import Deb822Element, Deb822CommentElement
+        from debian._deb822_repro.parsing import (
+            Deb822Element, Deb822CommentElement, Deb822ParsedValueElement
+        )
 
     # Used a generic type for any case where we need a generic type without any bounds
     # (e.g. for the LinkedList interface and some super-classes/mixins).
@@ -24,9 +26,9 @@ try:
     For internal usage in _deb822_repro
     """
 
-    VT = TypeVar('VT', bound='Deb822Token')
-    VT.__doc__ = """
-    Value type/token in a list interpretation of a field value
+    VE = TypeVar('VE', bound='Deb822Element')
+    VE.__doc__ = """
+    Value type/element in a list interpretation of a field value
     """
 
     ST = TypeVar('ST', bound='Deb822Token')

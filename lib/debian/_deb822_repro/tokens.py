@@ -244,19 +244,6 @@ class Deb822ValueToken(Deb822Token):
     __slots__ = ()
 
 
-# TODO: This should probably be converted into an Element of some form
-class Deb822ParsedMultilineValueToken(Deb822ValueToken):
-    """Special token used in interpreted values where the value can contain newlines"""
-
-    __slots__ = ()
-
-    def _verify_token_text(self):
-        # type: () -> None
-        if self._text[0].isspace() or self._text[-1].isspace():
-            raise ValueError(self.__class__.__name__ +
-                             " tokens MUST NOT start nor end on whitespace")
-
-
 class Deb822ValueDependencyToken(Deb822Token):
     """Package name, architecture name, a version number, or a profile name in a dependency field"""
 

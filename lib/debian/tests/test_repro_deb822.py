@@ -33,13 +33,13 @@ from debian._deb822_repro import (parse_deb822_file,
                                   Interpretation,
                                   )
 from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
-    Deb822FileElement
+    Deb822FileElement, Deb822ParsedValueElement
 from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
 from debian._deb822_repro._util import print_ast
 
 try:
     from typing import Any, Iterator, Tuple
-    from debian._deb822_repro.types import VT, ST
+    from debian._deb822_repro.types import VE, ST
 except ImportError:
     pass
 
@@ -732,10 +732,10 @@ class FormatPreservingDeb822ParserTests(TestCase):
         @contextlib.contextmanager
         def _field_mutation_test(
                 kvpair,           # type: Deb822KeyValuePairElement
-                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VT, ST]]
+                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
                 expected_output,  # type: str
                 ):
-            # type: (...) -> Iterator[Deb822ParsedTokenList[VT, ST]]
+            # type: (...) -> Iterator[Deb822ParsedTokenList[VE, ST]]
             original_value_element = kvpair.value_element
             with kvpair.interpret_as(interpretation) as value_list:
                 yield value_list
@@ -1041,8 +1041,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
             }
 
             def _key_func(value):
-                # type: (Deb822Token) -> Any
-                v = value.text
+                # type: (Deb822ParsedValueElement) -> Any
+                v = value.convert_to_text()
                 if '-' in v:
                     ov = order.get(v.split('-')[0])
                     if ov is None:
