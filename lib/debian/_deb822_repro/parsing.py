@@ -754,12 +754,12 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         kvpair_element.value_element = new_kvpair_element.value_element
         self._changed = False
 
-    def sort(self, *,
-             key=None,  # type: Optional[Callable[[VE], Any]]
-             reverse=False,  # type: bool
-    ):
+    def sort_elements(self, *,
+                      key=None,  # type: Optional[Callable[[VE], Any]]
+                      reverse=False,  # type: bool
+                      ):
         # type: (...) -> None
-        """Sort the elements (values) in this list.
+        """Sort the elements (abstract values) in this list.
 
         This method will sort the logical values of the list. It will
         attempt to preserve comments associated with a given value where
@@ -833,6 +833,30 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
             self._token_list.extend(comments)
             self.append_value(value)
+
+    def sort(self,
+             *,
+             key=None,  # type: Optional[Callable[[str], Any]]
+             **kwargs,  # type: Any
+    ):
+        # type: (...) -> None
+        """Sort the values (rendered as str) in this list.
+
+        This method will sort the logical values of the list. It will
+        attempt to preserve comments associated with a given value where
+        possible.  Whether space and separators are preserved depends on
+        the contents of the field as well as the formatting settings.
+
+        Sorting (without reformatting) is likely to leave you with "awkward"
+        whitespace. Therefore, you almost always want to apply reformatting
+        such as the reformat_when_finished() method.
+
+        Sorting will invalidate all ValueReferences.
+        """
+        if key is not None:
+            render = self._render
+            kwargs['key'] = lambda vt: key(render(vt))
+        self.sort_elements(**kwargs)
 
 
 class Interpretation(Generic[T]):

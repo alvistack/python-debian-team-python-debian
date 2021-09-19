@@ -1050,9 +1050,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 'hurd': 2,
             }
 
-            def _key_func(value):
-                # type: (Deb822ParsedValueElement) -> Any
-                v = value.convert_to_text()
+            def _key_func(v):
+                # type: (str) -> Any
                 if '-' in v:
                     ov = order.get(v.split('-')[0])
                     if ov is None:
