@@ -33,13 +33,13 @@ from debian._deb822_repro import (parse_deb822_file,
                                   Interpretation,
                                   )
 from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
-    Deb822FileElement
+    Deb822FileElement, Deb822ParsedValueElement
 from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
 from debian._deb822_repro._util import print_ast
 
 try:
     from typing import Any, Iterator, Tuple
-    from debian._deb822_repro.types import VT, ST
+    from debian._deb822_repro.types import VE, ST
 except ImportError:
     pass
 
@@ -712,7 +712,19 @@ class FormatPreservingDeb822ParserTests(TestCase):
         # Also on kfreebsd
           kfreebsd-amd64  kfreebsd-i386
         # With leading comma :)
-        Some-Comma-List: , a,  b , c
+        Some-Comma-List: , a,  b , c d, e
+        Multiline-Comma-List: some
+        # Invisible drive by comment
+          , fun ,with
+          multi-line
+        # With a comment inside it for added fun
+          values
+          ,
+        # Also an invisible comment here
+          separated by
+           ,commas
+        # Comments in final value
+             >:)
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
@@ -720,10 +732,10 @@ class FormatPreservingDeb822ParserTests(TestCase):
         @contextlib.contextmanager
         def _field_mutation_test(
                 kvpair,           # type: Deb822KeyValuePairElement
-                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VT, ST]]
+                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
                 expected_output,  # type: str
                 ):
-            # type: (...) -> Iterator[Deb822ParsedTokenList[VT, ST]]
+            # type: (...) -> Iterator[Deb822ParsedTokenList[VE, ST]]
             original_value_element = kvpair.value_element
             with kvpair.interpret_as(interpretation) as value_list:
                 yield value_list
@@ -743,55 +755,78 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
         arch_kvpair = source_paragraph.get_kvpair_element('Architecture')
         comma_list_kvpair = source_paragraph.get_kvpair_element('Some-Comma-List')
-        assert arch_kvpair is not None and comma_list_kvpair is not None
+        multiline_comma_list_kvpair = source_paragraph.get_kvpair_element('Multiline-Comma-List')
+        assert arch_kvpair is not None and comma_list_kvpair is not None \
+            and multiline_comma_list_kvpair is not None
         archs = arch_kvpair.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
         comma_list_misread = comma_list_kvpair.interpret_as(
             LIST_SPACE_SEPARATED_INTERPRETATION
         )
         self.assertEqual(['amd64', 'i386', 'kfreebsd-amd64', 'kfreebsd-i386'],
                          list(archs))
-        self.assertEqual([',', 'a,', 'b', ',', 'c'],
+        self.assertEqual([',', 'a,', 'b', ',', 'c', 'd,', 'e'],
                          list(comma_list_misread))
 
         comma_list_correctly_read = comma_list_kvpair.interpret_as(
             LIST_COMMA_SEPARATED_INTERPRETATION
         )
+        ml_comma_list = multiline_comma_list_kvpair.interpret_as(
+            LIST_COMMA_SEPARATED_INTERPRETATION
+        )
+        ml_comma_list_w_comments = multiline_comma_list_kvpair.interpret_as(
+            LIST_COMMA_SEPARATED_INTERPRETATION,
+            discard_comments_on_read=False
+        )
 
-        self.assertEqual(['a', 'b', 'c'], list(comma_list_correctly_read))
+        self.assertEqual(['a', 'b', 'c d', 'e'], list(comma_list_correctly_read))
+
+        self.assertEqual(["some",
+                          "fun",
+                          "with\n  multi-line\n  values",
+                          "separated by",
+                          "commas\n     >:)"],
+                         list(ml_comma_list))
+        self.assertEqual(["some",
+                          "fun",
+                          "with\n  multi-line\n# With a comment inside it for added fun\n  values",
+                          "separated by",
+                          "commas\n# Comments in final value\n     >:)"],
+                         list(ml_comma_list_w_comments))
 
         # Interpretation must not change the content
         self.assertEqual(original, deb822_file.convert_to_text())
 
         # But we can choose to modify the content
-        expected_result = 'Some-Comma-List: , a,  b , c, d,e,\n'
+        expected_result = 'Some-Comma-List: , a,  b , c d, e, f,g,\n'
         with _field_mutation_test(comma_list_kvpair,
                                   LIST_COMMA_SEPARATED_INTERPRETATION,
                                   expected_result) as comma_list:
             comma_list.no_reformatting_when_finished()
-            comma_list.append('d')
+            comma_list.append('f')
             # We can also omit the space after a separator
             comma_list.append_separator(space_after_separator=False)
-            comma_list.append('e')
+            comma_list.append('g')
             comma_list.append_separator(space_after_separator=False)
 
         # ... and this time we reformat to make it look nicer
         expected_result = textwrap.dedent('''\
             Some-Comma-List: a,
-                             c,
-            # Something important about "d"
+                             c d,
+                             e,
+            # Something important about "f"
             #
             # ... that spans multiple lines    ¶
-                             d,
+                             f,
         ''').replace('¶', '')
         with _field_mutation_test(comma_list_kvpair,
                                   LIST_COMMA_SEPARATED_INTERPRETATION,
                                   expected_result) as comma_list:
             comma_list.reformat_when_finished()
-            comma_list.append_comment('Something important about "d"')
+            comma_list.append_comment('Something important about "f"')
             comma_list.append_comment('')
             # We can control spacing by explicitly using "#" and "\n"
             comma_list.append_comment('# ... that spans multiple lines    \n')
-            comma_list.append('d')
+            comma_list.append('f')
             comma_list.remove('b')
 
         # If we choose the wrong type of interpretation, the result should still be a valid Deb822 file
@@ -802,13 +837,15 @@ class FormatPreservingDeb822ParserTests(TestCase):
                               b
                               ,
                               c
-                              d
+                              d,
+                              e
+                              f
              ''')
         with _field_mutation_test(comma_list_kvpair,
                                   LIST_SPACE_SEPARATED_INTERPRETATION,
                                   expected_result) as comma_list_misread:
             comma_list_misread.reformat_when_finished()
-            comma_list_misread.append('d')
+            comma_list_misread.append('f')
 
         # This method also preserves existing comments
         expected_result = textwrap.dedent('''\
@@ -1013,9 +1050,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 'hurd': 2,
             }
 
-            def _key_func(value):
-                # type: (Deb822Token) -> Any
-                v = value.text
+            def _key_func(v):
+                # type: (str) -> Any
                 if '-' in v:
                     ov = order.get(v.split('-')[0])
                     if ov is None:
