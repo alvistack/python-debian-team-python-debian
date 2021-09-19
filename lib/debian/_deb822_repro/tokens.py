@@ -7,7 +7,7 @@ from debian._deb822_repro._util import resolve_ref, BufferingIterator
 from debian.deb822 import _strI
 
 try:
-    from typing import Optional, cast, TYPE_CHECKING, Iterable, Union, Dict
+    from typing import Optional, cast, TYPE_CHECKING, Iterable, Union, Dict, Callable
 except ImportError:
     TYPE_CHECKING = False
     cast = lambda t, v: v
@@ -17,6 +17,46 @@ if TYPE_CHECKING:
 
 
 _RE_WHITESPACE_LINE = re.compile(r'^\s+$')
+# Consume whitespace and a single word.
+_RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
+    (?P<space_before>\s*)                # Consume any whitespace before the word
+                                         # The space only occurs in practise if the line starts
+                                         # with space.
+
+                                         # Optionally consume a word (needed to handle the case
+                                         # when there are no words left and someone applies this
+                                         # pattern to the remaining text). This is mostly here as
+                                         # a fail-safe.
+
+    (?P<word>\S+)                        # Consume the word (if present)
+    (?P<trailing_whitespace>\s*)         # Consume trailing whitespace
+''', re.VERBOSE)
+_RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
+    # This regex is slightly complicated by the fact that it should work with
+    # finditer and comsume the entire value.
+    #
+    # To do this, we structure the regex so it always starts on a comma (except
+    # for the first iteration, where we permit the absence of a comma)
+
+    (?:                                      # Optional space followed by a mandatory comma unless
+                                             # it is the start of the "line" (in which case, we
+                                             # allow the comma to be omitted)
+        ^
+        |
+        (?:
+            (?P<space_before_comma>\s*)      # This space only occurs in practise if the line
+                                             # starts with space + comma.
+            (?P<comma> ,)
+        )
+    )
+
+    # From here it is "optional space, maybe a word and then optional space" again.  One reason why
+    # all of it is optional is to gracefully cope with trailing commas.
+    (?P<space_before_word>\s*)
+    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma separated list.
+                                             # But surrounding whitespace is ignored
+    (?P<space_after_word>\s*)
+''', re.VERBOSE)
 
 # From Policy 5.1:
 #
@@ -366,3 +406,53 @@ def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb8
                 yield Deb822NewlineAfterValueToken()
         else:
             yield Deb822ErrorToken(line)
+
+
+def _value_line_tokenizer(func):
+    # type: (Callable[[str], Iterable[Deb822Token]]) -> (Callable[[str], Iterable[Deb822Token]])
+    def impl(v):
+        # type: (str) -> Iterable[Deb822Token]
+        for line in v.splitlines(keepends=True):
+            assert not _RE_WHITESPACE_LINE.match(v)
+            if line.startswith("#"):
+                yield Deb822CommentToken(line)
+                continue
+            has_newline = False
+            if line.endswith("\n"):
+                has_newline = True
+                line = line[:-1]
+            yield from func(line)
+            if has_newline:
+                yield Deb822NewlineAfterValueToken()
+    return impl
+
+
+@_value_line_tokenizer
+def whitespace_split_tokenizer(v):
+    # type: (str) -> Iterable[Deb822Token]
+    assert "\n" not in v
+    for match in _RE_WHITESPACE_SEPARATED_WORD_LIST.finditer(v):
+        space_before, word, space_after = match.groups()
+        if space_before:
+            yield Deb822SpaceSeparatorToken(sys.intern(space_before))
+        yield Deb822ValueToken(word)
+        if space_after:
+            yield Deb822SpaceSeparatorToken(sys.intern(space_after))
+
+
+@_value_line_tokenizer
+def comma_split_tokenizer(v):
+    # type: (str) -> Iterable[Deb822Token]
+    assert "\n" not in v
+    for match in _RE_COMMA_SEPARATED_WORD_LIST.finditer(v):
+        space_before_comma, comma, space_before_word, word, space_after_word = match.groups()
+        if space_before_comma:
+            yield Deb822WhitespaceToken(sys.intern(space_before_comma))
+        if comma:
+            yield Deb822CommaToken()
+        if space_before_word:
+            yield Deb822WhitespaceToken(sys.intern(space_before_word))
+        if word:
+            yield Deb822ValueToken(word)
+        if space_after_word:
+            yield Deb822WhitespaceToken(sys.intern(space_after_word))
