@@ -62,6 +62,18 @@ class Deb822Token:
         self._text = text  # type: str
         self._hash = None  # type: Optional[int]
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
+        self._verify_token_text()
+
+    def __repr__(self):
+        # type: () -> str
+        if self._text != "":
+            return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
+                                                text=self._text.replace('\n', '\\n')
+                                                )
+        return self.__class__.__name__
+
+    def _verify_token_text(self):
+        # type: () -> None
         if '\n' in self._text:
             is_single_line_token = False
             if self.is_comment or isinstance(self, Deb822ErrorToken):
@@ -73,14 +85,6 @@ class Deb822Token:
             if is_single_line_token and '\n' in self.text[:-1]:
                 raise ValueError("Comments and error tokens must not contain embedded newlines"
                                  " (only end on one)")
-
-    def __repr__(self):
-        # type: () -> str
-        if self._text != "":
-            return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
-                                                text=self._text.replace('\n', '\\n')
-                                                )
-        return self.__class__.__name__
 
     @property
     def is_whitespace(self):
@@ -238,6 +242,19 @@ class Deb822ValueToken(Deb822Token):
     """A field value can be split into multi "Deb822ValueToken"s (as well as separator tokens)"""
 
     __slots__ = ()
+
+
+# TODO: This should probably be converted into an Element of some form
+class Deb822ParsedMultilineValueToken(Deb822ValueToken):
+    """Special token used in interpreted values where the value can contain newlines"""
+
+    __slots__ = ()
+
+    def _verify_token_text(self):
+        # type: () -> None
+        if self._text[0].isspace() or self._text[-1].isspace():
+            raise ValueError(self.__class__.__name__ +
+                             " tokens MUST NOT start nor end on whitespace")
 
 
 class Deb822ValueDependencyToken(Deb822Token):

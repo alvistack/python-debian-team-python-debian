@@ -328,6 +328,42 @@ class BufferingIterator(collections.abc.Iterator[T]):
             else:
                 break
 
+    def consume_many(self, count):
+        # type: (int) -> List[T]
+        self._fill_buffer(count)
+        buffer = self._buffer
+        if len(buffer) == count:
+            ret = list(buffer)
+            buffer.clear()
+        else:
+            ret = []
+            while buffer and count:
+                ret.append(buffer.popleft())
+                count -= 1
+        return ret
+
+    def peek_buffer(self):
+        # type: () -> List[T]
+        return list(self._buffer)
+
+    def peek_find(self,
+                  predicate,  # type: Callable[[T], bool]
+                  limit=None,  # type: Optional[int]
+                  ):
+        # type: (...) -> Optional[int]
+        buffer = self._buffer
+        i = 0
+        while limit is None or i < limit:
+            if i >= len(buffer):
+                self._fill_buffer(i + 5)
+                if i >= len(buffer):
+                    return None
+            v = buffer[i]
+            if predicate(v):
+                return i + 1
+            i += 1
+        return None
+
     def _fill_buffer(self, number):
         # type: (int) -> bool
         if not self._expired:
@@ -351,7 +387,19 @@ class BufferingIterator(collections.abc.Iterator[T]):
     def peek_many(self, number):
         # type: (int) -> List[T]
         self._fill_buffer(number)
-        return list(self._buffer)
+        buffer = self._buffer
+        if len(buffer) == number:
+            ret = list(buffer)
+        elif number:
+            ret = []
+            for t in buffer:
+                ret.append(t)
+                number -= 1
+                if not number:
+                    break
+        else:
+            ret = []
+        return ret
 
 
 def flatten_with_len_check(line,  # type: str

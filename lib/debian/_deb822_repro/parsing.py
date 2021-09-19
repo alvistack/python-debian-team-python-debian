@@ -149,6 +149,21 @@ from abc import ABC
 from types import TracebackType
 from weakref import ReferenceType
 
+from debian.deb822 import _strI, OrderedSet
+
+from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
+from debian._deb822_repro.tokens import (
+    Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
+    Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
+    Deb822ValueContinuationToken, Deb822NewlineAfterValueToken, Deb822CommaToken,
+    Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
+    _RE_WHITESPACE_LINE, tokenize_deb822_file, Deb822ParsedMultilineValueToken,
+)
+from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
+                                        combine_into_replacement, BufferingIterator,
+                                        flatten_with_len_check,
+)
+
 try:
     from typing import (
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
@@ -159,24 +174,11 @@ try:
         T, ST, VT, TE,
         ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
     )
+    ValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], Deb822Token]
 except ImportError:
     cast = lambda t, v: v
     overload = lambda f: None
 
-from debian.deb822 import _strI, OrderedSet
-
-from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
-from debian._deb822_repro.tokens import (
-    Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
-    Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
-    Deb822ValueContinuationToken, Deb822NewlineAfterValueToken, Deb822CommaToken,
-    Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
-    _RE_WHITESPACE_LINE, tokenize_deb822_file,
-)
-from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
-                                        combine_into_replacement, BufferingIterator,
-                                        flatten_with_len_check,
-)
 
 _RE_WHITESPACE = re.compile(r'\s+')
 # Consume whitespace and a single word.
@@ -816,36 +818,54 @@ class Interpretation(Generic[T]):
         raise NotImplementedError  # pragma: no cover
 
 
-class LineByLineBasedInterpretation(Interpretation[T]):
+class GenericContentBasedInterpretation(Interpretation[T]):
 
     def __init__(self,
-                 tokenizer):
-        # type: (Callable[[str], Iterable['Deb822Token']]) -> None
+                 tokenizer,  # type: Callable[[str], Iterable['Deb822Token']]
+                 value_parser,  # type: ValueParser
+                 ):
+        # type: (...) -> None
         super().__init__()
         self._tokenizer = tokenizer
+        self._value_parser = value_parser
 
     def _high_level_interpretation(self, kvpair_element, token_list):
         # type: (Deb822KeyValuePairElement, List['Deb822Token']) -> T
         raise NotImplementedError  # pragma: no cover
 
+    def _value_lines_tokenization(
+            self,
+            value_lines,  # type: List[Deb822ValueLineElement]
+    ):
+        # type: (...) -> Iterable[Deb822Token]
+        for vl in value_lines:
+            if vl.comment_element:
+                yield from vl.comment_element.iter_tokens()
+            if vl.continuation_line_token:
+                yield vl.continuation_line_token
+            content = vl.convert_content_to_text()
+            yield from flatten_with_len_check(content, self._tokenizer(content))
+            if vl.newline_token:
+                yield vl.newline_token
+
+    def _parse_kvpair(
+            self,
+            kvpair,  # type: Deb822KeyValuePairElement
+    ):
+        # type: (...) -> Iterable[Deb822Token]
+        vlines = kvpair.value_element.value_lines
+        buffered_iterator = BufferingIterator(self._value_lines_tokenization(vlines))
+        value_parser = self._value_parser
+        for token in buffered_iterator:
+            if isinstance(token, Deb822ValueToken):
+                yield value_parser(token, buffered_iterator)
+            else:
+                yield token
+
     def interpret(self, kvpair_element):
         # type: (Deb822KeyValuePairElement) -> T
-        code = self._tokenizer
         token_list = []  # type: List['Deb822Token']
-        for vl in kvpair_element.value_element.value_lines:
-            content_text = vl.convert_content_to_text()
-
-            value_parts = list(flatten_with_len_check(content_text,
-                                                      code(content_text)
-                                                      ))
-            if vl.comment_element:
-                token_list.extend(vl.comment_element.iter_tokens())
-            if vl.continuation_line_token:
-                token_list.append(vl.continuation_line_token)
-            token_list.extend(value_parts)
-            if vl.newline_token:
-                token_list.append(vl.newline_token)
-
+        token_list.extend(self._parse_kvpair(kvpair_element))
         return self._high_level_interpretation(kvpair_element, token_list)
 
 
@@ -882,16 +902,17 @@ def _tokenizer_to_value_factory(tokenizer,  # type: Callable[[str], Iterable['De
     return _value_factory
 
 
-class ListInterpretation(LineByLineBasedInterpretation[Deb822ParsedTokenList[VT, ST]]):
+class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList[VT, ST]]):
 
     def __init__(self,
                  tokenizer,  # type: Callable[[str], Iterable['Deb822Token']]
+                 value_parser,  # type: ValueParser
                  vtype,  # type: Type[VT]
                  stype,  # type: Type[ST]
                  default_separator_factory,  # type: Callable[[], ST]
                  ):
         # type: (...) -> None
-        super().__init__(tokenizer)
+        super().__init__(tokenizer, value_parser)
         self._vtype = vtype
         self._stype = stype
         self._default_separator_factory = default_separator_factory
@@ -938,6 +959,37 @@ def _comma_separated_list_of_tokens(v):
             yield Deb822ValueToken(word)
         if space_after_word:
             yield Deb822WhitespaceToken(sys.intern(space_after_word))
+
+
+def _parse_whitespace_list_value(token, _):
+    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822Token
+    return token
+
+
+def _is_comma_token(v):
+    # type: (TokenOrElement) -> bool
+    # Consume tokens until the next comma
+    return isinstance(v, Deb822CommaToken)
+
+
+def _parse_comma_list_value(token, buffered_iterator):
+    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822Token
+    comma_offset = buffered_iterator.peek_find(_is_comma_token)
+    value_parts = []
+    if comma_offset is not None:
+        # The value is followed by a comma and now we know where it ends
+        value_parts.extend(buffered_iterator.peek_many(comma_offset - 1))
+    else:
+        # The value is the last value there is.  Consume all remaining tokens
+        # and then trim from the right.
+        value_parts.extend(buffered_iterator.peek_buffer())
+    while value_parts and not isinstance(value_parts[-1], Deb822ValueToken):
+        value_parts.pop()
+
+    if not value_parts:
+        return token
+    buffered_iterator.consume_many(len(value_parts))
+    return Deb822ParsedMultilineValueToken(token.text + "".join(t.text for t in value_parts))
 
 
 class Deb822Element:
@@ -1558,7 +1610,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
     @property
     def has_duplicate_fields(self):
         # type: () -> bool
-        """Tell whether this paragragh has duplicate fields"""
+        """Tell whether this paragraph has duplicate fields"""
         return False
 
     def as_interpreted_dict_view(self,
@@ -2560,11 +2612,13 @@ _combine_kvp_elements_into_paragraphs = combine_into_replacement(
 
 
 LIST_SPACE_SEPARATED_INTERPRETATION = ListInterpretation(_whitespace_separated_list_of_tokens,
+                                                         _parse_whitespace_list_value,
                                                          Deb822ValueToken,
                                                          Deb822SemanticallySignificantWhiteSpace,
                                                          lambda: Deb822SpaceSeparatorToken(' '),
                                                          )
 LIST_COMMA_SEPARATED_INTERPRETATION = ListInterpretation(_comma_separated_list_of_tokens,
+                                                         _parse_comma_list_value,
                                                          Deb822ValueToken,
                                                          Deb822CommaToken,
                                                          Deb822CommaToken,
