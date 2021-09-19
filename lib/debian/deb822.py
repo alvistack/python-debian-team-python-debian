@@ -2316,8 +2316,8 @@ class Sources(Dsc, _PkgRelationMixin):
     using the field parsing of :class:`_PkgRelationMixin`.
     """
     _relationship_fields = [
-        'build-depends', 'build-depends-indep',
-        'build-conflicts', 'build-conflicts-indep',
+        'build-depends', 'build-depends-indep', 'build-depends-arch',
+        'build-conflicts', 'build-conflicts-indep', 'build-conflicts-arch',
         'binary',
     ]
 
