@@ -20,7 +20,8 @@ unit-tests:
 
 style:
   script:
-  - apt-get -y install pylint mypy
+  - apt-get -y install pylint mypy python3-pip
+  - python3 -m pip install types-chardet
   - ./debian/rules qa
   - rm lib/debian/_version.py
 

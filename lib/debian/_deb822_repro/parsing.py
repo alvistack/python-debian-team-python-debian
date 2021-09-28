@@ -165,7 +165,7 @@ from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
 try:
     from typing import (
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
-        cast, overload, Mapping,
+        cast, overload, Mapping, TYPE_CHECKING,
 )
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
@@ -175,8 +175,9 @@ try:
     StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
     StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
 except ImportError:
-    cast = lambda t, v: v
-    overload = lambda f: None
+    if not TYPE_CHECKING:
+        cast = lambda t, v: v
+        overload = lambda f: None
 
 
 class ValueReference(Generic[TE]):

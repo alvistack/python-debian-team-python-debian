@@ -41,13 +41,15 @@ try:
         TypeVar,
         Union,
         overload,
+        TYPE_CHECKING,
     )
     from typing_extensions import (
         Literal,
     )
 except ImportError:
     # Missing types aren't important at runtime
-    overload = lambda f: None
+    if not TYPE_CHECKING:
+        overload = lambda f: None
 
 
 from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
