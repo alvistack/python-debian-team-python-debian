@@ -5,15 +5,16 @@ default:
   before_script:
   - apt-get update
   - apt-get -y install make dpkg-dev
-  - apt-get -y install python3 python3-chardet python3-setuptools python3-pytest $OPTIONAL_DEPS
+  - apt-get -y install python3 python3-chardet python3-setuptools python3-pytest $OPTIONAL_DEPS $JOB_DEPS
   variables:
     OPTIONAL_DEPS: ""
+    JOB_DEPS: ""
 
 .depends-full:
   extends:
     .depends-minimal
   variables:
-    OPTIONAL_DEPS: python3-apt python3-pytest-cov python3-coverage
+    OPTIONAL_DEPS: python3-apt
 
 .unit-tests:
   script:
@@ -36,6 +37,7 @@ unit-tests:
     COVERAGE: --cov --cov-branch --cov-append
     # Generate a coverage report for the pages
     COVERAGE_REPORT: --cov-report=
+    JOB_DEPS: python3-pytest-cov python3-coverage
   artifacts:
     paths:
       - htmlcov
@@ -54,18 +56,20 @@ unit-tests-stable:
 style:
   extends: .depends-full
   script:
-  - apt-get -y install pylint mypy python3-pip
   - python3 -m pip install types-chardet
   - ./debian/rules qa
   - rm lib/debian/_version.py
+  variables:
+    JOB_DEPS: pylint mypy python3-pip
 
 docs:
   extends: .depends-full
   script:
-  - apt-get install -y make python3-sphinx
   - rm -f docs/api/*
   - ./debian/rules doc
   - mv build/sphinx/html/ docs/
+  variables:
+    JOB_DEPS: python3-sphinx
   artifacts:
     paths:
       - docs
