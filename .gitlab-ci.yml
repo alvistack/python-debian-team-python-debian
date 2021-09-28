@@ -1,24 +1,55 @@
 default:
   image: debian:unstable
 
+.depends-lite:
+  before_script:
+  - apt-get update
+  - apt-get -y install make dpkg-dev
+  - apt-get -y install python3 python3-chardet python3-setuptools python3-pytest
+
+.depends-full:
   before_script:
   - apt-get update
   - apt-get -y install make dpkg-dev
   - apt-get -y install python3 python3-apt python3-chardet python3-setuptools python3-pytest python3-pytest-cov python3-coverage
 
-unit-tests:
+.unit-tests:
   script:
   - ./debian/rules lib/debian/__init__.py
-  - LC_ALL=C py.test-3 --doctest-modules --cov --cov-branch --cov-append --cov-report= --verbose lib/
-  # Omit --cov-report here to generate a report that gitlab can pick up with its log parser
-  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules --cov --cov-branch --cov-append --verbose lib/
-  # Generate a coverage report for the pages
+  - LC_ALL=C py.test-3 --doctest-modules $COVERAGE --verbose lib/
+  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules $COVERAGE $COVERAGE_REPORT --verbose lib/
+  variables:
+    COVERAGE: ""
+    COVERAGE_REPORT: ""
+
+unit-tests:
+  extends:
+  - .depends-full
+  - .unit-tests
+  after_script:
   - python3-coverage html
+  variables:
+    # Omit --cov-report here to generate a report that gitlab can pick up with its log parser
+    COVERAGE: --cov --cov-branch --cov-append
+    # Generate a coverage report for the pages
+    COVERAGE_REPORT: --cov-report=
   artifacts:
     paths:
       - htmlcov
 
+unit-tests-lite:
+  extends:
+  - .depends-lite
+  - .unit-tests
+
+unit-tests-stable:
+  image: debian:stable
+  extends:
+  - .depends-full
+  - .unit-tests
+
 style:
+  extends: .depends-full
   script:
   - apt-get -y install pylint mypy python3-pip
   - python3 -m pip install types-chardet
@@ -26,8 +57,9 @@ style:
   - rm lib/debian/_version.py
 
 docs:
+  extends: .depends-full
   script:
-  - apt-get update && apt-get install -y make python3-sphinx
+  - apt-get install -y make python3-sphinx
   - rm -f docs/api/*
   - cd lib && sphinx-apidoc -e --private -H python-debian -o ../docs/api/ . deb822.py debian/tests/ debian_bundle/ && cd ..
   - PYTHONPATH=$PWD/lib make -C docs/ SPHINXOPTS="-a -v -n" html
@@ -49,29 +81,3 @@ pages:
     - public
   only:
   - master
-
-unit-tests-lite:
-  image: debian:unstable
-
-  before_script:
-  - apt-get update
-  - apt-get -y install make dpkg-dev
-  - apt-get -y install python3 python3-chardet python3-setuptools python3-pytest
-
-  script:
-  - ./debian/rules lib/debian/__init__.py
-  - LC_ALL=C py.test-3 --doctest-modules --verbose lib/
-  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules --verbose lib/
-
-unit-tests-stable:
-  image: debian:stable
-
-  before_script:
-  - apt-get update
-  - apt-get -y install make dpkg-dev
-  - apt-get -y install python3 python3-apt python3-chardet python3-setuptools python3-pytest
-
-  script:
-  - ./debian/rules lib/debian/__init__.py
-  - LC_ALL=C py.test-3 --doctest-modules --verbose lib/
-  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules --verbose lib/
