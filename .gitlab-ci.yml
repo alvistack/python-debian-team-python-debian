@@ -64,8 +64,7 @@ docs:
   script:
   - apt-get install -y make python3-sphinx
   - rm -f docs/api/*
-  - cd lib && sphinx-apidoc -e --private -H python-debian -o ../docs/api/ . deb822.py debian/tests/ debian_bundle/ && cd ..
-  - PYTHONPATH=$PWD/lib make -C docs/ SPHINXOPTS="-a -v -n" html
+  - ./debian/rules doc
   - mv build/sphinx/html/ docs/
   artifacts:
     paths:
