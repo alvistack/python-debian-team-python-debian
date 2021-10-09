@@ -3,7 +3,7 @@ from weakref import ReferenceType
 
 try:
     from typing import (
-        Iterable, Optional, Generic, Set, List, Iterator, TypeVar, TYPE_CHECKING, Any,
+        Iterable, Optional, Generic, Dict, List, Iterator, TypeVar, TYPE_CHECKING, Any,
     )
 
     # Used a generic type for any case where we need a generic type without any bounds
@@ -247,8 +247,13 @@ class OrderedSet(object):
 
     def __init__(self, iterable=None):
         # type: (Optional[Iterable[str]]) -> None
-        self.__set = set()  # type: Set[str]
-        self.__order = []   # type: List[str]
+
+        # We implement the OrderedSet as a "Home-built" LinkedHashSet because
+        # python does not provide better facilities for it.  On the flip side,
+        # we can add specialized functionality on top of it like "insert after"
+        # or "move to the end".
+        self.__table = {}  # type: Dict[str, LinkedListNode[str]]
+        self.__order = LinkedList()   # type: LinkedList[str]
         if iterable is None:
             iterable = []
         for item in iterable:
@@ -257,17 +262,24 @@ class OrderedSet(object):
     def add(self, item):
         # type: (str) -> None
         if item not in self:
-            # set.add will raise TypeError if something's unhashable, so we
-            # don't have to handle that ourselves
-            self.__set.add(item)
-            self.__order.append(item)
+            # We rely on the dict to raise an exception if the item is unhashable
+            # Unfortunately, we need to add it to the linked list first (to obtain
+            # the node) which makes this a bit more cumbersome than one might have
+            # hoped.
+            node = self.__order.append(item)
+            try:
+                self.__table[item] = node
+            except Exception:
+                self.__order.remove_node(node)
+                raise
 
     def remove(self, item):
         # type: (str) -> None
-        # set.remove will raise KeyError, so we don't need to handle that
+        # The dict will raise KeyError, so we don't need to handle that
         # ourselves
-        self.__set.remove(item)
-        self.__order.remove(item)
+        node = self.__table[item]
+        del self.__table[item]
+        self.__order.remove_node(node)
 
     def __iter__(self):
         # type: () -> Iterator[str]
@@ -286,8 +298,8 @@ class OrderedSet(object):
     def __contains__(self, item):
         # type: (str) -> bool
         # This is what makes OrderedSet faster than using a list to keep track
-        # of keys.  Lookup in a set is O(1) instead of O(n) for a list.
-        return item in self.__set
+        # of keys.  Lookup in a dict is O(1) instead of O(n) for a list.
+        return item in self.__table
 
     # ### list-like methods
     append = add
