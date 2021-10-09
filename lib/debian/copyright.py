@@ -108,7 +108,7 @@ class Copyright(object):
             lic = header.license
             if lic:
                 print('Overall license: ', lic.synopsis)
-            # You can also retrive and set custom fields.
+            # You can also retrieve and set custom fields.
             header['My-Special-Field'] = 'Very special'
 
             # Find the license for a given file.
