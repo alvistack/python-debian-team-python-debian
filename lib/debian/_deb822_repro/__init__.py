@@ -132,6 +132,9 @@ Key changes are:
     its return value is kept for later.
  3. Instead of dumping paragraphs one by one, the return value from
     parse_deb822_file is dumped at the end.
+     - The round-trip safe api does support "per-paragraph" but formatting
+       and comments between paragraphs would be lost in the output. This may
+       be an acceptable tradeoff or desired for some cases.
 
 Note that the round trip safe API does not accept all the same parameters as the
 debian.deb822 module does.  Often this is because the feature is not relevant for
