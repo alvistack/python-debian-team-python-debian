@@ -544,6 +544,16 @@ class Deb822Dict(_Deb822Dict_base):
         """
         self.__keys.order_after(_strI(field), _strI(reference_field))
 
+    def sort_fields(self, key=None):
+        # type: (Optional[Callable[[str], Any]]) -> None
+        """Re-order all fields
+
+        :param key: Provide a key function (same semantics as for sorted).  Keep in mind that
+          Deb822 preserve the cases for field names - in generally, callers are recommended to use
+          "lower()" to normalize the case.
+        """
+        self.__keys = OrderedSet(sorted(self.__keys, key=key))
+
     def __repr__(self):
         # type: () -> str
         return '{%s}' % ', '.join(['%r: %r' % (k, v) for k, v in self.items()])

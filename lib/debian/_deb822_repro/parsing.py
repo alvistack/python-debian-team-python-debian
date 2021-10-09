@@ -1996,6 +1996,12 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                     key=None,  # type: Optional[Callable[[str], Any]]
                     ):
         # type: (...) -> None
+        """Re-order all fields
+
+        :param key: Provide a key function (same semantics as for sorted).  Keep in mind that
+          the module preserve the cases for field names - in generally, callers are recommended
+          to use "lower()" to normalize the case.
+        """
         raise NotImplementedError  # pragma: no cover
 
     def set_field_to_simple_value(self,
@@ -2308,6 +2314,12 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def sort_fields(self, key=None):
         # type: (Optional[Callable[[str], Any]]) -> None
+        """Re-order all fields
+
+        :param key: Provide a key function (same semantics as for sorted).  Keep in mind that
+          the module preserve the cases for field names - in generally, callers are recommended
+          to use "lower()" to normalize the case.
+        """
         for last_field_name in reversed(self._kvpair_order):
             last_kvpair = self._kvpair_elements[cast('_strI', last_field_name)]
             last_kvpair.value_element.add_final_newline_if_missing()
@@ -2645,6 +2657,13 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def sort_fields(self, key=None):
         # type: (Optional[Callable[[str], Any]]) -> None
+        """Re-order all fields
+
+        :param key: Provide a key function (same semantics as for sorted).   Keep in mind that
+          the module preserve the cases for field names - in generally, callers are recommended
+          to use "lower()" to normalize the case.
+        """
+
         if key is None:
             actual_key = operator.attrgetter(
                 'field_name')  # type: Callable[[Deb822KeyValuePairElement], Any]
