@@ -4,6 +4,7 @@ from weakref import ReferenceType
 try:
     from typing import (
         Iterable, Optional, Generic, Dict, List, Iterator, TypeVar, TYPE_CHECKING, Any,
+        Callable,
     )
 
     # Used a generic type for any case where we need a generic type without any bounds
@@ -201,6 +202,12 @@ class LinkedList(Generic[T]):
         self._size -= 1
         node.remove()
 
+    def insert_at_head(self, value):
+        # type: (T) -> LinkedListNode[T]
+        if self.head_node is None:
+            return self.append(value)
+        return self.insert_before(value, self.head_node)
+
     def append(self, value):
         # type: (T) -> LinkedListNode[T]
         node = LinkedListNode(value)
@@ -217,12 +224,33 @@ class LinkedList(Generic[T]):
 
     def insert_before(self, value, existing_node):
         # type: (T, LinkedListNode[T]) -> LinkedListNode[T]
-        new_node = LinkedListNode(value)
+        return self.insert_node_before(LinkedListNode(value), existing_node)
+
+    def insert_after(self, value, existing_node):
+        # type: (T, LinkedListNode[T]) -> LinkedListNode[T]
+        return self.insert_node_after(LinkedListNode(value), existing_node)
+
+    def insert_node_before(self, new_node, existing_node):
+        # type: (LinkedListNode[T], LinkedListNode[T]) -> LinkedListNode[T]
         if self.head_node is None:
             raise ValueError("List is empty; node argument cannot be valid")
+        if new_node.next_node is not None or new_node.previous_node is not None:
+            raise ValueError("New node must not already be inserted!")
         existing_node.insert_before(new_node)
         if existing_node is self.head_node:
             self.head_node = new_node
+        self._size += 1
+        return new_node
+
+    def insert_node_after(self, new_node, existing_node):
+        # type: (LinkedListNode[T], LinkedListNode[T]) -> LinkedListNode[T]
+        if self.tail_node is None:
+            raise ValueError("List is empty; node argument cannot be valid")
+        if new_node.next_node is not None or new_node.previous_node is not None:
+            raise ValueError("New node must not already be inserted!")
+        existing_node.insert_after(new_node)
+        if existing_node is self.tail_node:
+            self.tail_node = new_node
         self._size += 1
         return new_node
 
@@ -308,3 +336,40 @@ class OrderedSet(object):
         # type: (Iterable[str]) -> None
         for item in iterable:
             self.add(item)
+
+    # ### methods specialized for Deb822 usage
+    def order_last(self, item):
+        # type: (str) -> None
+        """Re-order the given item so it is "last" in the set"""
+        self._reorder(item, self.__order.append)
+
+    def order_first(self, item):
+        # type: (str) -> None
+        """Re-order the given item so it is "first" in the set"""
+        self._reorder(item, self.__order.insert_at_head)
+
+    def order_before(self, item, reference_item):
+        # type: (str, str) -> None
+        """Re-order the given item so appears directly after the reference item in the sequence"""
+        if item == reference_item:
+            raise ValueError("Cannot re-order an item relative to itself")
+        reference_node = self.__table[reference_item]
+        self._reorder(item, lambda x: self.__order.insert_before(x, reference_node))
+
+    def order_after(self, item, reference_item):
+        # type: (str, str) -> None
+        """Re-order the given item so appears directly before the reference item in the sequence"""
+        if item == reference_item:
+            raise ValueError("Cannot re-order an item relative to itself")
+        reference_node = self.__table[reference_item]
+        self._reorder(item, lambda x: self.__order.insert_after(x, reference_node))
+
+    def _reorder(self,
+                 item,  # type: str
+                 reinserter,  # type: Callable[[str], LinkedListNode[str]]
+                 ):
+        # type: (...) -> None
+        node = self.__table[item]
+        self.__order.remove_node(node)
+        new_node = reinserter(node.value)
+        self.__table[item] = new_node

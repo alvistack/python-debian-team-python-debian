@@ -1939,6 +1939,31 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         # type: () -> Deb822ParagraphElement
         return self
 
+    def order_last(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "last" in the paragraph"""
+        raise NotImplementedError  # pragma: no cover
+
+    def order_first(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "first" in the paragraph"""
+        raise NotImplementedError  # pragma: no cover
+
+    def order_before(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly after the reference field in the paragraph
+
+        The reference field must be present."""
+        raise NotImplementedError  # pragma: no cover
+
+    def order_after(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly before the reference field in the paragraph
+
+        The reference field must be present.
+        """
+        raise NotImplementedError  # pragma: no cover
+
     @property
     def kvpair_count(self):
         # type: () -> int
@@ -2201,6 +2226,37 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
         # type: () -> int
         return len(self._kvpair_elements)
 
+    def order_last(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "last" in the paragraph"""
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        self._kvpair_order.order_last(unpacked_field)
+
+    def order_first(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "first" in the paragraph"""
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        self._kvpair_order.order_first(unpacked_field)
+
+    def order_before(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly after the reference field in the paragraph
+
+        The reference field must be present."""
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        unpacked_ref_field, _, _ = _unpack_key(reference_field, raise_if_indexed=True)
+        self._kvpair_order.order_before(unpacked_field, unpacked_ref_field)
+
+    def order_after(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly before the reference field in the paragraph
+
+        The reference field must be present.
+        """
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        unpacked_ref_field, _, _ = _unpack_key(reference_field, raise_if_indexed=True)
+        self._kvpair_order.order_after(unpacked_field, unpacked_ref_field)
+
     def iter_keys(self):
         # type: () -> Iterable[ParagraphKey]
         yield from self._kvpair_order
@@ -2294,6 +2350,118 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
                 self._kvpair_elements[field_name] = [node]
             else:
                 self._kvpair_elements[field_name].append(node)
+
+    def _nodes_being_relocated(self, field):
+        # type: (ParagraphKey) -> Tuple[List[KVPNode], List[KVPNode]]
+        key, index, name_token = _unpack_key(field)
+        nodes = self._kvpair_elements[key]
+        nodes_being_relocated = []
+
+        if name_token is not None or index is not None:
+            single_node = self._resolve_to_single_node(nodes, key, index, name_token)
+            assert single_node is not None
+            nodes_being_relocated.append(single_node)
+        else:
+            nodes_being_relocated = nodes
+        return nodes, nodes_being_relocated
+
+    def order_last(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "last" in the paragraph"""
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+
+        kvpair_order = self._kvpair_order
+        for node in nodes_being_relocated:
+            if kvpair_order.tail_node is node:
+                # Special case for relocating a single node that happens to be the last.
+                continue
+            kvpair_order.remove_node(node)
+            # assertion for mypy
+            assert kvpair_order.tail_node is not None
+            kvpair_order.insert_node_after(node, kvpair_order.tail_node)
+
+        if len(nodes_being_relocated) == 1 and nodes_being_relocated[0] is not nodes[-1]:
+            single_node = nodes_being_relocated[0]
+            nodes.remove(single_node)
+            nodes.append(single_node)
+
+    def order_first(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "first" in the paragraph"""
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+
+        kvpair_order = self._kvpair_order
+        for node in nodes_being_relocated:
+            if kvpair_order.head_node is node:
+                # Special case for relocating a single node that happens to be the first.
+                continue
+            kvpair_order.remove_node(node)
+            # assertion for mypy
+            assert kvpair_order.head_node is not None
+            kvpair_order.insert_node_before(node, kvpair_order.head_node)
+
+        if len(nodes_being_relocated) == 1 and nodes_being_relocated[0] is not nodes[0]:
+            single_node = nodes_being_relocated[0]
+            nodes.remove(single_node)
+            nodes.insert(0, single_node)
+
+    def order_before(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly after the reference field in the paragraph
+
+        The reference field must be present."""
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+        # For "before" we always use the "first" variant as reference in case of doubt
+        _, reference_nodes = self._nodes_being_relocated(reference_field)
+        reference_node = reference_nodes[0]
+        if reference_node in nodes_being_relocated:
+            raise ValueError("Cannot re-order a field relative to itself")
+
+        kvpair_order = self._kvpair_order
+        for node in nodes_being_relocated:
+            kvpair_order.remove_node(node)
+            kvpair_order.insert_node_before(node, reference_node)
+
+        if len(nodes_being_relocated) == 1 and len(nodes) > 1:
+            # Regenerate the (new) relative field order.
+            field_name = nodes_being_relocated[0].value.field_name
+            self._regenerate_relative_kvapir_order(field_name)
+
+    def order_after(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly before the reference field in the paragraph
+
+        The reference field must be present.
+        """
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+        _, reference_nodes = self._nodes_being_relocated(reference_field)
+        # For "after" we always use the "last" variant as reference in case of doubt
+        reference_node = reference_nodes[-1]
+        if reference_node in nodes_being_relocated:
+            raise ValueError("Cannot re-order a field relative to itself")
+
+        kvpair_order = self._kvpair_order
+        # Use "reversed" to preserve the relative order of the nodes assuming a bulk reorder
+        for node in reversed(nodes_being_relocated):
+            kvpair_order.remove_node(node)
+            kvpair_order.insert_node_after(node, reference_node)
+
+        if len(nodes_being_relocated) == 1 and len(nodes) > 1:
+            # Regenerate the (new) relative field order.
+            field_name = nodes_being_relocated[0].value.field_name
+            self._regenerate_relative_kvapir_order(field_name)
+
+    def _regenerate_relative_kvapir_order(self, field_name):
+        # type: (_strI) -> None
+        nodes = []
+        for node in self._kvpair_order.iter_nodes():
+            if node.value.field_name == field_name:
+                nodes.append(node)
+        self._kvpair_elements[field_name] = nodes
 
     def iter_parts(self):
         # type: () -> Iterable[TokenOrElement]
