@@ -2206,7 +2206,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def iter_keys(self):
         # type: () -> Iterable[ParagraphKey]
-        yield from self._kvpair_elements
+        yield from self._kvpair_order
 
     def remove_kvpair_element(self, key):
         # type: (ParagraphKey) -> None
