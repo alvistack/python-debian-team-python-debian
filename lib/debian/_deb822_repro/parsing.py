@@ -147,8 +147,7 @@ from abc import ABC
 from types import TracebackType
 from weakref import ReferenceType
 
-from debian.deb822 import _strI, OrderedSet
-
+from debian._util import resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI
 from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
 from debian._deb822_repro.tokens import (
     Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
@@ -157,8 +156,7 @@ from debian._deb822_repro.tokens import (
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
     tokenize_deb822_file, comma_split_tokenizer, whitespace_split_tokenizer,
 )
-from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
-                                        combine_into_replacement, BufferingIterator,
+from debian._deb822_repro._util import (combine_into_replacement, BufferingIterator,
                                         len_check_iterator,
                                         )
 
@@ -167,9 +165,10 @@ try:
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
         cast, overload, Mapping, TYPE_CHECKING,
 )
+    from debian._util import T
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
-        T, ST, VE, TE,
+        ST, VE, TE,
         ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
     )
     StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
