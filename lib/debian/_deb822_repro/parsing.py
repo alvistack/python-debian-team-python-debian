@@ -558,7 +558,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         # type: () -> None
         tail = self._token_list.tail
         if tail is not None and tail.convert_to_text().endswith("\n"):
-            self._token_list.append(Deb822ValueContinuationToken())
+            self._token_list.append(Deb822ValueContinuationToken(' '))
 
     def reformat_when_finished(self):
         # type: () -> None

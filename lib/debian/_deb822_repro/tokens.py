@@ -203,10 +203,6 @@ class Deb822ValueContinuationToken(Deb822SemanticallySignificantWhiteSpace):
 
     __slots__ = ()
 
-    def __init__(self):
-        # type: () -> None
-        super().__init__(' ')
-
 
 class Deb822SpaceSeparatorToken(Deb822SemanticallySignificantWhiteSpace):
     """Whitespace between values in a space list (e.g. "Architectures")"""
@@ -342,10 +338,11 @@ def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb8
             yield Deb822CommentToken(line)
             continue
 
-        if line[0] == ' ':
+        if line[0] in (' ', '\t'):
             if current_field_name is not None:
                 # We emit a separate whitespace token for the newline as it makes some
                 # things easier later (see _build_value_line)
+                leading = sys.intern(line[0])
                 if line.endswith('\n'):
                     line = line[1:-1]
                     emit_newline_token = True
@@ -353,7 +350,7 @@ def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb8
                     line = line[1:]
                     emit_newline_token = False
 
-                yield Deb822ValueContinuationToken()
+                yield Deb822ValueContinuationToken(leading)
                 yield Deb822ValueToken(line)
                 if emit_newline_token:
                     yield Deb822NewlineAfterValueToken()

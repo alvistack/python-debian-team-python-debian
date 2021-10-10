@@ -84,7 +84,7 @@ ROUND_TRIP_CASES = [
                                  libdebhelper-perl (= ${binary:Version})
                         Description: something
                          A long
-                         and boring
+                        \tand boring
                          description
                         # And a continuation line (also, inline comment)
                          .
