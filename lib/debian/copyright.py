@@ -668,7 +668,7 @@ class Header(deb822.RestrictedWrapper):
             raise NotMachineReadableError(
                 'input is not a machine-readable debian/copyright')
         if fmt not in _KNOWN_FORMATS:
-            logger.warning('format not known: %r' % fmt)
+            logger.warning('format not known: %r', fmt)
 
     def known_format(self):
         # type: () -> bool
