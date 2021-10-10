@@ -287,6 +287,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         self._format_with_leading_whitespace_matching_field_length = False
         self._format_trailing_separator_after_last_element = False
         self._changed = False
+        self.__continuation_line_char = None  # type: Optional[str]
         assert self._token_list
         last_token = self._token_list.tail
 
@@ -554,11 +555,25 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         comment_token = Deb822CommentToken(_format_comment(comment_text))
         self._token_list.append(comment_token)
 
+    @property
+    def _continuation_line_char(self):
+        # type: () -> str
+        char = self.__continuation_line_char
+        if char is None:
+            # Use ' ' by default but match the existing field if possible.
+            char = ' '
+            for token in self._token_list:
+                if isinstance(token, Deb822ValueContinuationToken):
+                    char = token.text
+                    break
+            self.__continuation_line_char = char
+        return char
+
     def _append_continuation_line_token_if_necessary(self):
         # type: () -> None
         tail = self._token_list.tail
         if tail is not None and tail.convert_to_text().endswith("\n"):
-            self._token_list.append(Deb822ValueContinuationToken())
+            self._token_list.append(Deb822ValueContinuationToken(self._continuation_line_char))
 
     def reformat_when_finished(self):
         # type: () -> None
@@ -590,7 +605,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
     def _generate_reformatted_field_content(self):
         # type: () -> str
         separator_token = self._default_separator_factory()
-        space_after_newline = ' '
+        space_after_newline = self._continuation_line_char
         separator_includes_newline = self._format_one_value_per_line
         if separator_token.is_whitespace:
             separator_as_text = ''
@@ -600,12 +615,11 @@ class Deb822ParsedTokenList(Generic[VE, ST],
             separator_with_space = separator_as_text + '\n '
             if self._format_with_leading_whitespace_matching_field_length:
                 space_len = len(self._kvpair_element.field_name)
-                # Plus 2 (one for the separator and one for the space after it)
-                # This space already covers the mandatory space at the beginning
-                # of a continuation line
-                space_len += 2
+                # Plus 1 (one for the separator and one for the space after it
+                # and then minus one for the continuation_line_char)
+                space_len += 1
                 separator_with_space = separator_as_text + '\n'
-                space_after_newline = ' ' * space_len
+                space_after_newline = self._continuation_line_char + ' ' * space_len
         else:
             separator_with_space = separator_as_text + ' '
 

@@ -84,7 +84,7 @@ ROUND_TRIP_CASES = [
                                  libdebhelper-perl (= ${binary:Version})
                         Description: something
                          A long
-                         and boring
+                        \tand boring
                          description
                         # And a continuation line (also, inline comment)
                          .
@@ -1095,3 +1095,97 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 return ov, v
 
             arch_list.sort(key=_key_func)
+
+    def test_interpretation_tab_preservation(self):
+        # type: () -> None
+
+        original = textwrap.dedent('''\
+        Package: foo
+        Architecture: amd64  i386
+          kfreebsd-amd64  kfreebsd-i386
+        Build-Depends: debhelper-compat (= 12)
+        \t , foo
+        ''')
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file))
+
+        arch_kvpair = source_paragraph.get_kvpair_element('Architecture')
+        bd_kvpair = source_paragraph.get_kvpair_element('Build-Depends')
+        assert arch_kvpair is not None and bd_kvpair is not None
+
+        @contextlib.contextmanager
+        def _field_mutation_test(
+                kvpair,           # type: Deb822KeyValuePairElement
+                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
+                expected_output,  # type: str
+                ):
+            # type: (...) -> Iterator[Deb822ParsedTokenList[VE, ST]]
+            original_value_element = kvpair.value_element
+            with kvpair.interpret_as(interpretation) as value_list:
+                yield value_list
+
+            # We always match without the field comment to keep things simple.
+            actual = kvpair.field_name + ":" + kvpair.value_element.convert_to_text()
+            try:
+                self.assertEqual(expected_output, actual)
+            except AssertionError:
+                logging.info(" -- Debugging aid - START of AST for generated value --")
+                print_ast(kvpair)
+                logging.info(" -- Debugging aid - END of AST for generated value --")
+                raise
+            # Reset of value
+            kvpair.value_element = original_value_element
+            self.assertEqual(original, deb822_file.convert_to_text())
+
+        # With reformatting - should use space
+        expected_result = textwrap.dedent('''\
+                  Architecture: amd64
+                                i386
+                                kfreebsd-amd64
+                                kfreebsd-i386
+                                hurd-amd64
+                                hurd-i386
+                   ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.reformat_when_finished()
+            arch_list.append('hurd-amd64')
+            arch_list.append('hurd-i386')
+
+        # Without reformatting - should use space
+        expected_result = textwrap.dedent('''\
+                  Architecture: amd64  i386
+                    kfreebsd-amd64  kfreebsd-i386
+                   hurd-amd64 hurd-i386
+                   ''')
+        with _field_mutation_test(arch_kvpair,
+                                  LIST_SPACE_SEPARATED_INTERPRETATION,
+                                  expected_result) as arch_list:
+            arch_list.append_newline()
+            arch_list.append('hurd-amd64')
+            arch_list.append('hurd-i386')
+
+        # With reformatting - should use tab
+        expected_result = textwrap.dedent('''\
+                          Build-Depends: debhelper-compat (= 12),
+                          \t              foo,
+                          \t              bar (>= 1.0~),
+                           ''')
+        with _field_mutation_test(bd_kvpair,
+                                  LIST_COMMA_SEPARATED_INTERPRETATION,
+                                  expected_result) as bd_list:
+            bd_list.reformat_when_finished()
+            bd_list.append('bar (>= 1.0~)')
+
+        # Without reformatting - should use tab
+        expected_result = textwrap.dedent('''\
+                  Build-Depends: debhelper-compat (= 12)
+                  \t , foo
+                  \t, bar (>= 1.0~)
+                   ''')
+        with _field_mutation_test(bd_kvpair,
+                                  LIST_COMMA_SEPARATED_INTERPRETATION,
+                                  expected_result) as bd_list:
+            bd_list.append_newline()
+            bd_list.append('bar (>= 1.0~)')

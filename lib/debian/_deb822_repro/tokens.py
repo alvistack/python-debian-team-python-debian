@@ -203,10 +203,6 @@ class Deb822ValueContinuationToken(Deb822SemanticallySignificantWhiteSpace):
 
     __slots__ = ()
 
-    def __init__(self):
-        # type: () -> None
-        super().__init__(' ')
-
 
 class Deb822SpaceSeparatorToken(Deb822SemanticallySignificantWhiteSpace):
     """Whitespace between values in a space list (e.g. "Architectures")"""
@@ -342,10 +338,11 @@ def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb8
             yield Deb822CommentToken(line)
             continue
 
-        if line[0] == ' ':
+        if line[0] in (' ', '\t'):
             if current_field_name is not None:
                 # We emit a separate whitespace token for the newline as it makes some
                 # things easier later (see _build_value_line)
+                leading = sys.intern(line[0])
                 if line.endswith('\n'):
                     line = line[1:-1]
                     emit_newline_token = True
@@ -353,7 +350,7 @@ def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb8
                     line = line[1:]
                     emit_newline_token = False
 
-                yield Deb822ValueContinuationToken()
+                yield Deb822ValueContinuationToken(leading)
                 yield Deb822ValueToken(line)
                 if emit_newline_token:
                     yield Deb822NewlineAfterValueToken()
@@ -412,15 +409,23 @@ def _value_line_tokenizer(func):
     # type: (Callable[[str], Iterable[Deb822Token]]) -> (Callable[[str], Iterable[Deb822Token]])
     def impl(v):
         # type: (str) -> Iterable[Deb822Token]
+        first_line = True
         for line in v.splitlines(keepends=True):
             assert not _RE_WHITESPACE_LINE.match(v)
             if line.startswith("#"):
                 yield Deb822CommentToken(line)
                 continue
             has_newline = False
+            continuation_line_marker = None
+            if not first_line:
+                continuation_line_marker = line[0]
+                line = line[1:]
+            first_line = False
             if line.endswith("\n"):
                 has_newline = True
                 line = line[:-1]
+            if continuation_line_marker is not None:
+                yield Deb822ValueContinuationToken(sys.intern(continuation_line_marker))
             yield from func(line)
             if has_newline:
                 yield Deb822NewlineAfterValueToken()
