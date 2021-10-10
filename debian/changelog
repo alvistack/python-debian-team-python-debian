@@ -1,3 +1,19 @@
+python-debian (0.1.42) UNRELEASED; urgency=medium
+
+  [ Niels Thykier ]
+  * CI: Always build docs; only publish it for master
+  * RTS parser: Make value interpretation tokenization consistent
+  * RTS parser: Add interpretation for Uploaders field
+
+  [ Stuart Prescott ]
+  * Fix type checks for mypy 0.910
+
+  [ Niels Thykier ]
+  * RTS parser: Accept tabs as continuation line marker. Closes: #994854
+  * Interpretation: Preserve tab as continuation line if used
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Oct 2021 11:45:10 +0200
+
 python-debian (0.1.41) experimental; urgency=medium
 
   [ Stuart Prescott ]
