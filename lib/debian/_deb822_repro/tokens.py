@@ -409,15 +409,23 @@ def _value_line_tokenizer(func):
     # type: (Callable[[str], Iterable[Deb822Token]]) -> (Callable[[str], Iterable[Deb822Token]])
     def impl(v):
         # type: (str) -> Iterable[Deb822Token]
+        first_line = True
         for line in v.splitlines(keepends=True):
             assert not _RE_WHITESPACE_LINE.match(v)
             if line.startswith("#"):
                 yield Deb822CommentToken(line)
                 continue
             has_newline = False
+            continuation_line_marker = None
+            if not first_line:
+                continuation_line_marker = line[0]
+                line = line[1:]
+            first_line = False
             if line.endswith("\n"):
                 has_newline = True
                 line = line[:-1]
+            if continuation_line_marker is not None:
+                yield Deb822ValueContinuationToken(sys.intern(continuation_line_marker))
             yield from func(line)
             if has_newline:
                 yield Deb822NewlineAfterValueToken()
