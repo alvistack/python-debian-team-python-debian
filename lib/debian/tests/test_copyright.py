@@ -780,8 +780,10 @@ class HeaderTest(unittest.TestCase):
         # type: () -> None
         data = deb822.Deb822()
         data['Format'] = "http%s" % FORMAT[5:]
-        with self.assertWarns(Warning):
+        with self.assertLogs('debian.copyright', level='WARNING') as cm:
             h = copyright.Header(data=data)
+            self.assertEqual(
+                cm.output, ['WARNING:debian.copyright:Fixing Format URL'])
         self.assertEqual(FORMAT, h.format)
 
     def test_upstream_name_single_line(self):
