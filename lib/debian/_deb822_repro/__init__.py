@@ -42,7 +42,7 @@ A concrete example example::
     >>> deb822_file = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
     >>> paragraph = next(iter(deb822_file))
     >>> paragraph['Section'] = 'devel'
-    >>> output = deb822_file.convert_to_text()
+    >>> output = deb822_file.dump()
     >>> output == example_deb822_paragraph.replace('Section: main/devel', 'Section: devel')
     True
 

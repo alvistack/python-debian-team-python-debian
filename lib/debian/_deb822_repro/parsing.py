@@ -1607,7 +1607,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ['amd64', 'i386', 'arm64', 'armel']
             >>> list(list_view["Architecture"])
             ['amd64', 'kfreebsd-amd64', 'arm64', 'armel']
-            >>> print(paragraph.convert_to_text(), end='')
+            >>> print(paragraph.dump(), end='')
             Package: foo
             # Field comment (because it becomes just before a field)
             Architecture: amd64
@@ -1621,7 +1621,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ...     # Prettify the result as sorting will cause awkward whitespace
             ...     arch_list.reformat_when_finished()
             ...     arch_list.sort()
-            >>> print(paragraph.convert_to_text(), end='')
+            >>> print(paragraph.dump(), end='')
             Package: foo
             # Field comment (because it becomes just before a field)
             Architecture: amd64
@@ -1862,7 +1862,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             >>> p.set_field_to_simple_value("Architecture", "linux-any kfreebsd-any",
             ...                             field_comment=['Only ported to linux and kfreebsd'])
             >>> p.set_field_to_simple_value("Priority", "optional")
-            >>> print(p.convert_to_text(), end='')
+            >>> print(p.dump(), end='')
             Package: mscgen
             # Only ported to linux and kfreebsd
             Architecture: linux-any kfreebsd-any
@@ -1935,7 +1935,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ... '''.lstrip()  # Remove leading newline, but *not* the trailing newline
             >>> fname, new_value = raw_value.split(':', 1)
             >>> p.set_field_from_raw_string(fname, new_value)
-            >>> print(p.convert_to_text(), end='')
+            >>> print(p.dump(), end='')
             Package: foo
             Build-Depends: debhelper-compat (= 12),
                            some-other-bd,
