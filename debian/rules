@@ -22,16 +22,7 @@ override_dh_auto_build: lib/debian/_version.py
 override_dh_auto_test:
 	# don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	# run all the tests with both a UTF-8 aware locale and a non-UTF-8
-	# aware locale to catch errors related to encoding.
-	for py in `py3versions -s`; do \
-	  set -e; \
-	  echo "----------------------------------------------"; \
-	  echo "Testing with $$py"; \
-	  echo "----------------------------------------------"; \
-	  LC_ALL=C $$py -m pytest --doctest-modules --verbose lib/; \
-	  LC_ALL=C.UTF-8 $$py -m pytest --doctest-modules --verbose lib/; \
-	done
+	$(MAKE) test
 endif
 
 override_dh_auto_install:
@@ -54,6 +45,18 @@ apidoc:
 doc: apidoc
 	PYTHONPATH=$(CURDIR)/lib \
 	  make -C docs/ SPHINXOPTS="-a -v -n" html
+
+test:
+	# run all the tests with both a UTF-8 aware locale and a non-UTF-8
+	# aware locale to catch errors related to encoding.
+	for py in `py3versions -s`; do \
+	  set -e; \
+	  echo "----------------------------------------------"; \
+	  echo "Testing with $$py"; \
+	  echo "----------------------------------------------"; \
+	  LC_ALL=C $$py -m pytest --doctest-modules --verbose lib/; \
+	  LC_ALL=C.UTF-8 $$py -m pytest --doctest-modules --verbose lib/; \
+	done
 
 qa: lib/debian/_version.py
 	pylint --rcfile .pylintrc lib
