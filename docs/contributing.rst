@@ -87,10 +87,10 @@ Style guide
  - Write docstrings in rst format so that sphinx can generate API
    documentation.
 
-The pylint and mypy tools can be run easily from debian/rules to track code
+The pylint and mypy tools can be run easily from `debian/rules` to track code
 quality::
 
-        $ ./debian/rules qa
+    $ ./debian/rules qa
 
 
 Test suite
@@ -109,17 +109,17 @@ can be run either from the top-level directory or from the lib/ directory:
 
 Run all tests from the top most directory of the source package::
 
-        $ python3 -m unittest discover lib
+    $ py.test -v -rsx --doctest-modules lib/
 
-Or from within the lib directory::
+Or just run some selected tests::
 
-        $ python3 -m unittest discover
+    $ py.test -v -rsx --doctest-modules lib/debian/tests/test_deb822.py::TestDeb822::test_buildinfo
 
-        $ python3 -m unittest debian/tests/test_deb822.py
+    $ py.test -v -rsx --doctest-modules debian/tests/test_deb822.py
 
-Or by using setup.py::
+For simplicity all the tests can also be run as::
 
-        $ python3 setup.py test
+    $ ./debian/rules test
 
 The tests are run as part of the package build and also as a CI job on
 salsa.debian.org. Tests will be run against merge requests automatically.
