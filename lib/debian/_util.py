@@ -58,6 +58,11 @@ class _CaseInsensitiveString(str):
 _strI = _CaseInsensitiveString
 
 
+def default_field_sort_key(x):
+    # type: (str) -> Any
+    return x.lower()
+
+
 class LinkedListNode(Generic[T]):
 
     __slots__ = ('_previous_node', 'value', 'next_node', '__weakref__')

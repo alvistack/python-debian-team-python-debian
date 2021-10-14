@@ -140,14 +140,15 @@ Things that might change in an incompatible way include:
 
 import collections.abc
 import contextlib
-import operator
 import textwrap
 import weakref
 from abc import ABC
 from types import TracebackType
 from weakref import ReferenceType
 
-from debian._util import resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI
+from debian._util import (
+    resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
+)
 from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
 from debian._deb822_repro.tokens import (
     Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
@@ -2325,6 +2326,9 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
             last_kvpair.value_element.add_final_newline_if_missing()
             break
 
+        if key is None:
+            key = default_field_sort_key
+
         self._kvpair_order = OrderedSet(sorted(self._kvpair_order, key=key))
 
     def iter_parts(self):
@@ -2665,23 +2669,21 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         """
 
         if key is None:
-            actual_key = operator.attrgetter(
-                'field_name')  # type: Callable[[Deb822KeyValuePairElement], Any]
-        else:
-            # Work around mypy that cannot seem to shred the Optional notion
-            # without this little indirection
-            key_impl = key
+            key = default_field_sort_key
 
-            def _actual_key(kvpair):
-                # type: (Deb822KeyValuePairElement) -> Any
-                return key_impl(kvpair.field_name)
+        # Work around mypy that cannot seem to shred the Optional notion
+        # without this little indirection
+        key_impl = key
 
-            actual_key = _actual_key
+        def _actual_key(kvpair):
+            # type: (Deb822KeyValuePairElement) -> Any
+            return key_impl(kvpair.field_name)
+
         for last_kvpair in reversed(self._kvpair_order):
             last_kvpair.value_element.add_final_newline_if_missing()
             break
 
-        sorted_kvpair_list = sorted(self._kvpair_order, key=actual_key)
+        sorted_kvpair_list = sorted(self._kvpair_order, key=_actual_key)
         self._kvpair_order = LinkedList()
         self._kvpair_elements = {}
         self._init_kvpair_fields(sorted_kvpair_list)

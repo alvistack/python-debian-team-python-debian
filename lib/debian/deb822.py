@@ -309,6 +309,7 @@ except ImportError:
 from debian._util import (
     OrderedSet as OrderedSet,
     _CaseInsensitiveString, _strI,
+    default_field_sort_key,
 )
 from debian.deprecation import function_deprecated_by
 import debian.debian_support
@@ -552,6 +553,8 @@ class Deb822Dict(_Deb822Dict_base):
           Deb822 preserve the cases for field names - in generally, callers are recommended to use
           "lower()" to normalize the case.
         """
+        if key is None:
+            key = default_field_sort_key
         self.__keys = OrderedSet(sorted(self.__keys, key=key))
 
     def __repr__(self):
