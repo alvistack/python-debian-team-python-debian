@@ -703,6 +703,227 @@ class FormatPreservingDeb822ParserTests(TestCase):
         self.assertEqual(sorted_with_dups, deb822_file_with_dups.convert_to_text(),
                          "Sorting with duplicated fields work")
 
+    def test_reorder_nodups(self):
+        # type: () -> None
+        content = textwrap.dedent("""
+        Depends: bar
+        Description: some-text
+        Architecture: any
+        Package: foo
+        Recommends: baz
+        """)
+        deb822_file = parse_deb822_file(content.splitlines(keepends=True))
+        paragraph = next(iter(deb822_file))
+
+        # Verify the starting state
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+                         )
+        # no op
+        paragraph.order_last('Recommends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+                         )
+        # no op
+        paragraph.order_first('Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+                         )
+
+        paragraph.order_first('Package')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Depends', 'Description', 'Architecture', 'Recommends']
+                         )
+
+        paragraph.order_last('Description')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Depends', 'Architecture', 'Recommends', 'Description']
+                         )
+
+        paragraph.order_after('Recommends', 'Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Depends', 'Recommends', 'Architecture', 'Description']
+                         )
+
+        paragraph.order_before('Architecture', 'Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
+                         )
+
+        with self.assertRaises(ValueError):
+            paragraph.order_after('Architecture', 'Architecture')
+        with self.assertRaises(ValueError):
+            paragraph.order_before('Architecture', 'Architecture')
+        with self.assertRaises(KeyError):
+            paragraph.order_before('Unknown-Field', 'Architecture')
+        with self.assertRaises(KeyError):
+            paragraph.order_before('Architecture', 'Unknown-Field')
+
+    def test_reorder_dups(self):
+        # type: () -> None
+        content = textwrap.dedent("""
+        Depends: bar
+        Description: some-text
+        Description: some-more-text
+        Architecture: any
+        Package: foo
+        Package: foo2
+        Recommends: baz
+        """)
+        deb822_file = parse_deb822_file(content.splitlines(keepends=True))
+        paragraph = next(iter(deb822_file))
+        # Verify the starting state
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Description', 'Architecture', 'Package',
+                          'Package', 'Recommends']
+                         )
+        # no op
+        paragraph.order_last('Recommends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Description', 'Architecture', 'Package',
+                          'Package', 'Recommends']
+                         )
+        # no op
+        paragraph.order_first('Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Description', 'Architecture', 'Package',
+                          'Package', 'Recommends']
+                         )
+
+        paragraph.order_first('Package')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package','Depends', 'Description', 'Description',
+                          'Architecture', 'Recommends']
+                         )
+
+        # Relative order must be preserved in this case.
+        self.assertEqual(paragraph["Package"], "foo")
+        self.assertEqual(paragraph[("Package", 0)], "foo")
+        self.assertEqual(paragraph[("Package", 1)], "foo2")
+
+        # Repeating order_first should be a noop
+        paragraph.order_first('Package')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Depends', 'Description', 'Description',
+                          'Architecture', 'Recommends']
+                         )
+
+        # Relative order must be preserved in this case.
+        self.assertEqual(paragraph["Package"], "foo")
+        self.assertEqual(paragraph[("Package", 0)], "foo")
+        self.assertEqual(paragraph[("Package", 1)], "foo2")
+
+        paragraph.order_last('Description')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
+                          'Description', 'Description']
+                         )
+        # Relative order must be preserved in this case.
+        self.assertEqual(paragraph["Description"], "some-text")
+        self.assertEqual(paragraph[("Description", 0)], "some-text")
+        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+
+        # Repeating order_first should be a noop
+        paragraph.order_last('Description')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
+                          'Description', 'Description']
+                         )
+        # Relative order must be preserved in this case.
+        self.assertEqual(paragraph["Description"], "some-text")
+        self.assertEqual(paragraph[("Description", 0)], "some-text")
+        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+
+        paragraph.order_after('Recommends', 'Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Depends', 'Recommends', 'Architecture',
+                          'Description', 'Description', ]
+                         )
+
+        paragraph.order_before('Architecture', 'Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                          'Description', 'Description', ]
+                         )
+
+        # And now, for some "fun stuff"
+
+        # Lets move the last Description field in front of the first.
+        paragraph.order_before(('Description', 1), ('Description', 0))
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                          'Description', 'Description', ]
+                         )
+        # Verify the relocation was successful
+        self.assertEqual(paragraph["Description"], "some-more-text")
+        self.assertEqual(paragraph[("Description", 0)], "some-more-text")
+        self.assertEqual(paragraph[("Description", 1)], "some-text")
+
+        # And swap their relative positions again
+        paragraph.order_after(('Description', 0), ('Description', 1))
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                          'Description', 'Description', ]
+                         )
+        # Verify the relocation was successful
+        self.assertEqual(paragraph["Description"], "some-text")
+        self.assertEqual(paragraph[("Description", 0)], "some-text")
+        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+
+        # This should be a no-op
+        paragraph.order_last(('Description', 1))
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                          'Description', 'Description', ]
+                         )
+        self.assertEqual(paragraph["Description"], "some-text")
+        self.assertEqual(paragraph[("Description", 0)], "some-text")
+        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+
+        # This should cause them to swap order
+        paragraph.order_last(('Description', 0))
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                          'Description', 'Description', ]
+                         )
+        # Verify the relocation was successful
+        self.assertEqual(paragraph["Description"], "some-more-text")
+        self.assertEqual(paragraph[("Description", 0)], "some-more-text")
+        self.assertEqual(paragraph[("Description", 1)], "some-text")
+
+        # This should be a no-op
+        paragraph.order_first(('Package', 0))
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                          'Description', 'Description', ]
+                         )
+
+        # Relative order must be preserved in this case.
+        self.assertEqual(paragraph["Package"], "foo")
+        self.assertEqual(paragraph[("Package", 0)], "foo")
+        self.assertEqual(paragraph[("Package", 1)], "foo2")
+
+        # This should cause them to swap order
+        paragraph.order_first(('Package', 1))
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                          'Description', 'Description', ]
+                         )
+
+        # Verify the relocation was successful
+        self.assertEqual(paragraph["Package"], "foo2")
+        self.assertEqual(paragraph[("Package", 0)], "foo2")
+        self.assertEqual(paragraph[("Package", 1)], "foo")
+
+        with self.assertRaises(ValueError):
+            paragraph.order_after('Architecture', 'Architecture')
+        with self.assertRaises(ValueError):
+            paragraph.order_before('Architecture', 'Architecture')
+        with self.assertRaises(KeyError):
+            paragraph.order_before('Unknown-Field', 'Architecture')
+        with self.assertRaises(KeyError):
+            paragraph.order_before('Architecture', 'Unknown-Field')
+
     def test_interpretation(self):
         # type: () -> None
 

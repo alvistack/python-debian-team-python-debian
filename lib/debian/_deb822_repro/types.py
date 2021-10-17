@@ -7,13 +7,6 @@ try:
             Deb822Element, Deb822CommentElement, Deb822ParsedValueElement
         )
 
-    # Used a generic type for any case where we need a generic type without any bounds
-    # (e.g. for the LinkedList interface and some super-classes/mixins).
-    T = TypeVar('T')
-    T.__doc__ = """
-    Generic type
-    """
-
     TokenOrElement = Union['Deb822Element', 'Deb822Token']
     TE = TypeVar('TE', bound=TokenOrElement)
     TE.__doc__ = """

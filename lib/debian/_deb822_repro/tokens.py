@@ -3,8 +3,8 @@ import sys
 from weakref import ReferenceType
 import weakref
 
-from debian._deb822_repro._util import resolve_ref, BufferingIterator
-from debian.deb822 import _strI
+from debian._util import resolve_ref, _strI
+from debian._deb822_repro._util import BufferingIterator
 
 try:
     from typing import Optional, cast, TYPE_CHECKING, Iterable, Union, Dict, Callable

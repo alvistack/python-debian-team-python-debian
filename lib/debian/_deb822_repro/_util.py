@@ -2,15 +2,14 @@ import collections
 import collections.abc
 import logging
 import textwrap
-import weakref
-from weakref import ReferenceType
 
 try:
     from typing import (
-        Optional, Union, Iterable, Callable, TYPE_CHECKING, Generic, Iterator,
+        Optional, Union, Iterable, Callable, TYPE_CHECKING, Iterator,
         Type, cast, List,
     )
-    from debian._deb822_repro.types import T, TE, R, TokenOrElement
+    from debian._util import T
+    from debian._deb822_repro.types import TE, R, TokenOrElement
 
     _combine_parts_ret_type = Callable[
         [Iterable[Union[TokenOrElement, TE]]],
@@ -24,11 +23,6 @@ except ImportError:
 if TYPE_CHECKING:
     from debian._deb822_repro.parsing import Deb822Element
     from debian._deb822_repro.tokens import Deb822Token
-
-
-def resolve_ref(ref):
-    # type: (Optional[ReferenceType[T]]) -> Optional[T]
-    return ref() if ref is not None else None
 
 
 def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element']
@@ -82,187 +76,6 @@ def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element'
                 if prefix is None:
                     prefix = '  ' * len(stack)
                 output_function(prefix + "# <-- END OF " + name)
-
-
-class LinkedListNode(Generic[T]):
-
-    __slots__ = ('_previous_node', 'value', 'next_node', '__weakref__')
-
-    def __init__(self, value):
-        # type: (T) -> None
-        self._previous_node = None  # type: Optional[ReferenceType[LinkedListNode[T]]]
-        self.next_node = None  # type: Optional[LinkedListNode[T]]
-        self.value = value
-
-    @property
-    def previous_node(self):
-        # type: () -> Optional[LinkedListNode[T]]
-        return resolve_ref(self._previous_node)
-
-    @previous_node.setter
-    def previous_node(self, node):
-        # type: (LinkedListNode[T]) -> None
-        self._previous_node = weakref.ref(node) if node is not None else None
-
-    def remove(self):
-        # type: () -> T
-        LinkedListNode.link_nodes(self.previous_node, self.next_node)
-        self.previous_node = None
-        self.next_node = None
-        return self.value
-
-    def iter_next(self, *,
-                  skip_current=False  # type: Optional[bool]
-                  ):
-        # type: (...) -> Iterator[LinkedListNode[T]]
-        node = self.next_node if skip_current else self
-        while node:
-            yield node
-            node = node.next_node
-
-    def iter_previous(self, *,
-                      skip_current=False  # type: Optional[bool]
-                      ):
-        # type: (...) -> Iterator[LinkedListNode[T]]
-        node = self.previous_node if skip_current else self
-        while node:
-            yield node
-            node = node.previous_node
-
-    @staticmethod
-    def link_nodes(previous_node, next_node):
-        # type: (Optional[LinkedListNode[T]], Optional['LinkedListNode[T]']) -> None
-        if next_node:
-            next_node.previous_node = previous_node
-        if previous_node:
-            previous_node.next_node = next_node
-
-    @staticmethod
-    def _insert_link(first_node,  # type: Optional[LinkedListNode[T]]
-                     new_node,  # type: LinkedListNode[T]
-                     last_node,  # type: Optional[LinkedListNode[T]]
-                     ):
-        # type: (...) -> None
-        LinkedListNode.link_nodes(first_node, new_node)
-        LinkedListNode.link_nodes(new_node, last_node)
-
-    def insert_before(self, new_node):
-        # type: (LinkedListNode[T]) -> None
-        assert self is not new_node and new_node is not self.previous_node
-        LinkedListNode._insert_link(self.previous_node, new_node, self)
-
-    def insert_after(self, new_node):
-        # type: (LinkedListNode[T]) -> None
-        assert self is not new_node and new_node is not self.next_node
-        LinkedListNode._insert_link(self, new_node, self.next_node)
-
-
-class LinkedList(Generic[T]):
-    """Specialized linked list implementation to support the deb822 parser needs
-
-    We deliberately trade "encapsulation" for features needed by this library
-    to facilitate their implementation.  Notably, we allow nodes to leak and assume
-    well-behaved calls to remove_node - because that makes it easier to implement
-    components like Deb822InvalidParagraphElement.
-    """
-
-    __slots__ = ('head_node', 'tail_node', '_size')
-
-    def __init__(self, values=None):
-        # type: (Optional[Iterable[T]]) -> None
-        self.head_node = None  # type: Optional[LinkedListNode[T]]
-        self.tail_node = None  # type: Optional[LinkedListNode[T]]
-        self._size = 0
-        if values is not None:
-            self.extend(values)
-
-    def __bool__(self):
-        # type: () -> bool
-        return self.head_node is not None
-
-    def __len__(self):
-        # type: () -> int
-        return self._size
-
-    @property
-    def tail(self):
-        # type: () -> Optional[T]
-        return self.tail_node.value if self.tail_node is not None else None
-
-    def pop(self):
-        # type: () -> None
-        if self.tail_node is None:
-            raise IndexError('pop from empty list')
-        self.remove_node(self.tail_node)
-
-    def iter_nodes(self):
-        # type: () -> Iterator[LinkedListNode[T]]
-        head_node = self.head_node
-        if head_node is None:
-            return
-        yield from head_node.iter_next()
-
-    def __iter__(self):
-        # type: () -> Iterator[T]
-        yield from (node.value for node in self.iter_nodes())
-
-    def __reversed__(self):
-        # type: () -> Iterator[T]
-        tail_node = self.tail_node
-        if tail_node is None:
-            return
-        yield from (n.value for n in tail_node.iter_previous())
-
-    def remove_node(self, node):
-        # type: (LinkedListNode[T]) -> None
-        if node is self.head_node:
-            self.head_node = node.next_node
-            if self.head_node is None:
-                self.tail_node = None
-        elif node is self.tail_node:
-            self.tail_node = node.previous_node
-            # That case should have happened in the "if node is self._head"
-            # part
-            assert self.tail_node is not None
-        assert self._size > 0
-        self._size -= 1
-        node.remove()
-
-    def append(self, value):
-        # type: (T) -> LinkedListNode[T]
-        node = LinkedListNode(value)
-        if self.head_node is None:
-            self.head_node = node
-            self.tail_node = node
-        else:
-            # Primarily as a hint to mypy
-            assert self.tail_node is not None
-            self.tail_node.insert_after(node)
-            self.tail_node = node
-        self._size += 1
-        return node
-
-    def insert_before(self, value, existing_node):
-        # type: (T, LinkedListNode[T]) -> LinkedListNode[T]
-        new_node = LinkedListNode(value)
-        if self.head_node is None:
-            raise ValueError("List is empty; node argument cannot be valid")
-        existing_node.insert_before(new_node)
-        if existing_node is self.head_node:
-            self.head_node = new_node
-        self._size += 1
-        return new_node
-
-    def extend(self, values):
-        # type: (Iterable[T]) -> None
-        for v in values:
-            self.append(v)
-
-    def clear(self):
-        # type: () -> None
-        self.head_node = None
-        self.tail_node = None
-        self._size = 0
 
 
 def combine_into_replacement(source_class,  # type: Type[TE]

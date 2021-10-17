@@ -2,15 +2,15 @@
 
 import collections.abc
 import contextlib
-import operator
 import textwrap
 import weakref
 from abc import ABC
 from types import TracebackType
 from weakref import ReferenceType
 
-from debian.deb822 import _strI, OrderedSet
-
+from debian._util import (
+    resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
+)
 from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
 from debian._deb822_repro.tokens import (
     Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
@@ -19,8 +19,7 @@ from debian._deb822_repro.tokens import (
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
     tokenize_deb822_file, comma_split_tokenizer, whitespace_split_tokenizer,
 )
-from debian._deb822_repro._util import (resolve_ref, LinkedList, LinkedListNode,
-                                        combine_into_replacement, BufferingIterator,
+from debian._deb822_repro._util import (combine_into_replacement, BufferingIterator,
                                         len_check_iterator,
                                         )
 
@@ -29,13 +28,15 @@ try:
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
         cast, overload, Mapping, TYPE_CHECKING,
 )
+    from debian._util import T
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
-        T, ST, VE, TE,
+        ST, VE, TE,
         ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
     )
     StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
     StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
+    KVPNode = LinkedListNode['Deb822KeyValuePairElement']
 except ImportError:
     if not TYPE_CHECKING:
         cast = lambda t, v: v
@@ -1265,12 +1266,11 @@ def _format_comment(c):
 
 
 def _unpack_key(item,  # type: ParagraphKey
-                resolve_field_name=False,  # type: bool
                 raise_if_indexed=False,  # type: bool
                 ):
-    # type: (...) -> Tuple[ParagraphKeyBase, Optional[int]]
+    # type: (...) -> Tuple[_strI, Optional[int], Optional[Deb822FieldNameToken]]
     index = None  # type: Optional[int]
-    key = None  # type: Optional[ParagraphKeyBase]
+    name_token = None  # type: Optional[Deb822FieldNameToken]
     if isinstance(item, tuple):
         key, index = item
         if raise_if_indexed:
@@ -1280,17 +1280,16 @@ def _unpack_key(item,  # type: ParagraphKey
                 msg = 'Cannot resolve key "{key}" with index {index}. The key is not indexed'
                 raise KeyError(msg.format(key=key, index=index))
             index = None
-        if resolve_field_name:
-            key = _strI(key)
+        key = _strI(key)
     else:
-        key = item
         index = None
-        if resolve_field_name:
-            if isinstance(key, Deb822FieldNameToken):
-                key = key.text
-            else:
-                key = _strI(key)
-    return key, index
+        if isinstance(item, Deb822FieldNameToken):
+            name_token = item
+            key = name_token.text
+        else:
+            key = _strI(item)
+
+    return key, index, name_token
 
 
 def _convert_value_lines_to_lines(value_lines,  # type: Iterable[Deb822ValueLineElement]
@@ -1817,6 +1816,31 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         # type: () -> Deb822ParagraphElement
         return self
 
+    def order_last(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "last" in the paragraph"""
+        raise NotImplementedError  # pragma: no cover
+
+    def order_first(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "first" in the paragraph"""
+        raise NotImplementedError  # pragma: no cover
+
+    def order_before(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly after the reference field in the paragraph
+
+        The reference field must be present."""
+        raise NotImplementedError  # pragma: no cover
+
+    def order_after(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly before the reference field in the paragraph
+
+        The reference field must be present.
+        """
+        raise NotImplementedError  # pragma: no cover
+
     @property
     def kvpair_count(self):
         # type: () -> int
@@ -1849,6 +1873,12 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                     key=None,  # type: Optional[Callable[[str], Any]]
                     ):
         # type: (...) -> None
+        """Re-order all fields
+
+        :param key: Provide a key function (same semantics as for sorted).  Keep in mind that
+          the module preserve the cases for field names - in generally, callers are recommended
+          to use "lower()" to normalize the case.
+        """
         raise NotImplementedError  # pragma: no cover
 
     def set_field_to_simple_value(self,
@@ -2000,8 +2030,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         else:
             preserve_original_field_comment = True
 
-        field_name, _ = _unpack_key(item, resolve_field_name=True)
-        field_name = cast('str', field_name)
+        field_name, _, _ = _unpack_key(item)
 
         raw = ":".join((field_name, raw_string_value))  # FIXME
         raw_lines = raw.splitlines(keepends=True)
@@ -2080,14 +2109,44 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
         # type: () -> int
         return len(self._kvpair_elements)
 
+    def order_last(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "last" in the paragraph"""
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        self._kvpair_order.order_last(unpacked_field)
+
+    def order_first(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "first" in the paragraph"""
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        self._kvpair_order.order_first(unpacked_field)
+
+    def order_before(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly after the reference field in the paragraph
+
+        The reference field must be present."""
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        unpacked_ref_field, _, _ = _unpack_key(reference_field, raise_if_indexed=True)
+        self._kvpair_order.order_before(unpacked_field, unpacked_ref_field)
+
+    def order_after(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly before the reference field in the paragraph
+
+        The reference field must be present.
+        """
+        unpacked_field, _, _ = _unpack_key(field, raise_if_indexed=True)
+        unpacked_ref_field, _, _ = _unpack_key(reference_field, raise_if_indexed=True)
+        self._kvpair_order.order_after(unpacked_field, unpacked_ref_field)
+
     def iter_keys(self):
         # type: () -> Iterable[ParagraphKey]
-        yield from self._kvpair_elements
+        yield from self._kvpair_order
 
     def remove_kvpair_element(self, key):
         # type: (ParagraphKey) -> None
-        key, _ = _unpack_key(key, resolve_field_name=True, raise_if_indexed=True)
-        key = cast('_strI', key)
+        key, _, _ = _unpack_key(key, raise_if_indexed=True)
         del self._kvpair_elements[key]
         self._kvpair_order.remove(key)
 
@@ -2096,8 +2155,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
         if not isinstance(item, (str, tuple, Deb822FieldNameToken)):
             return False
         item = cast('ParagraphKey', item)
-        key, _ = _unpack_key(item, resolve_field_name=True, raise_if_indexed=True)
-        key = cast('_strI', key)
+        key, _, _ = _unpack_key(item, raise_if_indexed=True)
         return key in self._kvpair_elements
 
     def get_kvpair_element(self,
@@ -2105,15 +2163,14 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
                            use_get=False,  # type: bool
                            ):
         # type: (...) -> Optional[Deb822KeyValuePairElement]
-        item, _ = _unpack_key(item, resolve_field_name=True, raise_if_indexed=True)
-        item = cast('_strI', item)
+        item, _, _ = _unpack_key(item, raise_if_indexed=True)
         if use_get:
             return self._kvpair_elements.get(item)
         return self._kvpair_elements[item]
 
     def set_kvpair_element(self, key, value):
         # type: (ParagraphKey, Deb822KeyValuePairElement) -> None
-        key, _ = _unpack_key(key, raise_if_indexed=True)
+        key, _, _ = _unpack_key(key, raise_if_indexed=True)
         if isinstance(key, Deb822FieldNameToken):
             if key is not value.field_token:
                 raise ValueError("Key is a Deb822FieldNameToken, but not *the* Deb822FieldNameToken"
@@ -2134,10 +2191,19 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def sort_fields(self, key=None):
         # type: (Optional[Callable[[str], Any]]) -> None
+        """Re-order all fields
+
+        :param key: Provide a key function (same semantics as for sorted).  Keep in mind that
+          the module preserve the cases for field names - in generally, callers are recommended
+          to use "lower()" to normalize the case.
+        """
         for last_field_name in reversed(self._kvpair_order):
             last_kvpair = self._kvpair_elements[cast('_strI', last_field_name)]
             last_kvpair.value_element.add_final_newline_if_missing()
             break
+
+        if key is None:
+            key = default_field_sort_key
 
         self._kvpair_order = OrderedSet(sorted(self._kvpair_order, key=key))
 
@@ -2154,7 +2220,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         super().__init__()
         self._kvpair_order = LinkedList()  # type: LinkedList[Deb822KeyValuePairElement]
         self._kvpair_elements = \
-            {}  # type: Dict[_strI, List[LinkedListNode[Deb822KeyValuePairElement]]]
+            {}  # type: Dict[_strI, List[KVPNode]]
         self._init_kvpair_fields(kvpair_elements)
         self._init_parent_of_parts()
 
@@ -2177,6 +2243,118 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
             else:
                 self._kvpair_elements[field_name].append(node)
 
+    def _nodes_being_relocated(self, field):
+        # type: (ParagraphKey) -> Tuple[List[KVPNode], List[KVPNode]]
+        key, index, name_token = _unpack_key(field)
+        nodes = self._kvpair_elements[key]
+        nodes_being_relocated = []
+
+        if name_token is not None or index is not None:
+            single_node = self._resolve_to_single_node(nodes, key, index, name_token)
+            assert single_node is not None
+            nodes_being_relocated.append(single_node)
+        else:
+            nodes_being_relocated = nodes
+        return nodes, nodes_being_relocated
+
+    def order_last(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "last" in the paragraph"""
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+
+        kvpair_order = self._kvpair_order
+        for node in nodes_being_relocated:
+            if kvpair_order.tail_node is node:
+                # Special case for relocating a single node that happens to be the last.
+                continue
+            kvpair_order.remove_node(node)
+            # assertion for mypy
+            assert kvpair_order.tail_node is not None
+            kvpair_order.insert_node_after(node, kvpair_order.tail_node)
+
+        if len(nodes_being_relocated) == 1 and nodes_being_relocated[0] is not nodes[-1]:
+            single_node = nodes_being_relocated[0]
+            nodes.remove(single_node)
+            nodes.append(single_node)
+
+    def order_first(self, field):
+        # type: (ParagraphKey) -> None
+        """Re-order the given field so it is "first" in the paragraph"""
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+
+        kvpair_order = self._kvpair_order
+        for node in nodes_being_relocated:
+            if kvpair_order.head_node is node:
+                # Special case for relocating a single node that happens to be the first.
+                continue
+            kvpair_order.remove_node(node)
+            # assertion for mypy
+            assert kvpair_order.head_node is not None
+            kvpair_order.insert_node_before(node, kvpair_order.head_node)
+
+        if len(nodes_being_relocated) == 1 and nodes_being_relocated[0] is not nodes[0]:
+            single_node = nodes_being_relocated[0]
+            nodes.remove(single_node)
+            nodes.insert(0, single_node)
+
+    def order_before(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly after the reference field in the paragraph
+
+        The reference field must be present."""
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+        # For "before" we always use the "first" variant as reference in case of doubt
+        _, reference_nodes = self._nodes_being_relocated(reference_field)
+        reference_node = reference_nodes[0]
+        if reference_node in nodes_being_relocated:
+            raise ValueError("Cannot re-order a field relative to itself")
+
+        kvpair_order = self._kvpair_order
+        for node in nodes_being_relocated:
+            kvpair_order.remove_node(node)
+            kvpair_order.insert_node_before(node, reference_node)
+
+        if len(nodes_being_relocated) == 1 and len(nodes) > 1:
+            # Regenerate the (new) relative field order.
+            field_name = nodes_being_relocated[0].value.field_name
+            self._regenerate_relative_kvapir_order(field_name)
+
+    def order_after(self, field, reference_field):
+        # type: (ParagraphKey, ParagraphKey) -> None
+        """Re-order the given field so appears directly before the reference field in the paragraph
+
+        The reference field must be present.
+        """
+        nodes, nodes_being_relocated = self._nodes_being_relocated(field)
+        assert len(nodes_being_relocated) == 1 or len(nodes) == len(nodes_being_relocated)
+        _, reference_nodes = self._nodes_being_relocated(reference_field)
+        # For "after" we always use the "last" variant as reference in case of doubt
+        reference_node = reference_nodes[-1]
+        if reference_node in nodes_being_relocated:
+            raise ValueError("Cannot re-order a field relative to itself")
+
+        kvpair_order = self._kvpair_order
+        # Use "reversed" to preserve the relative order of the nodes assuming a bulk reorder
+        for node in reversed(nodes_being_relocated):
+            kvpair_order.remove_node(node)
+            kvpair_order.insert_node_after(node, reference_node)
+
+        if len(nodes_being_relocated) == 1 and len(nodes) > 1:
+            # Regenerate the (new) relative field order.
+            field_name = nodes_being_relocated[0].value.field_name
+            self._regenerate_relative_kvapir_order(field_name)
+
+    def _regenerate_relative_kvapir_order(self, field_name):
+        # type: (_strI) -> None
+        nodes = []
+        for node in self._kvpair_order.iter_nodes():
+            if node.value.field_name == field_name:
+                nodes.append(node)
+        self._kvpair_elements[field_name] = nodes
+
     def iter_parts(self):
         # type: () -> Iterable[TokenOrElement]
         yield from self._kvpair_order
@@ -2190,54 +2368,58 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         # type: () -> Iterable[ParagraphKey]
         yield from (kv.field_name for kv in self._kvpair_order)
 
-    def get_kvpair_element(self,
-                           item,  # type: ParagraphKey
-                           use_get=False,  # type: bool
-                           ):
-        # type: (...) -> Optional[Deb822KeyValuePairElement]
-        name_token = None  # type: Optional[Deb822FieldNameToken]
-        key, index = _unpack_key(item)
-        if isinstance(key, Deb822FieldNameToken):
-            name_token = key
-            key = name_token.text
-        else:
-            name_token = None
-            key = _strI(key)
-        if use_get:
-            res = self._kvpair_elements.get(key)
-            if res is None:
-                return None
-        else:
-            res = self._kvpair_elements[key]
+    def _resolve_to_single_node(self,
+                                nodes,  # type: List[KVPNode]
+                                key,  # type: str
+                                index,  # type: Optional[int]
+                                name_token, # type: Optional[Deb822FieldNameToken]
+                                use_get=False,  # type: bool
+                                ):
+        # type: (...) -> Optional[KVPNode]
         if index is None:
-            if len(res) != 1:
+            if len(nodes) != 1:
                 if name_token is not None:
-                    node = self._find_node_via_name_token(name_token, res)
+                    node = self._find_node_via_name_token(name_token, nodes)
                     if node is not None:
-                        return node.value
+                        return node
                 msg = "Ambiguous key {key} - the field appears {res_len} times. Use" \
                       " ({key}, index) to denote which instance of the field you want.  (Index" \
                       " can be 0..{res_len_1} or e.g. -1 to denote the last field)"
-                # res_len=len(res)
-                # res_len_1=len(res) - 1
                 raise AmbiguousDeb822FieldKeyError(msg.format(key=key,
-                                                              res_len=len(res),
-                                                              res_len_1=len(res) - 1))
+                                                              res_len=len(nodes),
+                                                              res_len_1=len(nodes) - 1))
             index = 0
         try:
-            return res[index].value
+            return nodes[index]
         except IndexError:
             if use_get:
                 return None
             msg = 'Field "{key}" was present but the index "{index}" was invalid.'
             raise KeyError(msg.format(key=key, index=index))
 
+    def get_kvpair_element(self,
+                           item,  # type: ParagraphKey
+                           use_get=False,  # type: bool
+                           ):
+        # type: (...) -> Optional[Deb822KeyValuePairElement]
+        key, index, name_token = _unpack_key(item)
+        if use_get:
+            nodes = self._kvpair_elements.get(key)
+            if nodes is None:
+                return None
+        else:
+            nodes = self._kvpair_elements[key]
+        node = self._resolve_to_single_node(nodes, key, index, name_token, use_get=use_get)
+        if node is not None:
+            return node.value
+        return None
+
     @staticmethod
     def _find_node_via_name_token(
             name_token,  # type: Deb822FieldNameToken
-            elements,  # type: Iterable[LinkedListNode[Deb822KeyValuePairElement]]
+            elements,  # type: Iterable[KVPNode]
     ):
-        # type: (...) -> Optional[LinkedListNode[Deb822KeyValuePairElement]]
+        # type: (...) -> Optional[KVPNode]
         # if we are given a name token, then it is non-ambiguous if we have exactly
         # that name token in our list of nodes.  It will be an O(n) lookup but we
         # probably do not have that many duplicate fields (and even if do, it is not
@@ -2256,13 +2438,13 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def set_kvpair_element(self, key, value):
         # type: (ParagraphKey, Deb822KeyValuePairElement) -> None
-        key, index = _unpack_key(key)
-        if isinstance(key, Deb822FieldNameToken):
-            if key is not value.field_token:
+        key, index, name_token = _unpack_key(key)
+        if name_token:
+            if name_token is not value.field_token:
                 original_nodes = self._kvpair_elements.get(value.field_name)
                 original_node = None
                 if original_nodes is not None:
-                    original_node = self._find_node_via_name_token(key, original_nodes)
+                    original_node = self._find_node_via_name_token(name_token, original_nodes)
 
                 if original_node is None:
                     raise ValueError("Key is a Deb822FieldNameToken, but not *the*"
@@ -2277,7 +2459,8 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
             if key != value.field_name:
                 raise ValueError("Cannot insert value under a different field value than field name"
                                  " from its Deb822FieldNameToken implies")
-            # Use the string from the Deb822FieldNameToken as it is a _strI
+            # Use the string from the Deb822FieldNameToken as it is a _strI and has the same value
+            # (memory optimization)
             key = value.field_name
         original_nodes = self._kvpair_elements.get(key)
         if original_nodes is None or not original_nodes:
@@ -2319,14 +2502,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def remove_kvpair_element(self, key):
         # type: (ParagraphKey) -> None
-        key, idx = _unpack_key(key)
-        name_token = None  # type: Optional[Deb822FieldNameToken]
-        if isinstance(key, Deb822FieldNameToken):
-            name_token = key
-            key = name_token.text
-        else:
-            name_token = None
-            key = _strI(key)
+        key, idx, name_token = _unpack_key(key)
         field_list = self._kvpair_elements[key]
 
         if name_token is None and idx is None:
@@ -2361,24 +2537,29 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def sort_fields(self, key=None):
         # type: (Optional[Callable[[str], Any]]) -> None
+        """Re-order all fields
+
+        :param key: Provide a key function (same semantics as for sorted).   Keep in mind that
+          the module preserve the cases for field names - in generally, callers are recommended
+          to use "lower()" to normalize the case.
+        """
+
         if key is None:
-            actual_key = operator.attrgetter(
-                'field_name')  # type: Callable[[Deb822KeyValuePairElement], Any]
-        else:
-            # Work around mypy that cannot seem to shred the Optional notion
-            # without this little indirection
-            key_impl = key
+            key = default_field_sort_key
 
-            def _actual_key(kvpair):
-                # type: (Deb822KeyValuePairElement) -> Any
-                return key_impl(kvpair.field_name)
+        # Work around mypy that cannot seem to shred the Optional notion
+        # without this little indirection
+        key_impl = key
 
-            actual_key = _actual_key
+        def _actual_key(kvpair):
+            # type: (Deb822KeyValuePairElement) -> Any
+            return key_impl(kvpair.field_name)
+
         for last_kvpair in reversed(self._kvpair_order):
             last_kvpair.value_element.add_final_newline_if_missing()
             break
 
-        sorted_kvpair_list = sorted(self._kvpair_order, key=actual_key)
+        sorted_kvpair_list = sorted(self._kvpair_order, key=_actual_key)
         self._kvpair_order = LinkedList()
         self._kvpair_elements = {}
         self._init_kvpair_fields(sorted_kvpair_list)
@@ -2835,7 +3016,7 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
                 field_names = set()
                 dup_field = None
                 for field in paragraph.keys():
-                    field_name, _ = _unpack_key(field, resolve_field_name=True)
+                    field_name, _, _ = _unpack_key(field)
                     # assert for mypy
                     assert isinstance(field_name, str)
                     if field_name in field_names:

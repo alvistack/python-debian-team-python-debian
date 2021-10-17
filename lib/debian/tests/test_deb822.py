@@ -26,6 +26,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 import warnings
 
@@ -462,6 +463,96 @@ with open("test_deb822.pickle", "wb") as fh:
         # type: () -> None
         deb822_ = deb822.Deb822(['\n'] * 3 + UNPARSED_PACKAGE.splitlines())
         self.assertWellParsed(deb822_, PARSED_PACKAGE)
+
+    def test_reorder(self):
+        # type: () -> None
+        content = textwrap.dedent("""
+        Depends: bar
+        Description: some-text
+        Architecture: any
+        Package: foo
+        Recommends: baz
+        """)
+        paragraph = deb822.Deb822(content.splitlines())
+        # Verify the starting state
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+                         )
+        # no op
+        paragraph.order_last('Recommends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+                         )
+        # no op
+        paragraph.order_first('Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+                         )
+
+        paragraph.order_first('Package')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Depends', 'Description', 'Architecture', 'Recommends']
+                         )
+
+        paragraph.order_last('Description')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Depends', 'Architecture', 'Recommends', 'Description']
+                         )
+
+        paragraph.order_after('Recommends', 'Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Depends', 'Recommends', 'Architecture', 'Description']
+                         )
+
+        paragraph.order_before('Architecture', 'Depends')
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
+                         )
+
+        with self.assertRaises(ValueError):
+            paragraph.order_after('Architecture', 'Architecture')
+        with self.assertRaises(ValueError):
+            paragraph.order_before('Architecture', 'Architecture')
+        with self.assertRaises(KeyError):
+            paragraph.order_before('Unknown-Field', 'Architecture')
+        with self.assertRaises(KeyError):
+            paragraph.order_before('Architecture', 'Unknown-Field')
+
+    def test_sort_fields(self):
+        # type: () -> None
+        content = textwrap.dedent("""
+        Depends: bar
+        Description: some-text
+        Architecture: any
+        Package: foo
+        Recommends: baz
+        """)
+        paragraph = deb822.Deb822(content.splitlines())
+        # Initial state
+        self.assertEqual(list(paragraph.keys()),
+                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+                         )
+
+        # Sorting defaults to using name
+        paragraph.sort_fields()
+        self.assertEqual(list(paragraph.keys()),
+                         ['Architecture', 'Depends', 'Description', 'Package', 'Recommends']
+                         )
+
+        # Sorting using a key function
+        order_table = {
+            'package': 1,
+            'architecture': 2,
+            # Dependencies have the same order
+            'depends': 3,
+            'recommends': 3,
+            # Desc definitely last
+            'description': 100,
+        }
+        paragraph.sort_fields(key=lambda x: order_table[x.lower()])
+        self.assertEqual(list(paragraph.keys()),
+                         ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
+                         )
 
     def test_gpg_stripping(self):
         # type: () -> None
