@@ -8,6 +8,9 @@ from abc import ABC
 from types import TracebackType
 from weakref import ReferenceType
 
+from debian._deb822_repro.formatter import (
+    FormatterContentToken, one_value_per_line_trailing_separator, format_field,
+)
 from debian._util import (
     resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
 )
@@ -33,6 +36,7 @@ try:
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
         ST, VE, TE,
         ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
+        FormatterCallback,
     )
     StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
     StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
@@ -146,9 +150,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         self._value_factory = _parser_to_value_factory(str2value_parser, vtype)
         self._render = render
         self._format_preserve_original_formatting = True
-        self._format_one_value_per_line = False
-        self._format_with_leading_whitespace_matching_field_length = False
-        self._format_trailing_separator_after_last_element = False
+        self._formatter = one_value_per_line_trailing_separator  # type: FormatterCallback
         self._changed = False
         self.__continuation_line_char = None  # type: Optional[str]
         assert self._token_list
@@ -445,17 +447,29 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
     def _enable_reformatting(self):
         # type: () -> None
-        self._format_one_value_per_line = True
-        self._format_with_leading_whitespace_matching_field_length = True
-        self._format_trailing_separator_after_last_element = True
         self._format_preserve_original_formatting = False
 
     def no_reformatting_when_finished(self):
         # type: () -> None
-        self._format_one_value_per_line = False
-        self._format_with_leading_whitespace_matching_field_length = False
-        self._format_trailing_separator_after_last_element = False
         self._format_preserve_original_formatting = True
+
+    def value_formatter(self,
+                        formatter,  # type: FormatterCallback
+                        force_reformat=False,  # type: bool
+                        ):
+        # type: (...) -> None
+        """Use a custom formatter when formatting the value
+
+        :param formatter: A formatter (see debian._deb822_repro.formatter.format_field
+          for details)
+        :param force_reformat: If True, always reformat the field even if there are
+          no (other) changes performed.  By default, fields are only reformatted if
+          they are changed.
+        """
+        self._formatter = formatter
+        self._format_preserve_original_formatting = False
+        if force_reformat:
+            self._changed = True
 
     def _iter_content_as_tokens(self):
         # type: () -> Iterable[Deb822Token]
@@ -468,79 +482,32 @@ class Deb822ParsedTokenList(Generic[VE, ST],
     def _generate_reformatted_field_content(self):
         # type: () -> str
         separator_token = self._default_separator_factory()
-        space_after_newline = self._continuation_line_char
-        separator_includes_newline = self._format_one_value_per_line
-        if separator_token.is_whitespace:
-            separator_as_text = ''
-        else:
-            separator_as_text = separator_token.text
-        if separator_includes_newline:
-            separator_with_space = separator_as_text + '\n '
-            if self._format_with_leading_whitespace_matching_field_length:
-                space_len = len(self._kvpair_element.field_name)
-                # Plus 1 (one for the separator and one for the space after it
-                # and then minus one for the continuation_line_char)
-                space_len += 1
-                separator_with_space = separator_as_text + '\n'
-                space_after_newline = self._continuation_line_char + ' ' * space_len
-        else:
-            separator_with_space = separator_as_text + ' '
-
         vtype = self._vtype
-        token_iter = (t for t in self._token_list
-                      if (isinstance(t, Deb822Token) and t.is_comment) or isinstance(t, vtype)
-                      )  # type: Iterator[Union[Deb822Token, VE]]
+        stype = self._stype
+        token_list = self._token_list
 
         def _token_iter():
-            # type: () -> Iterable[str]
-            first_token = next(token_iter, None)  # type: Optional[Union[Deb822Token, VE]]
-            pending_separator = True
-            ended_on_a_newline = False
-            if isinstance(first_token, vtype):
-                # Leading space after ":"
-                yield ' '
-                yield first_token.convert_to_text()
-            else:
-                # Comment
-                assert isinstance(first_token, Deb822Token) and first_token.is_comment
-                yield "\n"
-                yield first_token.text
-                ended_on_a_newline = True
-                pending_separator = False
-
-            last_token = first_token  # type: Union[Deb822Token, VE]
-            for t in token_iter:
-                if isinstance(t, vtype):
-                    if pending_separator:
-                        yield separator_with_space
-                        ended_on_a_newline = separator_includes_newline
-                    if ended_on_a_newline:
-                        yield space_after_newline
-                    yield t.convert_to_text()
-                    ended_on_a_newline = False
-                    pending_separator = True
+            # type: () -> Iterator[FormatterContentToken]
+            text = ""  # type: str
+            for te in token_list:
+                if isinstance(te, Deb822Token):
+                    if te.is_comment:
+                        yield FormatterContentToken.comment_token(te.text)
+                    elif isinstance(te, stype):
+                        # mypy gets confused and loses track of the type.
+                        text = te.text  # type: ignore
+                        yield FormatterContentToken.separator_token(text)
                 else:
-                    # Assert for mypy (and future changes)
-                    assert isinstance(t, Deb822Token) and t.is_comment
-                    if pending_separator and separator_as_text:
-                        yield separator_as_text
-                    if not separator_includes_newline or \
-                            (not isinstance(last_token, Deb822Token) or not last_token.is_comment):
-                        yield "\n"
-                    yield t.text
-                    pending_separator = False
-                    ended_on_a_newline = True
+                    assert isinstance(te, vtype)
+                    # mypy gets confused and loses track of the type.
+                    text = te.convert_to_text()  # type: ignore
+                    yield FormatterContentToken.value_token(text)
 
-                last_token = t
-
-            # We do not support values ending on a comment
-            assert last_token is not None
-            assert not isinstance(last_token, Deb822Token) or not last_token.is_comment
-            if self._format_trailing_separator_after_last_element and separator_as_text:
-                yield separator_as_text
-            yield '\n'
-
-        return ''.join(_token_iter())
+        return format_field(self._formatter,
+                            self._kvpair_element.field_name,
+                            FormatterContentToken.separator_token(separator_token.text),
+                            _token_iter()
+                            )
 
     def _generate_field_content(self):
         # type: () -> str
@@ -568,9 +535,10 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
         if self._format_preserve_original_formatting:
             value_text = self._generate_field_content()
+            text = ':'.join((field_name, value_text))
         else:
-            value_text = self._generate_reformatted_field_content()
-        text = ':'.join((field_name, value_text))
+            text = self._generate_reformatted_field_content()
+
         new_content = text.splitlines(keepends=True)
 
         # As absurd as it might seem, it is easier to just use the parser to
@@ -659,7 +627,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
                     # appeared before the comments and was thus omitted (leaving us to re-add
                     # it here).
                     self.append_separator(space_after_separator=False)
-                if comments or self._format_one_value_per_line:
+                if comments:
                     self.append_newline()
                 else:
                     self._token_list.append(Deb822WhitespaceToken(' '))
