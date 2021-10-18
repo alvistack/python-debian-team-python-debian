@@ -53,7 +53,11 @@ setup(
     platforms=['any'],
     url='https://salsa.debian.org/python-debian-team/python-debian',
     package_dir={'': 'lib'},
-    packages=['debian', 'debian_bundle'],
+    packages=[
+        'debian',
+        'debian_bundle',
+        'debian._deb822_repro',
+    ],
     package_data={'debian': ['py.typed']},
     py_modules=['deb822'],
     python_requires='>=3.3',
