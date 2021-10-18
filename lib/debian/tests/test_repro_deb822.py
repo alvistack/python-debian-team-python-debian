@@ -300,6 +300,92 @@ class FormatPreservingDeb822ParserTests(TestCase):
         self.assertEqual(expected, deb822_file.convert_to_text(),
                          "Mutation should have worked while but discarded comments")
 
+        source_paragraph['Multi-Line-Field-Space'] = textwrap.dedent('''\
+        foo
+         bar
+        ''')
+        source_paragraph['Multi-Line-Field-Tab'] = textwrap.dedent('''\
+        foo
+        \tbar
+        ''')
+        expected = textwrap.dedent('''\
+          Source: foo
+          Rules-Requires-Root: binary-targets
+          New-Field: value
+          Multi-Line-Field-Space: foo
+           bar
+          Multi-Line-Field-Tab: foo
+          \tbar
+          ''')
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving space + tab")
+
+    def test_case_preservation(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          rules-requires-root: no
+          # Comment for S-V
+          Standards-Version: 1.2.3
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        source_paragraph = next(iter(deb822_file))
+        self.assertEqual("foo", source_paragraph['Source'])
+        self.assertEqual("1.2.3", source_paragraph['Standards-Version'])
+        self.assertEqual("no", source_paragraph['Rules-Requires-Root'])
+
+        # Test setter and deletion while we are at it
+        source_paragraph["Rules-Requires-Root"] = "binary-targets"
+        source_paragraph["New-field"] = "value"
+        del source_paragraph["Standards-Version"]
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          rules-requires-root: binary-targets
+          New-field: value
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving case")
+
+        # Repeat with duplicated fields
+        original = textwrap.dedent('''\
+          source: foo
+          source: foo
+          # Comment for RRR
+          rules-requires-root: no
+          rules-requires-root: no
+          # Comment for S-V
+          Standards-Version: 1.2.3
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        source_paragraph = next(iter(deb822_file))
+        self.assertEqual("foo", source_paragraph['Source'])
+        self.assertEqual("1.2.3", source_paragraph['Standards-Version'])
+        self.assertEqual("no", source_paragraph['Rules-Requires-Root'])
+
+        # Test setter and deletion while we are at it
+        source_paragraph["Rules-Requires-Root"] = "binary-targets"
+        source_paragraph["New-field"] = "value"
+        del source_paragraph["Standards-Version"]
+
+        expected = textwrap.dedent('''\
+          source: foo
+          source: foo
+          # Comment for RRR
+          rules-requires-root: binary-targets
+          New-field: value
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving case")
+
     def test_append_paragraph(self):
         # type: () -> None
         original = textwrap.dedent('''\
