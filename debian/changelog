@@ -1,4 +1,6 @@
-python-debian (0.1.42) UNRELEASED; urgency=medium
+python-debian (0.1.42) unstable; urgency=medium
+
+  "The Hitchhiker's Guide to the Galaxy" release.
 
   [ Jelmer Vernooĳ ]
   * Use logging for warnings about data that's being read, rather than
@@ -6,6 +8,13 @@ python-debian (0.1.42) UNRELEASED; urgency=medium
 
   [ Stuart Prescott ]
   * Fix type checks for mypy 0.910
+  * Refactor CI code to be less repetitive.
+  * Fix autopkgtest invocation of py.test.
+  * Silence lintian complaint about touching the dpkg database in the
+    examples.
+  * Update Standards-Version to 4.6.0 (no changes required).
+  * Add RTS parser to setup.py so that it is installed.
+  * Add copyright attribution for RTS parser.
 
   [ Niels Thykier ]
   * RTS parser: Accept tabs as continuation line marker. Closes: #994854
@@ -14,7 +23,7 @@ python-debian (0.1.42) UNRELEASED; urgency=medium
   * RTS parser: Make value interpretation tokenization consistent
   * RTS parser: Add interpretation for Uploaders field
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Oct 2021 11:45:10 +0200
+ -- Stuart Prescott <stuart@debian.org>  Mon, 18 Oct 2021 17:12:47 +1100
 
 python-debian (0.1.41) experimental; urgency=medium
 
