@@ -1,0 +1,1 @@
+python3-debian: uses-dpkg-database-directly usr/share/doc/python3-debian/examples/deb822/grep-maintainer
