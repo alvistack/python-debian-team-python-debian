@@ -2005,7 +2005,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         for i, line in enumerate(raw_lines, start=1):
             if not line.endswith("\n"):
                 raise ValueError("Line {i} in new value was missing trailing newline".format(i=i))
-            if i != 1 and line[0] not in (' ', '#'):
+            if i != 1 and line[0] not in (' ', '\t', '#'):
                 msg = 'Line {i} in new value was invalid.  It must either start' \
                       ' with " " space (continuation line) or "#" (comment line).' \
                       ' The line started with "{line}"'

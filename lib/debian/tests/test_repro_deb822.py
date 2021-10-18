@@ -300,6 +300,26 @@ class FormatPreservingDeb822ParserTests(TestCase):
         self.assertEqual(expected, deb822_file.convert_to_text(),
                          "Mutation should have worked while but discarded comments")
 
+        source_paragraph['Multi-Line-Field-Space'] = textwrap.dedent('''\
+        foo
+         bar
+        ''')
+        source_paragraph['Multi-Line-Field-Tab'] = textwrap.dedent('''\
+        foo
+        \tbar
+        ''')
+        expected = textwrap.dedent('''\
+          Source: foo
+          Rules-Requires-Root: binary-targets
+          New-Field: value
+          Multi-Line-Field-Space: foo
+           bar
+          Multi-Line-Field-Tab: foo
+          \tbar
+          ''')
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving space + tab")
+
     def test_append_paragraph(self):
         # type: () -> None
         original = textwrap.dedent('''\
