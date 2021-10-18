@@ -1387,11 +1387,11 @@ class FormatPreservingDeb822ParserTests(TestCase):
             arch_list.append('hurd-amd64')
             arch_list.append('hurd-i386')
 
-        # With reformatting - should use tab
+        # With reformatting - the default formatter uses space
         expected_result = textwrap.dedent('''\
                           Build-Depends: debhelper-compat (= 12),
-                          \t              foo,
-                          \t              bar (>= 1.0~),
+                                         foo,
+                                         bar (>= 1.0~),
                            ''')
         with _field_mutation_test(bd_kvpair,
                                   LIST_COMMA_SEPARATED_INTERPRETATION,

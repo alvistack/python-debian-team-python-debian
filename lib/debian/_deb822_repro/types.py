@@ -1,11 +1,12 @@
 try:
-    from typing import TypeVar, Union, Tuple, List, TYPE_CHECKING
+    from typing import TypeVar, Union, Tuple, List, Callable, Iterator, TYPE_CHECKING
 
     if TYPE_CHECKING:
         from debian._deb822_repro.tokens import Deb822Token, Deb822FieldNameToken
         from debian._deb822_repro.parsing import (
             Deb822Element, Deb822CommentElement, Deb822ParsedValueElement
         )
+        from debian._deb822_repro.formatter import FormatterContentToken
 
     TokenOrElement = Union['Deb822Element', 'Deb822Token']
     TE = TypeVar('TE', bound=TokenOrElement)
@@ -48,6 +49,19 @@ try:
     of string (each element being a line of comment). The alternative format is
     there for enable reuse of an existing element (e.g. to avoid "unpacking"
     only to "re-pack" an existing comment element).
+    """
+
+    FormatterCallback = Callable[[
+                                     str,
+                                     'FormatterContentToken',
+                                     Iterator['FormatterContentToken']
+                                 ],
+                                 Iterator[Union['FormatterContentToken', str]]
+                                 ]
+    FormatterCallback.__doc__ = """\
+    Formatter callback used with the round-trip safe parser
+
+    See debian._repro_deb822.formatter.format_field for details
     """
 except ImportError:
     pass
