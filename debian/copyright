@@ -65,6 +65,11 @@ Files:
 Copyright: Copyright (C) 2014   Google, Inc.
 License: GPL-2+
 
+Files:
+ lib/debian/_deb822_repro/*
+Copyright: Copyright (C) 2021 Niels Thykier <niels@thykier.net>
+License: GPL-2+
+
 License: GPL-2+
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
