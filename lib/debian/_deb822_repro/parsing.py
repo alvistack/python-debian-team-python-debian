@@ -2000,7 +2000,20 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
 
         field_name, _, _ = _unpack_key(item)
 
-        raw = ":".join((field_name, raw_string_value))  # FIXME
+        cased_field_name = field_name
+        try:
+            original = self.get_kvpair_element(item, use_get=True)
+        except AmbiguousDeb822FieldKeyError:
+            if preserve_original_field_comment:
+                # If we were asked to preserve the original comment, then we
+                # require a strict lookup
+                raise
+            original = self.get_kvpair_element((field_name, 0), use_get=True)
+
+        if original:
+            # If we already have the field, then preserve the original case
+            cased_field_name = original.field_name
+        raw = ":".join((cased_field_name, raw_string_value))
         raw_lines = raw.splitlines(keepends=True)
         for i, line in enumerate(raw_lines, start=1):
             if not line.endswith("\n"):
@@ -2024,7 +2037,6 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         value = paragraph.get_kvpair_element(field_name)
         assert value is not None
         if preserve_original_field_comment:
-            original = self.get_kvpair_element(item, use_get=True)
             if original:
                 value.comment_element = original.comment_element
                 original.comment_element = None
@@ -2148,7 +2160,8 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
             if key != value.field_name:
                 raise ValueError("Cannot insert value under a different field value than field name"
                                  " from its Deb822FieldNameToken implies")
-            # Use the string from the Deb822FieldNameToken as it is a _strI
+            # Use the string from the Deb822FieldNameToken as we need to keep that in memory either
+            # way
             key = value.field_name
         original_value = self._kvpair_elements.get(key)
         self._kvpair_elements[key] = value

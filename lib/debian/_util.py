@@ -50,6 +50,10 @@ class _CaseInsensitiveString(str):
         except AttributeError:
             return False
 
+    def __ne__(self, other):
+        # type: (Any) -> Any
+        return not self == other
+
     def lower(self):
         # type: () -> str
         return self.str_lower
