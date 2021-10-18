@@ -19,10 +19,9 @@ override_dh_auto_build: lib/debian/_version.py
 	dh_auto_build
 	lib/debian/doc-debtags > README.debtags
 
-override_dh_auto_test:
-	# don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
+# don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	$(MAKE) test
+override_dh_auto_test: test
 endif
 
 override_dh_auto_install:
