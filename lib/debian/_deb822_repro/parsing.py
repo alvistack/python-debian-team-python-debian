@@ -1975,6 +1975,11 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
           existing field and that has a comment, then the comment will remain
           after this operation.  This is the default is the `field_comment`
           parameter is omitted.
+          Note that if the parameter is True and the item is ambiguous, this
+          will raise an AmbiguousDeb822FieldKeyError.  When the parameter is
+          omitted, the ambiguity is resolved automatically and if the resolved
+          field has a comment then that will be preserved (assuming
+          field_comment is None).
         :param field_comment: If not None, add or replace the comment for
           the field.  Each string in the in the list will become one comment
           line (inserted directly before the field name). Will appear in the
@@ -1995,8 +2000,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             if not isinstance(field_comment, Deb822CommentElement):
                 new_content.extend(_format_comment(x) for x in field_comment)
                 field_comment = None
-        else:
-            preserve_original_field_comment = True
+            preserve_original_field_comment = False
 
         field_name, _, _ = _unpack_key(item)
 
@@ -2009,6 +2013,12 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                 # require a strict lookup
                 raise
             original = self.get_kvpair_element((field_name, 0), use_get=True)
+
+        if preserve_original_field_comment is None:
+            # We simplify preserve_original_field_comment after the lookup of the field.
+            # Otherwise, we can get ambiguous key errors when updating an ambiguous field
+            # when the caller did not explicitly ask for that behaviour.
+            preserve_original_field_comment = True
 
         if original:
             # If we already have the field, then preserve the original case
@@ -2122,7 +2132,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def iter_keys(self):
         # type: () -> Iterable[ParagraphKey]
-        yield from self._kvpair_order
+        yield from (str(k) for k in self._kvpair_order)
 
     def remove_kvpair_element(self, key):
         # type: (ParagraphKey) -> None
@@ -2939,7 +2949,7 @@ def _build_field_with_value(
 def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
                       *,
                       accept_files_with_error_tokens=False,  # type: bool
-                      accept_files_with_duplicated_fields=True  # type: bool
+                      accept_files_with_duplicated_fields=False  # type: bool
                       ):
     # type: (...) -> Deb822FileElement
     """
@@ -2956,7 +2966,7 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
       parse error by this parser as the implementation can gracefully cope
       with these. Use accept_files_with_duplicated_fields to determine if
       such files should be accepted.
-    :param accept_files_with_duplicated_fields: If True (the default), then
+    :param accept_files_with_duplicated_fields: If True, then
       files containing paragraphs with duplicated fields will be returned as
       "successfully" parsed even though they are invalid according to the
       specification.  The paragraphs will prefer the first appearance of the
