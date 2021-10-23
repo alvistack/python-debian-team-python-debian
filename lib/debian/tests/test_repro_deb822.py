@@ -47,6 +47,7 @@ RoundTripParseCase = collections.namedtuple('RoundTripParseCase',
                                             ['input',
                                              'is_valid_file',
                                              'error_element_count',
+                                             'duplicate_fields',
                                              'paragraph_count',
                                              ])
 
@@ -63,11 +64,13 @@ ROUND_TRIP_CASES = [
     RoundTripParseCase(input='',
                        is_valid_file=False,
                        error_element_count=0,
+                       duplicate_fields=False,
                        paragraph_count=0
                        ),
     RoundTripParseCase(input='A: b',
                        is_valid_file=True,
                        error_element_count=0,
+                       duplicate_fields=False,
                        paragraph_count=1
                        ),
     RoundTripParseCase(input=textwrap.dedent('''\
@@ -112,6 +115,7 @@ ROUND_TRIP_CASES = [
                         Architecture: all¶'''),
                        paragraph_count=3,
                        is_valid_file=True,
+                       duplicate_fields=False,
                        error_element_count=0,
                        ),
     RoundTripParseCase(input=textwrap.dedent('''\
@@ -137,6 +141,7 @@ ROUND_TRIP_CASES = [
                         '''),
                        paragraph_count=3,
                        is_valid_file=False,
+                       duplicate_fields=False,
                        error_element_count=2,
                        ),
     RoundTripParseCase(input=textwrap.dedent('''\
@@ -147,6 +152,7 @@ ROUND_TRIP_CASES = [
                         '''),
                        is_valid_file=False,
                        error_element_count=0,
+                       duplicate_fields=True,
                        paragraph_count=1
                        ),
     RoundTripParseCase(input=textwrap.dedent('''\
@@ -166,6 +172,7 @@ ROUND_TRIP_CASES = [
                     '''),
                        is_valid_file=False,
                        error_element_count=0,
+                       duplicate_fields=True,
                        paragraph_count=2
                        ),
 ]
@@ -197,7 +204,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 if isinstance(token, Deb822ErrorToken):
                     error_element_count += 1
 
-            if parse_case.error_element_count > 0:
+            if parse_case.error_element_count > 0 or parse_case.duplicate_fields:
                 with self.assertRaises(ValueError):
                     # By default, we would reject this file.
                     parse_deb822_file(case_input.splitlines(keepends=True))
@@ -363,7 +370,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Standards-Version: 1.2.3
           ''')
 
-        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True),
+                                        accept_files_with_duplicated_fields=True,
+                                        )
 
         source_paragraph = next(iter(deb822_file))
         self.assertEqual("foo", source_paragraph['Source'])
@@ -430,7 +439,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Build-Depends: debhelper-compat (= 10)
           ''')
 
-        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True),
+                                        accept_files_with_duplicated_fields=True,
+                                        )
 
         source_paragraph = next(iter(deb822_file))
         self.assertEqual("foo", source_paragraph['Source'])
@@ -719,7 +730,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
         Rules-Requires-Root: binary-targets
         ''')
         # By default, the file is accepted
-        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True),
+                                        accept_files_with_duplicated_fields=True,
+                                        )
 
         with self.assertRaises(ValueError):
             # But the parser should raise an error if explicitly requested
@@ -748,7 +761,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
                          "Fixed version should only have one Rules-Requires-Root field")
 
         # As an alternative, we can also fix the problem if we discard comments
-        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True),
+                                        accept_files_with_duplicated_fields=True,
+                                        )
         source_paragraph = next(iter(deb822_file))
         as_dict_discard_comments = source_paragraph.configured_view(
             preserve_field_comments_on_field_updates=False,
@@ -847,7 +862,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
         self.assertEqual(sorted_nodups, deb822_file_nodups.convert_to_text(),
                          "Sorting without duplicated fields work")
-        deb822_file_with_dups = parse_deb822_file(original_with_dups.splitlines(keepends=True))
+        deb822_file_with_dups = parse_deb822_file(original_with_dups.splitlines(keepends=True),
+                                                  accept_files_with_duplicated_fields=True,
+                                                  )
 
         for paragraph in deb822_file_with_dups:
             paragraph.sort_fields(key=key_func)
@@ -922,7 +939,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
         Package: foo2
         Recommends: baz
         """)
-        deb822_file = parse_deb822_file(content.splitlines(keepends=True))
+        deb822_file = parse_deb822_file(content.splitlines(keepends=True),
+                                        accept_files_with_duplicated_fields=True,
+                                        )
         paragraph = next(iter(deb822_file))
         # Verify the starting state
         self.assertEqual(list(paragraph.keys()),

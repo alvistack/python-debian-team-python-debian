@@ -2949,7 +2949,7 @@ def _build_field_with_value(
 def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
                       *,
                       accept_files_with_error_tokens=False,  # type: bool
-                      accept_files_with_duplicated_fields=True  # type: bool
+                      accept_files_with_duplicated_fields=False  # type: bool
                       ):
     # type: (...) -> Deb822FileElement
     """
@@ -2966,7 +2966,7 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
       parse error by this parser as the implementation can gracefully cope
       with these. Use accept_files_with_duplicated_fields to determine if
       such files should be accepted.
-    :param accept_files_with_duplicated_fields: If True (the default), then
+    :param accept_files_with_duplicated_fields: If True, then
       files containing paragraphs with duplicated fields will be returned as
       "successfully" parsed even though they are invalid according to the
       specification.  The paragraphs will prefer the first appearance of the
