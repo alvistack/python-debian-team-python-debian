@@ -1975,6 +1975,11 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
           existing field and that has a comment, then the comment will remain
           after this operation.  This is the default is the `field_comment`
           parameter is omitted.
+          Note that if the parameter is True and the item is ambiguous, this
+          will raise an AmbiguousDeb822FieldKeyError.  When the parameter is
+          omitted, the ambiguity is resolved automatically and if the resolved
+          field has a comment then that will be preserved (assuming
+          field_comment is None).
         :param field_comment: If not None, add or replace the comment for
           the field.  Each string in the in the list will become one comment
           line (inserted directly before the field name). Will appear in the
@@ -1995,8 +2000,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             if not isinstance(field_comment, Deb822CommentElement):
                 new_content.extend(_format_comment(x) for x in field_comment)
                 field_comment = None
-        else:
-            preserve_original_field_comment = True
+            preserve_original_field_comment = False
 
         field_name, _, _ = _unpack_key(item)
 
@@ -2009,6 +2013,12 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                 # require a strict lookup
                 raise
             original = self.get_kvpair_element((field_name, 0), use_get=True)
+
+        if preserve_original_field_comment is None:
+            # We simplify preserve_original_field_comment after the lookup of the field.
+            # Otherwise, we can get ambiguous key errors when updating an ambiguous field
+            # when the caller did not explicitly ask for that behaviour.
+            preserve_original_field_comment = True
 
         if original:
             # If we already have the field, then preserve the original case
