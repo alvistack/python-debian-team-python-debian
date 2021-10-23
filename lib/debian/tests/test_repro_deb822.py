@@ -463,6 +463,32 @@ class FormatPreservingDeb822ParserTests(TestCase):
         self.assertEqual(expected, deb822_file.convert_to_text(),
                          "Mutation should have worked while preserving field order")
 
+    def test_preserve_field_case_on_iter(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          secTion: bar
+          PrIorIty: extra
+          # Comment for RRR
+          Rules-Requires-Root: no
+          Build-Depends: debhelper-compat (= 10)
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        source_paragraph = next(iter(deb822_file))
+        expected_keys = {
+            'Source',
+            'secTion',
+            'PrIorIty',
+            'Rules-Requires-Root',
+            'Build-Depends'
+        }
+        actual_keys = set(source_paragraph.keys())
+
+        self.assertEqual(expected_keys, actual_keys,
+                         "Keys returned by iterations should have original case")
+
     def test_append_paragraph(self):
         # type: () -> None
         original = textwrap.dedent('''\
