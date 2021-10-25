@@ -128,6 +128,49 @@ Running the tests with different encodings specified in the environment
 of files.
 
 
+Debian Bug Tracking System
+--------------------------
+
+Bug tracking for `python-debian` is undertaken in the
+`Debian bug tracking system <https://bugs.debian.org/src:python-debian>`_
+(BTS).
+The BTS has been configured to display bugs split by module
+(see usercategories configuration below).
+Bug reporters and developers may find the
+`view with only the per-module categorisation <https://bugs.debian.org/cgi-bin/pkgreport.cgi?src=python-debian;ordering=python-debian-modules>`_
+(and no severity or status organisation) useful.
+
+Bug reporters are welcome to add the relevant usertags to their bug reports
+but don't worry if you do not; they can be easily added in later by people
+who are more familiar with the BTS. Adding the `User` and `Usertag`
+pseudo-headers to the bug report would mark the bug as being in the
+`deb822` module, for instance::
+
+    To: submit@bugs.debian.org
+    Subject: title-of-bug
+
+    Package: python-debian
+    [ ... ]
+    User: python-debian@packages.debian.org
+    Usertags: deb822
+
+    description-of-bug ...
+
+For reference, the BTS usercategories configuration (which lists the known
+usertags for the BTS view) is as follows:
+
+.. include:: bts-usercategories.txt
+   :literal:
+
+The usertags are derived from the Python names of he (sub)modules.
+Note that usertags cannot include underscores and thus the the Python
+module name `debian_support` becomes the BTS usertag `debian-support`.
+
+Documentation on usercategories and usertags:
+
+  * `Wiki guide on usertags <https://wiki.debian.org/bugs.debian.org/usertags>`_
+  * `BTS documentation <https://www.debian.org/Bugs/server-request#usercategory>`_
+
 Uploading
 ---------
 

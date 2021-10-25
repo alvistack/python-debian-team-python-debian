@@ -1,0 +1,31 @@
+user python-debian@packages.debian.org
+
+usercategory module
+ * Modules [tag=]
+  + Uncategorized [0:]
+  + general [1:general]
+  + deb822 module [5:deb822]
+  + deb822-repro round-trip-safe module [5:deb822-repro]
+  + debian-support module [5:debian-support]
+  + copyright module [5:copyright]
+  + changelog module [5:changelog]
+  + debfile/arfile modules [5:debfile]
+  + debtags module [5:watch]
+  + watch module [5:watch]
+  + new modules [9:new]
+
+# override the default view
+usercategory normal
+ * status
+ * module
+ * severity
+
+# provide a module-centric view reachable by adding ";ordering=python-debian-modules" to the bts url
+usercategory python-debian-modules
+ * module
+
+# this is reachable adding ';ordering=old-normal' to the bts url
+usercategory old-normal
+ * status
+ * severity
+ * classification
