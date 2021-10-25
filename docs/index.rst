@@ -27,6 +27,11 @@ API Documentation:
    api/debian.debian_support
    api/debian.debtags
    api/debian.deprecation
+   api/debian._deb822_repro
+   api/debian._deb822_repro.formatter
+   api/debian._deb822_repro.parsing
+   api/debian._deb822_repro.tokens
+   api/debian._deb822_repro.types
 
 
 Indices and tables
