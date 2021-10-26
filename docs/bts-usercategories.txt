@@ -10,7 +10,7 @@ usercategory module
   + copyright module [5:copyright]
   + changelog module [5:changelog]
   + debfile/arfile modules [5:debfile]
-  + debtags module [5:watch]
+  + debtags module [5:debtags]
   + watch module [5:watch]
   + new modules [9:new]
 
