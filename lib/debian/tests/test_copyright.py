@@ -294,7 +294,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_basic_parse_success(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         self.assertEqual(FORMAT, c.header.format)
         self.assertEqual(FORMAT, c.header['Format'])
         self.assertEqual('X Solitaire', c.header.upstream_name)
@@ -307,13 +307,13 @@ class CopyrightTest(unittest.TestCase):
 
     def test_parse_and_dump(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         dumped = c.dump()
         self.assertEqual(SIMPLE, dumped)
 
     def test_all_paragraphs(self):
         # type: () -> None
-        c = copyright.Copyright(MULTI_LICENSE.splitlines())
+        c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
         expected = []  # type: List[copyright.AllParagraphTypes]
         expected.append(c.header)
         expected.extend(list(c.all_files_paragraphs()))
@@ -323,7 +323,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_all_files_paragraphs(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         self.assertEqual(
             [('*',), ('debian/*',)],
             [fp.files for fp in c.all_files_paragraphs()])
@@ -333,7 +333,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_find_files_paragraph(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         paragraphs = list(c.all_files_paragraphs())
 
         self.assertIs(paragraphs[0], c.find_files_paragraph('Makefile'))
@@ -357,10 +357,10 @@ class CopyrightTest(unittest.TestCase):
 
     def test_all_license_paragraphs(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         self.assertEqual([], list(c.all_license_paragraphs()))
 
-        c = copyright.Copyright(MULTI_LICENSE.splitlines())
+        c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
         self.assertEqual(
             [copyright.License('ABC', '[ABC TEXT]'),
              copyright.License('123', '[123 TEXT]')],
@@ -376,7 +376,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_error_on_invalid(self):
         # type: () -> None
-        lic = SIMPLE.splitlines()
+        lic = SIMPLE.splitlines(True)
         with self.assertRaises(copyright.MachineReadableFormatError) as cm:
             # missing License field from 1st Files stanza
             c = copyright.Copyright(sequence=lic[0:10])
@@ -396,7 +396,7 @@ class MultlineTest(unittest.TestCase):
 
     def setUp(self):
         # type: () -> None
-        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines()))
+        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines(True)))
         self.formatted = paragraphs[1]['License']
         self.parsed = 'GPL-2+\n' + GPL_TWO_PLUS_TEXT
         self.parsed_lines = self.parsed.splitlines()
@@ -506,7 +506,7 @@ class LicenseTest(unittest.TestCase):
 
     def test_typical(self):
         # type: () -> None
-        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines()))
+        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines(True)))
         p = paragraphs[1]
         l = copyright.License.from_str(p['license'])
         if l is not None:

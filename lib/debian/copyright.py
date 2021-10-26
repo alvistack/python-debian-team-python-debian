@@ -54,7 +54,8 @@ except ImportError:
     # Lack of typing is not important at runtime
     TYPE_CHECKING = False
 
-from debian import deb822
+from debian._deb822_repro.parsing import parse_deb822_file, Deb822ParagraphElement
+from debian.deb822 import RestrictedWrapper, RestrictedField
 
 
 _CURRENT_FORMAT = (
@@ -128,16 +129,13 @@ class Copyright(object):
     associated method docstrings.
     """
 
-    def __init__(self, sequence=None, encoding='utf-8', strict=True):
+    def __init__(self, sequence=None, strict=True):
         # type: (Optional[Union[List[str], IO[str]]], str, bool) -> None
         """ Create a new copyright file in the current format.
 
         :param sequence: Sequence of lines, e.g. a list of strings or a
             file-like object.  If not specified, a blank Copyright object is
             initialized.
-        :param encoding: Encoding to use, in case input is raw byte strings.
-            It is recommended to use unicode objects everywhere instead, e.g.
-            by opening files in text mode.
         :param strict: Raise if format errors are detected in the data.
 
         Raises:
@@ -150,8 +148,7 @@ class Copyright(object):
         self.__paragraphs = []  # type: List[ParagraphTypes]
 
         if sequence is not None:
-            paragraphs = list(deb822.Deb822.iter_paragraphs(
-                sequence=sequence, encoding=encoding))
+            paragraphs = list(parse_deb822_file(sequence=sequence))
             if not paragraphs:
                 raise NotMachineReadableError('no paragraphs in input')
             self.__header = Header(paragraphs[0])
@@ -261,16 +258,16 @@ class Copyright(object):
         (i.e. that accepts unicode objects directly).  It is thus up to the
         caller to arrange for the file to do any appropriate encoding.
         """
-        return_string = False
-        if f is None:
-            return_string = True
-            f = io.StringIO()
-        self.header.dump(f, text_mode=True)
+        return_string = (f is None)
+        bf = io.BytesIO()
+        self.header.dump(bf)
         for p in self.__paragraphs:
-            f.write('\n')
-            p.dump(f, text_mode=True)
+            bf.write(b'\n')
+            p.dump(bf)
         if return_string:
-            return f.getvalue()    # type: ignore
+            return bf.getvalue().decode('utf-8')    # type: ignore
+        else:
+            f.write(bf.getvalue().decode('utf-8'))
         return None
 
 def _single_line(s):
@@ -500,7 +497,7 @@ def globs_to_re(globs):
     return re.compile(buf.getvalue(), re.MULTILINE | re.DOTALL)
 
 
-class FilesParagraph(deb822.RestrictedWrapper):
+class FilesParagraph(RestrictedWrapper):
     """Represents a Files paragraph of a debian/copyright file.
 
     This kind of paragraph is used to specify the copyright and license for a
@@ -540,7 +537,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
         :param license: The Licence for the files.
         """
         # pylint: disable=redefined-builtin
-        p = cls(deb822.Deb822(), _internal_validate=False)
+        p = cls(Deb822ParagraphElement.new_empty_paragraph(), _internal_validate=False)
         # mypy doesn't handle the metaprogrammed properties at all
         p.files = files          # type: ignore
         p.copyright = copyright  # type: ignore
@@ -568,20 +565,20 @@ class FilesParagraph(deb822.RestrictedWrapper):
             return False
         return pat.match(filename) is not None
 
-    files = deb822.RestrictedField(
+    files = RestrictedField(
         'Files', from_str=_SpaceSeparated.from_str,
         to_str=_SpaceSeparated.to_str, allow_none=False)
 
-    copyright = deb822.RestrictedField('Copyright', allow_none=False)
+    copyright = RestrictedField('Copyright', allow_none=False)
 
-    license = deb822.RestrictedField(
+    license = RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
         allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')
+    comment = RestrictedField('Comment')
 
 
-class LicenseParagraph(deb822.RestrictedWrapper):
+class LicenseParagraph(RestrictedWrapper):
     """Represents a standalone license paragraph of a debian/copyright file.
 
     Minimally, this kind of paragraph requires a 'License' field and has no
@@ -606,24 +603,24 @@ class LicenseParagraph(deb822.RestrictedWrapper):
         # pylint: disable=redefined-builtin
         if not isinstance(license, License):
             raise TypeError('license must be a License instance')
-        paragraph = cls(deb822.Deb822(), _internal_validate=False)
+        paragraph = cls(Deb822ParagraphElement.new_empty_paragraph(), _internal_validate=False)
         paragraph.license = license   # type: ignore  ## properties
         return paragraph
 
     # TODO(jsw): Validate that the synopsis of the license is a short name or
     # short name with exceptions (not an alternatives expression).  This
     # requires help from the License class.
-    license = deb822.RestrictedField(
+    license = RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
         allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')
+    comment = RestrictedField('Comment')
 
     # Hide 'Files'.
-    __files = deb822.RestrictedField('Files')  # pylint: disable=unused-private-member
+    __files = RestrictedField('Files')
 
 
-class Header(deb822.RestrictedWrapper):
+class Header(RestrictedWrapper):
     """Represents the header paragraph of a debian/copyright file.
 
     Property values are all immutable, such that in order to modify them you
@@ -638,7 +635,7 @@ class Header(deb822.RestrictedWrapper):
             new one will be created.
         """
         if data is None:
-            data = deb822.Deb822()
+            data = Deb822ParagraphElement.new_empty_paragraph()
             data['Format'] = _CURRENT_FORMAT
 
         if 'Format-Specification' in data:
@@ -681,28 +678,28 @@ class Header(deb822.RestrictedWrapper):
         return self.format == _CURRENT_FORMAT   # type: ignore
 
     # lots of type ignores due to  https://github.com/python/mypy/issues/1279
-    format = deb822.RestrictedField(
+    format = RestrictedField(
         'Format', to_str=_single_line, allow_none=False)
 
-    upstream_name = deb822.RestrictedField(
+    upstream_name = RestrictedField(
         'Upstream-Name', to_str=_single_line)
 
-    upstream_contact = deb822.RestrictedField(
+    upstream_contact = RestrictedField(
         'Upstream-Contact', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
 
-    source = deb822.RestrictedField('Source')
+    source = RestrictedField('Source')
 
-    disclaimer = deb822.RestrictedField('Disclaimer')
+    disclaimer = RestrictedField('Disclaimer')
 
-    comment = deb822.RestrictedField('Comment')
+    comment = RestrictedField('Comment')
 
-    license = deb822.RestrictedField(
+    license = RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str)
 
-    copyright = deb822.RestrictedField('Copyright')
+    copyright = RestrictedField('Copyright')
 
-    files_excluded = deb822.RestrictedField(
+    files_excluded = RestrictedField(
         'Files-Excluded', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
 
