@@ -1,3 +1,9 @@
+python-debian (0.1.43) UNRELEASED; urgency=medium
+
+  * Support the Files-Included field in debian/copyright.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 26 Oct 2021 17:36:27 +0100
+
 python-debian (0.1.42) unstable; urgency=medium
 
   "The Hitchhiker's Guide to the Galaxy" release.

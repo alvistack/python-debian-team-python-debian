@@ -44,7 +44,11 @@ SIMPLE = """\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: X Solitaire
 Source: ftp://ftp.example.com/pub/games
-Files-Excluded: non-free-file.txt
+Files-Excluded:
+  non-free-file.txt
+  *.exe
+Files-Included:
+  foo.exe
 
 Files: *
 Copyright: Copyright 1998 John Doe <jdoe@example.com>
@@ -297,7 +301,8 @@ class CopyrightTest(unittest.TestCase):
         self.assertEqual('X Solitaire', c.header['Upstream-Name'])
         self.assertEqual('ftp://ftp.example.com/pub/games', c.header.source)
         self.assertEqual('ftp://ftp.example.com/pub/games', c.header['Source'])
-        self.assertEqual(('non-free-file.txt', ), c.header.files_excluded)
+        self.assertEqual(('non-free-file.txt', '*.exe'), c.header.files_excluded)
+        self.assertEqual(('foo.exe', ), c.header.files_included)
         self.assertIsNone(c.header.license)
 
     def test_parse_and_dump(self):
@@ -371,18 +376,18 @@ class CopyrightTest(unittest.TestCase):
 
     def test_error_on_invalid(self):
         # type: () -> None
-        lic = sequence=SIMPLE.splitlines()
+        lic = SIMPLE.splitlines()
         with self.assertRaises(copyright.MachineReadableFormatError) as cm:
             # missing License field from 1st Files stanza
-            c = copyright.Copyright(sequence=lic[0:6])
+            c = copyright.Copyright(sequence=lic[0:10])
 
         with self.assertRaises(copyright.MachineReadableFormatError) as cm:
             # missing Files field from 1st Files stanza
-            c = copyright.Copyright(sequence=(lic[0:5] + lic[6:7]))
+            c = copyright.Copyright(sequence=(lic[0:9] + lic[10:11]))
 
         with self.assertRaises(copyright.MachineReadableFormatError) as cm:
             # missing Copyright field from 1st Files stanza
-            c = copyright.Copyright(sequence=(lic[0:6] + lic[7:7]))
+            c = copyright.Copyright(sequence=(lic[0:10] + lic[11:11]))
 
 
 class MultlineTest(unittest.TestCase):
