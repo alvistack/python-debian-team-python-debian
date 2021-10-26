@@ -54,7 +54,11 @@ except ImportError:
     # Lack of typing is not important at runtime
     TYPE_CHECKING = False
 
-from debian._deb822_repro.parsing import parse_deb822_file, Deb822ParagraphElement
+from debian._deb822_repro.parsing import (
+    parse_deb822_file,
+    Deb822ParagraphElement,
+    Deb822FileElement, 
+    )
 from debian.deb822 import RestrictedWrapper, RestrictedField
 
 
@@ -145,16 +149,15 @@ class Copyright(object):
         """
         super(Copyright, self).__init__()
 
-        self.__paragraphs = []  # type: List[ParagraphTypes]
+        self.__paragraphs = []  # type: List[AllParagraphTypes]
 
         if sequence is not None:
-            paragraphs = list(parse_deb822_file(sequence=sequence))
-            if not paragraphs:
-                raise NotMachineReadableError('no paragraphs in input')
-            self.__header = Header(paragraphs[0])
-            for i in range(1, len(paragraphs)):
-                p = paragraphs[i]
-                if 'Files' in p:
+            header = None
+            self.__file = parse_deb822_file(sequence=sequence)
+            for p in self.__file:
+                if header is None:
+                    header = Header(p)
+                elif 'Files' in p:
                     pf = FilesParagraph(p, strict)
                     self.__paragraphs.append(pf)
                 elif 'License' in p:
@@ -163,9 +166,15 @@ class Copyright(object):
                 else:
                     _complain('Non-header paragraph has neither "Files" nor '
                               '"License" fields', strict)
+            if not header:
+                raise NotMachineReadableError('no paragraphs in input')
+            self.__header = header
 
         else:
+            self.__file = Deb822FileElement.new_empty_file()
             self.__header = Header()
+            self.__file.append(self.__header._RestrictedWrapper__data)
+            self.__paragraphs.append(self.__header)
 
     @property
     def header(self):
@@ -233,6 +242,7 @@ class Copyright(object):
             if isinstance(p, FilesParagraph):
                 last_i = i
         self.__paragraphs.insert(last_i + 1, paragraph)
+        self.__file.insert(last_i + 1, paragraph._RestrictedWrapper__data)
 
     def all_license_paragraphs(self):
         # type: () -> Iterator[LicenseParagraph]
@@ -248,6 +258,7 @@ class Copyright(object):
         if not isinstance(paragraph, LicenseParagraph):
             raise TypeError('paragraph must be a LicenseParagraph instance')
         self.__paragraphs.append(paragraph)
+        self.__file.append(paragraph._RestrictedWrapper__data)
 
     def dump(self, f=None):
         # type: (Optional[IO[Text]]) -> Optional[str]
@@ -258,15 +269,14 @@ class Copyright(object):
         (i.e. that accepts unicode objects directly).  It is thus up to the
         caller to arrange for the file to do any appropriate encoding.
         """
-        return_string = (f is None)
+        # TODO(jelmer): Write bytes
         bf = io.BytesIO()
-        self.header.dump(bf)
-        for p in self.__paragraphs:
-            bf.write(b'\n')
-            p.dump(bf)
-        if return_string:
-            return bf.getvalue().decode('utf-8')    # type: ignore
-        f.write(bf.getvalue().decode('utf-8'))
+        self.__file.dump(bf)
+        s = bf.getvalue().decode('utf-8')
+        if f is not None:
+            f.write(s)
+        else:
+            return s
 
 
 def _single_line(s):
@@ -355,7 +365,7 @@ class _SpaceSeparated(object):
 
 def format_multiline(s):
     # type: (Optional[str]) -> Optional[str]
-    """Formats multiline text for insertion in a Deb822 field.
+    """Formats multiline text for insertion in a Deb822ParagraphElement field.
 
     Each line except for the first one is prefixed with a single space.  Lines
     that are blank or only whitespace are replaced with ' .'
@@ -506,7 +516,7 @@ class FilesParagraph(RestrictedWrapper):
     _default_re = re.compile('')
 
     def __init__(self, data, _internal_validate=True, strict=True):
-        # type: (deb822.Deb822, bool, bool) -> None
+        # type: (Deb822ParagraphElement, bool, bool) -> None
         super(FilesParagraph, self).__init__(data)
 
         if _internal_validate:
@@ -586,7 +596,7 @@ class LicenseParagraph(RestrictedWrapper):
     """
 
     def __init__(self, data, _internal_validate=True):
-        # type: (deb822.Deb822, bool) -> None
+        # type: (Deb822ParagraphElement, bool) -> None
         super(LicenseParagraph, self).__init__(data)
         if _internal_validate:
             if 'License' not in data:
@@ -627,10 +637,10 @@ class Header(RestrictedWrapper):
     """
 
     def __init__(self, data=None):
-        # type: (Optional[deb822.Deb822]) -> None
+        # type: (Optional[Deb822ParagraphElement]) -> None
         """Initializer.
 
-        :param data: A deb822.Deb822 object for underlying data.  If None, a
+        :param data: A Deb822ParagraphElement object for underlying data.  If None, a
             new one will be created.
         """
         if data is None:
