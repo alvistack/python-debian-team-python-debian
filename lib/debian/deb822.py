@@ -2604,8 +2604,7 @@ class RestrictedWrapper(metaclass=_ClassInitMeta):
         """
         if encoding is None and not text_mode:
             return self.__data.dump(fd)
-        else:
-            return self.__data.dump(fd, encoding, text_mode)
+        return self.__data.dump(fd, encoding, text_mode)
 
 
 class Removals(Deb822):

@@ -266,9 +266,8 @@ class Copyright(object):
             p.dump(bf)
         if return_string:
             return bf.getvalue().decode('utf-8')    # type: ignore
-        else:
-            f.write(bf.getvalue().decode('utf-8'))
-        return None
+        f.write(bf.getvalue().decode('utf-8'))
+
 
 def _single_line(s):
     # type: (str) -> str
