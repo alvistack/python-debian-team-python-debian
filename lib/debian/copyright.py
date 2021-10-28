@@ -57,7 +57,7 @@ except ImportError:
 from debian._deb822_repro.parsing import (
     parse_deb822_file,
     Deb822ParagraphElement,
-    Deb822FileElement, 
+    Deb822FileElement,
     )
 from debian.deb822 import RestrictedWrapper, RestrictedField
 
@@ -275,8 +275,8 @@ class Copyright(object):
         s = bf.getvalue().decode('utf-8')
         if f is not None:
             f.write(s)
-        else:
-            return s
+            return None
+        return s
 
 
 def _single_line(s):
