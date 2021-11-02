@@ -54,9 +54,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'python-debian'
-copyright = u'2018, The python-debian team'
-author = u'The python-debian team'
+project = 'python-debian'
+copyright = '2021, The python-debian team'
+author = 'The python-debian team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -266,7 +266,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'python-debian.tex', u'python-debian Documentation',
-     u'The python-debian team', 'manual'),
+     'The python-debian team', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -322,7 +322,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'python-debian', u'python-debian Documentation',
+    (master_doc, 'python-debian', 'python-debian Documentation',
      author, 'python-debian', 'One line description of project.',
      'Miscellaneous'),
 ]
