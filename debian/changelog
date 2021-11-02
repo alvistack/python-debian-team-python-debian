@@ -1,6 +1,17 @@
 python-debian (0.1.43) UNRELEASED; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Support the Files-Included field in debian/copyright.
+
+  [ Stuart Prescott ]
+  * Always run both mypy and pylint on CI.
+  * Fix URL for API documentation in README.rst (Closes: #995442).
+  * RTS parser: minor documentation fixes.
+
+  [ Niels Thykier ]
+  * RTS parser: Handle leading tabs for for setting values (Closes: #996785).
+  * RTS parser: Preserve original field case (Closes: #996784).
+  * RTS parser: Expose str type for keys in paragraphs (Closes: #996783).
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 26 Oct 2021 17:36:27 +0100
 
