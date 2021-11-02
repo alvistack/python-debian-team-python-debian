@@ -230,7 +230,7 @@ def format_field(formatter,  # type: FormatterCallback
      * The output of the formatter is appended directly after the ":" separator.
        Most formatters will want to emit either a space or a newline as the very
        first character for readability.
-       (compare "Depends:foo\n" to "Depends: foo\n")
+       (compare "Depends:foo\\n" to "Depends: foo\\n")
 
      * The formatter must always end its output on a newline.  This is a design
        choice of how the round-trip safe parser represent values that is imposed
@@ -244,19 +244,19 @@ def format_field(formatter,  # type: FormatterCallback
            for whitespace separators (check for `separator_token.is_whitespace`).
 
            This is because space, tab and newline all counts as valid separators
-           and can all appear in the token sequnece. If the original field uses
+           and can all appear in the token sequence. If the original field uses
            a mix of these separators it is likely to completely undermine the
            desired result. Not to mention the additional complexity of handling
            when a separator token happens to use the newline character which
            affects how the formatter is supposed what comes after it
            (see the rules for comments, empty lines and continuation line
-            markers).
+           markers).
 
      * The formatter must remember to emit a "continuation line" marker
        (typically a single space or tab) when emitting a value after
        a newline or a comment. A `yield " "` is sufficient.
 
-        - The continutation line marker may be embedded inside a str
+        - The continuation line marker may be embedded inside a str
           with other whitespace (such as the newline coming before it
           or/and whitespace used for indentation purposes following
           the marker).
@@ -276,13 +276,14 @@ def format_field(formatter,  # type: FormatterCallback
        directly after a newline character or another comment token.
 
      * Special cases that are rare but can happen:
+
        - Fields *can* start with comments and requires a formatter provided newline.
-         (Example: "Depends:\n# Comment here\n foo")
+         (Example: "Depends:\\n# Comment here\\n foo")
 
        - Fields *can* start on a separator or have two separators in a row.
          This is especially true for whitespace separated fields where every
          whitespace counts as a separator, but it can also happen with other
-         seperators (such as comma).
+         separators (such as comma).
 
        - Value tokens can contain whitespace (for non-whitespace separators).
          When they do, the formatter must not attempt change nor "normalize"
@@ -293,7 +294,7 @@ def format_field(formatter,  # type: FormatterCallback
 
     This function will provide *some* runtime checks of its input and the
     output from the formatter to detect some errors early and provide
-    helpful diagnotics.  If you use the function for testing, you are
+    helpful diagnostics.  If you use the function for testing, you are
     recommended to rely on verifying the output of the function rather than
     relying on the runtime checks (as these are subject to change).
 

@@ -132,7 +132,8 @@ Key changes are:
     its return value is kept for later.
  3. Instead of dumping paragraphs one by one, the return value from
     parse_deb822_file is dumped at the end.
-     - The round-trip safe api does support "per-paragraph" but formatting
+
+    -  The round-trip safe api does support "per-paragraph" but formatting
        and comments between paragraphs would be lost in the output. This may
        be an acceptable tradeoff or desired for some cases.
 
