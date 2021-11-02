@@ -58,7 +58,13 @@ test:
 	done
 
 qa: lib/debian/_version.py
-	pylint --rcfile .pylintrc lib
-	mypy --strict lib
+	@echo "Running both pylint and mypy"
+	@echo "----------- pylint -----------"
+	@pylint --rcfile .pylintrc lib; \
+	  pylinterr=$$?; \
+	  echo "----------- mypy -----------"; \
+	  mypy --strict lib; \
+	  mypyerr=$$? ; \
+	  [ $$pylinterr -eq 0 -a $$mypyerr -eq 0 ]
 
 .PHONY: dist doc apidoc qa
