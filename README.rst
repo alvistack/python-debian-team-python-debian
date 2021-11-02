@@ -17,7 +17,7 @@ Currently supported are:
 `API documentation`_, can be found online and throughout the code. There
 are examples both within the code and in the examples_ directory.
 
-.. _API documentation: https://python-debian-team.pages.debian.net/python-debian/
+.. _API documentation: https://python-debian-team.pages.debian.net/python-debian/html/
 
 .. _examples: https://salsa.debian.org/python-debian-team/python-debian/tree/master/examples
 
