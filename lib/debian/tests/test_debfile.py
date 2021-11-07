@@ -332,14 +332,14 @@ class TestDebFile(unittest.TestCase):
             with self.temp_deb(data=compression) as debname:
                 deb = debfile.DebFile(debname)
                 # random test on the control part
-                self.assertEqual(
-                    os.path.normpath(deb.control.tgz().getnames()[1]),
+                self.assertIn(
                     'control',
+                    [os.path.normpath(p) for p in deb.control.tgz().getnames()],
                     "Control part failed on compression %s" % compression
                 )
-                self.assertEqual(
-                    os.path.normpath(deb.control.tgz().getnames()[2]),
+                self.assertIn(
                     'md5sums',
+                    [os.path.normpath(p) for p in deb.control.tgz().getnames()],
                     "Control part failed on compression %s" % compression
                 )
                 deb.close()
