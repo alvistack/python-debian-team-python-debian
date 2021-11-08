@@ -232,10 +232,10 @@ class TestDebFile(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory(prefix="test_debfile.") as tempdir:
             tpath = Path(tempdir)
-            tempdeb = tpath / filename
+            tempdeb = str(tpath / filename)
 
             # the debian-binary member
-            info_member = tpath / "debian-binary"
+            info_member = str(tpath / "debian-binary")
             with open(info_member, "wt") as fh:
                 fh.write("2.0\n")
 
@@ -244,35 +244,35 @@ class TestDebFile(unittest.TestCase):
             examplespath = datapath / self.example_data_dir
             examplespath.mkdir(parents=True)
             for f in self.example_data_files:
-                shutil.copy(find_test_file(f), examplespath)
+                shutil.copy(find_test_file(f), str(examplespath))
 
             data_member = shutil.make_archive(
                 str(datapath),
                 data,
-                root_dir=datapath,
+                root_dir=str(datapath),
             )
 
             # the control.tar member
             controlpath = tpath / "control"
             controlpath.mkdir()
-            with open(controlpath / "control", "w") as fh:
+            with open(str(controlpath / "control"), "w") as fh:
                 fh.write(CONTROL_FILE)
-            with open(controlpath / "md5sums", "w") as fh:
+            with open(str(controlpath / "md5sums"), "w") as fh:
                 for f in self.example_data_files:
-                    with open(examplespath / f, 'rb') as hashfh:
+                    with open(str(examplespath / f), 'rb') as hashfh:
                         h = md5(hashfh.read()).hexdigest()
                     fh.write("%s %s\n" % (h, str(self.example_data_dir / f)))
 
             control_member = shutil.make_archive(
                 str(controlpath),
                 control,
-                root_dir=controlpath,
+                root_dir=str(controlpath),
             )
 
             # Build the .deb file using `ar`
             make_deb_command = [
-                "ar", "rU", str(tempdeb),
-                str(info_member),
+                "ar", "rU", tempdeb,
+                info_member,
                 control_member,
                 data_member,
             ]
@@ -285,7 +285,7 @@ class TestDebFile(unittest.TestCase):
 
             try:
                 # provide the constructed .deb via the contextmanager
-                yield str(tempdeb)
+                yield tempdeb
 
             finally:
                 # post contextmanager cleanup
@@ -318,10 +318,10 @@ class TestDebFile(unittest.TestCase):
                 # is OK
                 all_files = [os.path.normpath(f) for f in deb.data.tgz().getnames()]
                 for f in self.example_data_files:
-                    testfile = os.path.normpath(self.example_data_dir / f)
+                    testfile = os.path.normpath(str(self.example_data_dir / f))
                     self.assertIn(testfile, all_files,
                         "Data part failed on compression %s" % compression)
-                self.assertIn(os.path.normpath(self.example_data_dir), all_files,
+                self.assertIn(os.path.normpath(str(self.example_data_dir)), all_files,
                     "Data part failed on compression %s" % compression)
                 deb.close()
 
