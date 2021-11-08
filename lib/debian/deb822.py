@@ -1361,16 +1361,17 @@ class GpgInfo(_BaseGpgInfo):
         if "--keyring" not in args:
             raise IOError("cannot access any of the given keyrings")
 
-        p = subprocess.Popen(args, stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             universal_newlines=False)
-        # XXX what to do with exit code?
+        with subprocess.Popen(
+            args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=False,
+        ) as p:
+            # XXX what to do with exit code?
 
-        if isinstance(sequence, bytes):
-            inp = sequence
-        else:
-            inp = cls._get_full_bytes(sequence)
-        out, err = p.communicate(inp)
+            if isinstance(sequence, bytes):
+                inp = sequence
+            else:
+                inp = cls._get_full_bytes(sequence)
+            out, err = p.communicate(inp)
 
         return cls.from_output(out.decode('utf-8'),
                                err.decode('utf-8'))
