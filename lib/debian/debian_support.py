@@ -701,15 +701,14 @@ def patch_lines(
 patchLines = function_deprecated_by(patch_lines)
 
 
-def replace_file(lines, local):
-    # type: (List[str], str) -> None
+def replace_file(lines, local, encoding="UTF-8"):
+    # type: (List[str], str, str) -> None
     local_new = local + '.new'
-    new_file = open(local_new, 'w+')
 
     try:
-        for l in lines:
-            new_file.write(l)
-        new_file.close()
+        with open(local_new, 'w+', encoding=encoding) as new_file:
+            for l in lines:
+                new_file.write(l)
         os.rename(local_new, local)
     finally:
         if os.path.exists(local_new):
@@ -771,14 +770,13 @@ def update_file(remote, local, verbose=False):
     """
 
     try:
-        local_file = open(local, 'r')
+        with open(local, 'r', encoding="UTF-8") as local_file:
+            lines = local_file.readlines()
     except IOError:
         if verbose:
             print("update_file: no local copy, downloading full file")
         return download_file(remote, local)
 
-    lines = local_file.readlines()
-    local_file.close()
     patches_to_apply = []    # type: List[str]
     patch_hashes = {}        # type: Dict[str, str]
 
