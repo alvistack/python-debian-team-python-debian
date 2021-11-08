@@ -94,12 +94,15 @@ class ArFile(object):
     def __index_archive(self):
         # type: () -> None
         if self.__fname:
-            fp = open(self.__fname, "rb")
+            with open(self.__fname, "rb") as fp:
+                self.__collect_members(fp)
         elif self.__fileobj:
-            fp = self.__fileobj
+            self.__collect_members(self.__fileobj)
         else:
             raise ArError("Unable to open valid file")
 
+    def __collect_members(self, fp):
+        # type: (BinaryIO) -> None
         if fp.read(GLOBAL_HEADER_LENGTH) != GLOBAL_HEADER:
             raise ArError("Unable to find global header")
 
@@ -115,9 +118,6 @@ class ArFile(object):
                 fp.seek(newmember.size, 1)   # skip to next header
             else:
                 fp.seek(newmember.size + 1, 1)   # skip to next header
-
-        if self.__fname:
-            fp.close()
 
     def getmember(self, name):
         # type: (str) -> ArMember
