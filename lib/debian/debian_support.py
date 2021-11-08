@@ -167,7 +167,7 @@ class BaseVersion(object):
             raise ValueError("Invalid version string %r" % version)
 
         # pylint: disable=attribute-defined-outside-init
-        self.__full_version = version
+        self.__full_version = version  # pylint: disable = unused-private-member
         self.__epoch = m.group("epoch")
         self.__upstream_version = m.group("upstream_version")
         self.__debian_revision = m.group("debian_revision")
@@ -418,7 +418,7 @@ class PackageFile:
                   file with the indicated name.
         """
         if file_obj is None:
-            file_obj = open(name, 'rb')
+            file_obj = open(name, 'rb')  # pylint: disable=consider-using-with
         self.name = name
         self.file = file_obj
         self.lineno = 0

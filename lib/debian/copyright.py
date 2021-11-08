@@ -620,7 +620,7 @@ class LicenseParagraph(deb822.RestrictedWrapper):
     comment = deb822.RestrictedField('Comment')
 
     # Hide 'Files'.
-    __files = deb822.RestrictedField('Files')
+    __files = deb822.RestrictedField('Files')  # pylint: disable=unused-private-member
 
 
 class Header(deb822.RestrictedWrapper):

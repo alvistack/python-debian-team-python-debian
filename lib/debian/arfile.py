@@ -274,6 +274,9 @@ class ArMember(object):
 
         # XXX struct.unpack can be used as well here
         f = ArMember()
+
+        # pylint: disable=unused-private-member
+        # pylint 2.11 is very confused here.
         name = buf[0:16].split(b"/")[0].strip()
         f.__name = name.decode(encoding, errors)
         f.__mtime = int(buf[16:28])
@@ -299,7 +302,7 @@ class ArMember(object):
         if self.__fp is None:
             if self.__fname is None:
                 raise ValueError("Cannot have both fp and fname undefined")
-            self.__fp = open(self.__fname, "rb")
+            self.__fp = open(self.__fname, "rb")  # pylint: disable = consider-using-with
         self.__fp.seek(self.__cur)
 
         if 0 < size <= self.__end - self.__cur:   # there's room
@@ -319,7 +322,7 @@ class ArMember(object):
         if self.__fp is None:
             if self.__fname is None:
                 raise ValueError("Cannot have both fp and fname undefined")
-            self.__fp = open(self.__fname, "rb")
+            self.__fp = open(self.__fname, "rb")  # pylint: disable = consider-using-with
         self.__fp.seek(self.__cur)
 
         if size is not None:
