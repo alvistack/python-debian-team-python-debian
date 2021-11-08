@@ -19,12 +19,13 @@ default:
 .unit-tests:
   script:
   - ./debian/rules lib/debian/__init__.py
-  - LC_ALL=C py.test-3 --doctest-modules $COVERAGE --verbose lib/
-  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules $COVERAGE $COVERAGE_REPORT --verbose lib/
+  - LC_ALL=C py.test-3 --doctest-modules $COVERAGE --verbose $PYTEST_IGNORES lib/
+  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules $COVERAGE $COVERAGE_REPORT --verbose $PYTEST_IGNORES lib/
   variables:
     # Only generate coverage data and a report once in the test matrix
     COVERAGE: ""
     COVERAGE_REPORT: ""
+    PYTEST_IGNORES: ""
 
 unit-tests:
   extends:
@@ -52,6 +53,26 @@ unit-tests-stable:
   extends:
   - .depends-full
   - .unit-tests
+
+unit-tests-oldstable:
+  image: debian:oldstable
+  extends:
+  - .depends-full
+  - .unit-tests
+  variables:
+    # Hide the RTS parser from py.test as it will break test collection as
+    # it requires a newer version of Python
+    PYTEST_IGNORES: --ignore lib/debian/tests/test_repro_deb822.py --ignore lib/debian/_deb822_repro/
+
+unit-tests-oldoldstable:
+  image: debian:oldoldstable
+  extends:
+  - .depends-full
+  - .unit-tests
+  variables:
+    # Hide the RTS parser from py.test as it will break test collection as
+    # it requires a newer version of Python
+    PYTEST_IGNORES: --ignore lib/debian/tests/test_repro_deb822.py --ignore lib/debian/_deb822_repro/
 
 style:
   extends: .depends-full
