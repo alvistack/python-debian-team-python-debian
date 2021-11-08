@@ -788,8 +788,8 @@ def update_file(remote, local, verbose=False):
     re_whitespace = re.compile(r'\s+')
 
     try:
-        index_url = urlopen(index_name)
-        index_fields = list(PackageFile(index_name, index_url))
+        with urlopen(index_name) as index_url:
+            index_fields = list(PackageFile(index_name, index_url))
     except ParseError:
         # FIXME: urllib does not raise a proper exception, so we parse
         # the error message.
