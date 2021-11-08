@@ -5,6 +5,7 @@ extension-pkg-whitelist=apt_pkg
 
 [MESSAGES CONTROL]
 disable=
+    consider-using-f-string,
     fixme,
     invalid-name,
     locally-disabled,
