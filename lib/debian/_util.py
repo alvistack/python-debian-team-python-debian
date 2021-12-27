@@ -10,9 +10,7 @@ try:
     # Used a generic type for any case where we need a generic type without any bounds
     # (e.g. for the LinkedList interface and some super-classes/mixins).
     T = TypeVar('T')
-    T.__doc__ = """
-    Generic type
-    """
+
 except ImportError:  # pragma: no cover
     TYPE_CHECKING = False
 

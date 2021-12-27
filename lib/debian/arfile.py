@@ -94,12 +94,15 @@ class ArFile(object):
     def __index_archive(self):
         # type: () -> None
         if self.__fname:
-            fp = open(self.__fname, "rb")
+            with open(self.__fname, "rb") as fp:
+                self.__collect_members(fp)
         elif self.__fileobj:
-            fp = self.__fileobj
+            self.__collect_members(self.__fileobj)
         else:
             raise ArError("Unable to open valid file")
 
+    def __collect_members(self, fp):
+        # type: (BinaryIO) -> None
         if fp.read(GLOBAL_HEADER_LENGTH) != GLOBAL_HEADER:
             raise ArError("Unable to find global header")
 
@@ -115,9 +118,6 @@ class ArFile(object):
                 fp.seek(newmember.size, 1)   # skip to next header
             else:
                 fp.seek(newmember.size + 1, 1)   # skip to next header
-
-        if self.__fname:
-            fp.close()
 
     def getmember(self, name):
         # type: (str) -> ArMember
@@ -274,6 +274,9 @@ class ArMember(object):
 
         # XXX struct.unpack can be used as well here
         f = ArMember()
+
+        # pylint: disable=unused-private-member
+        # pylint 2.11 is very confused here.
         name = buf[0:16].split(b"/")[0].strip()
         f.__name = name.decode(encoding, errors)
         f.__mtime = int(buf[16:28])
@@ -299,7 +302,7 @@ class ArMember(object):
         if self.__fp is None:
             if self.__fname is None:
                 raise ValueError("Cannot have both fp and fname undefined")
-            self.__fp = open(self.__fname, "rb")
+            self.__fp = open(self.__fname, "rb")  # pylint: disable = consider-using-with
         self.__fp.seek(self.__cur)
 
         if 0 < size <= self.__end - self.__cur:   # there's room
@@ -319,7 +322,7 @@ class ArMember(object):
         if self.__fp is None:
             if self.__fname is None:
                 raise ValueError("Cannot have both fp and fname undefined")
-            self.__fp = open(self.__fname, "rb")
+            self.__fp = open(self.__fname, "rb")  # pylint: disable = consider-using-with
         self.__fp.seek(self.__cur)
 
         if size is not None:

@@ -111,7 +111,7 @@ class DebPart(object):
             if extension in PART_EXTS or name == DATA_PART or name == CTRL_PART:
                 # Permit compressed members and also uncompressed data.tar
                 try:
-                    self.__tgz = tarfile.open(fileobj=self.__member, mode='r:*')    # type: ignore
+                    self.__tgz = tarfile.open(fileobj=self.__member, mode='r:*')    # type: ignore  # pylint: disable = consider-using-with
                 except (tarfile.ReadError, tarfile.CompressionError) as e:
                     raise DebError("tarfile has returned an error: '%s'" % e)
             else:

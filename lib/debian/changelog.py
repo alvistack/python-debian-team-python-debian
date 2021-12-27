@@ -965,11 +965,8 @@ def get_maintainer():
     else:
         addr = None
         if os.path.exists('/etc/mailname'):
-            f = open('/etc/mailname')
-            try:
+            with open('/etc/mailname', encoding="UTF-8") as f:
                 addr = f.readline().strip()
-            finally:
-                f.close()
         if not addr:
             addr = socket.getfqdn()
         if addr:

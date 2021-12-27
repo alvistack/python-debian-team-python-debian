@@ -494,13 +494,11 @@ class Deb822ParsedTokenList(Generic[VE, ST],
                     if te.is_comment:
                         yield FormatterContentToken.comment_token(te.text)
                     elif isinstance(te, stype):
-                        # mypy gets confused and loses track of the type.
-                        text = te.text  # type: ignore
+                        text = te.text
                         yield FormatterContentToken.separator_token(text)
                 else:
                     assert isinstance(te, vtype)
-                    # mypy gets confused and loses track of the type.
-                    text = te.convert_to_text()  # type: ignore
+                    text = te.convert_to_text()
                     yield FormatterContentToken.value_token(text)
 
         return format_field(self._formatter,
@@ -759,14 +757,12 @@ def _parser_to_value_factory(parser,  # type: StrToValueParser[VE]
                   ' instead it produced {t1}'
             raise ValueError(msg.format(v=v, vtype_name=vtype.__name__, t1=t1))
 
-        # Indirection to work around mypy
-        value_element = cast('VE', t1)
-        assert len(value_element.convert_to_text()) == len(v), \
+        assert len(t1.convert_to_text()) == len(v), \
             "Bad tokenizer - the token did not cover the input text" \
             " exactly ({t1_len} != {v_len}".format(
-                t1_len=len(value_element.convert_to_text()), v_len=len(v)
+                t1_len=len(t1.convert_to_text()), v_len=len(v)
             )
-        return value_element
+        return t1
 
     return _value_factory
 
