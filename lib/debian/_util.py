@@ -11,13 +11,6 @@ try:
     # (e.g. for the LinkedList interface and some super-classes/mixins).
     T = TypeVar('T')
 
-    try:   # CRUFT: __doc__ is readonly for python < 3.7
-        T.__doc__ = """
-        Generic type
-        """
-    except AttributeError:  # pragma: no cover
-        pass
-
 except ImportError:  # pragma: no cover
     TYPE_CHECKING = False
 
