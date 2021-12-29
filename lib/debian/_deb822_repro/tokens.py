@@ -307,8 +307,19 @@ def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb8
             yield x
 
     text_stream = BufferingIterator(_as_str(sequence))  # type: BufferingIterator[str]
+    auto_correct_newlines = False
+    first_line = text_stream.peek()
+    if first_line is not None and not first_line.endswith("\n"):
+        # Special-case: Single line files count as "last line without a newline" rather than
+        # auto-correction.
+        auto_correct_newlines = text_stream.peek_at(2) is not None
 
     for no, line in enumerate(text_stream, start=1):
+        if auto_correct_newlines:
+            if line.endswith("\n"):
+                raise ValueError("Input is inconsistent with its line endings! Lines must "
+                                 "consistently be *with* or *without* line endings")
+            line += "\n"
 
         if not line.endswith("\n"):
             # We expect newlines at the end of each line except the last.

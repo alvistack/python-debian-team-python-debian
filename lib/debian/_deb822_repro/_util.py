@@ -195,7 +195,7 @@ class BufferingIterator(collections.abc.Iterator[T]):
     def peek_at(self, tokens_ahead):
         # type: (int) -> Optional[T]
         self._fill_buffer(tokens_ahead)
-        return self._buffer[tokens_ahead - 1] if self._buffer else None
+        return self._buffer[tokens_ahead - 1] if len(self._buffer) >= tokens_ahead else None
 
     def peek_many(self, number):
         # type: (int) -> List[T]

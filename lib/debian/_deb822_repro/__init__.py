@@ -28,7 +28,7 @@ from the Debian archive due to reasons explained below.
 
 Being round-trip safe means that this module will faithfully preserve the original
 formatting including whitespace and comments from the input where not modified.
-A concrete example example::
+A concrete example::
 
     >>> from debian._deb822_repro import parse_deb822_file
     >>> example_deb822_paragraph = '''
