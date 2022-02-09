@@ -29,6 +29,7 @@ Package: python3-debian
 Architecture: all
 Depends:
  python3-chardet,
+ zstd,
  ${misc:Depends},
  ${python3:Depends}
 Recommends:

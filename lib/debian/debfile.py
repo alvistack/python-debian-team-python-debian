@@ -105,13 +105,44 @@ class DebPart(object):
         compressed tar archives, not only gzipped ones.
         """
 
+        def _custom_decompress(command_list):
+            # type: (List[str]) -> BinaryIO
+            try:
+                # pylint: disable=import-outside-toplevel
+                import subprocess
+                import signal
+
+                # pylint: disable=subprocess-popen-preexec-fn,consider-using-with
+                proc = subprocess.Popen(
+                    command_list,
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    universal_newlines=False,
+                    preexec_fn=lambda:
+                    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+                )
+            except (OSError, ValueError) as e:
+                raise DebError("%s" % e)
+
+            data = proc.communicate(self.__member.read())[0]
+            if proc.returncode != 0:
+                raise DebError("command has failed with code '%s'" %
+                               proc.returncode)
+
+            return io.BytesIO(data)
+
         if self.__tgz is None:
             name = self.__member.name
             extension = os.path.splitext(name)[1][1:]
             if extension in PART_EXTS or name == DATA_PART or name == CTRL_PART:
                 # Permit compressed members and also uncompressed data.tar
+                # tarfile has no zst support: https://bugs.python.org/issue37095
+                if extension == 'zst':
+                    buffer = _custom_decompress(['unzstd', '--stdout'])
+                else:
+                    buffer = self.__member  # type: ignore
+
                 try:
-                    self.__tgz = tarfile.open(fileobj=self.__member, mode='r:*')    # type: ignore  # pylint: disable = consider-using-with
+                    self.__tgz = tarfile.open(fileobj=buffer, mode='r:*')    # pylint: disable = consider-using-with
                 except (tarfile.ReadError, tarfile.CompressionError) as e:
                     raise DebError("tarfile has returned an error: '%s'" % e)
             else:
