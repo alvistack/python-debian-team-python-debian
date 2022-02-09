@@ -198,9 +198,36 @@ class TestArFileFileObj(TestArFile):
         super(TestArFileFileObj, self).tearDown()
 
 
+def _make_archive(dir_path, compression):
+    # type: (str, str) -> str
+    """ Create an archive from a directory with a given compression algorithm.
+
+    :returns: the path to the created archive
+    """
+
+    if compression == "zsttar":
+        uncompressed_archive = shutil.make_archive(
+            dir_path,
+            "tar",
+            root_dir=dir_path,
+        )
+        archive = uncompressed_archive + ".zst"
+        with open(uncompressed_archive) as input:
+            proc =subprocess.Popen(["zstd", "-o", archive], stdin=input)
+            assert(proc.wait() == 0)
+        os.remove(uncompressed_archive)
+    else:
+        archive = shutil.make_archive(
+            dir_path,
+            compression,
+            root_dir=dir_path,
+        )
+    return archive
+
+
 class TestDebFile(unittest.TestCase):
 
-    compressions = ["gztar", "bztar", "xztar", "tar"]
+    compressions = ["gztar", "bztar", "xztar", "tar", "zsttar"]
 
     # from this source package that will be included in the sample .deb
     # that is used for testing
@@ -246,11 +273,7 @@ class TestDebFile(unittest.TestCase):
             for f in self.example_data_files:
                 shutil.copy(find_test_file(f), str(examplespath))
 
-            data_member = shutil.make_archive(
-                str(datapath),
-                data,
-                root_dir=str(datapath),
-            )
+            data_member = _make_archive(str(datapath), data)
 
             # the control.tar member
             controlpath = tpath / "control"
@@ -263,11 +286,7 @@ class TestDebFile(unittest.TestCase):
                         h = md5(hashfh.read()).hexdigest()
                     fh.write("%s %s\n" % (h, str(self.example_data_dir / f)))
 
-            control_member = shutil.make_archive(
-                str(controlpath),
-                control,
-                root_dir=str(controlpath),
-            )
+            control_member = _make_archive(str(controlpath), control)
 
             # Build the .deb file using `ar`
             make_deb_command = [
