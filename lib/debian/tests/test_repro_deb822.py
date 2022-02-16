@@ -229,7 +229,46 @@ class FormatPreservingDeb822ParserTests(TestCase):
                              " for case " + c)
             self.assertEqual(case_input, deb822_file.convert_to_text(),
                              "Input of case " + c + " is round trip safe")
+
+            newline_normalized_by_omission = parse_deb822_file(
+                case_input.splitlines(),
+                accept_files_with_duplicated_fields=True,
+                accept_files_with_error_tokens=True,
+            )
+            case_input_newline_normalized = case_input.replace("\r", "")
+            if not case_input_newline_normalized.endswith("\n") and len(case_input_newline_normalized.splitlines()) > 1:
+                case_input_newline_normalized += "\n"
+            self.assertEqual(case_input_newline_normalized,
+                             newline_normalized_by_omission.convert_to_text(),
+                             "Input of case " + c + " is newline normalized round trip safe"
+                                                    " with newlines omitted")
             logging.info("Successfully passed case " + c)
+
+    def test_invalid_input_newlines(self):
+        # type: () -> None
+
+        # Newlines must be provided consistently
+        file_input = ["A: B\n",
+                      "B: C",
+                      "C: D\n",
+                      ]
+        with self.assertRaises(ValueError):
+            parse_deb822_file(file_input)
+
+        file_input = ["A: B",
+                      "B: C\n",
+                      "C: D\n",
+                      ]
+        with self.assertRaises(ValueError):
+            parse_deb822_file(file_input)
+
+        # But it is ok for the last one to be missing a newline (as that is a feature
+        # of the input that might need to be preserved)
+        file_input = ["A: B\n",
+                      "B: C\n",
+                      "C: D",
+                      ]
+        parse_deb822_file(file_input)
 
     def test_deb822_emulation(self):
         # type: () -> None

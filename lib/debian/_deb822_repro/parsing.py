@@ -2951,7 +2951,10 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
     """
 
     :param sequence: An iterable over lines of str or bytes (an open file for
-      reading will do).  The lines must include the trailing line ending ("\\n").
+      reading will do).  If line endings are provided in the input, then they
+      must be present on every line (except the last) will be preserved as-is.
+      If omitted and the content is at least 2 lines, then parser will assume
+      implicit newlines.
     :param accept_files_with_error_tokens: If True, files with critical syntax
       or parse errors will be returned as "successfully" parsed. Usually,
       working on files with these kind of errors are not desirable as it is
