@@ -786,6 +786,9 @@ class HeaderTest(unittest.TestCase):
         data = deb822.Deb822()
         data['Format'] = "http%s" % FORMAT[5:]
         with self.assertLogs('debian.copyright', level='WARNING') as cm:
+            self.assertIsNotNone(cm)
+            # CRUFT: mypy doesn't understand that cm is already not None.
+            assert cm is not None
             h = copyright.Header(data=data)
             self.assertEqual(
                 cm.output, ['WARNING:debian.copyright:Fixing Format URL'])
