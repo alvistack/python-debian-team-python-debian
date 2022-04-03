@@ -77,11 +77,10 @@ unit-tests-oldoldstable:
 style:
   extends: .depends-full
   script:
-  - python3 -m pip install types-chardet
   - ./debian/rules qa
   - rm lib/debian/_version.py
   variables:
-    JOB_DEPS: pylint mypy python3-pip
+    JOB_DEPS: pylint mypy
 
 docs:
   extends: .depends-full
