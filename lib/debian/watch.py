@@ -17,8 +17,8 @@
 
 """Functions for working with watch files."""
 
+import logging
 import re
-from warnings import warn
 
 try:
     # pylint: disable=unused-import
@@ -55,6 +55,9 @@ SUBSTITUTIONS = {
 }
 
 
+logger = logging.getLogger('debian.watch')
+
+
 class MissingVersion(Exception):
     """The version= line is missing."""
 
@@ -85,7 +88,7 @@ def _complain(msg, strict):
     # type: (str, bool) -> None
     if strict:
         raise WatchFileFormatError(msg)
-    warn(msg)
+    logger.warning(msg)
 
 
 class WatchFile(object):

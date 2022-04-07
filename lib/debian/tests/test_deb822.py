@@ -1493,8 +1493,12 @@ class TestPkgRelations(unittest.TestCase):
             self.assertEqual(src_rel,
                     deb822.PkgRelation.str(deb822.PkgRelation.parse_relations( \
                             src_rel)))
-        with self.assertWarns(UserWarning):
+        with self.assertLogs('debian.deb822', level='WARNING') as cm:
             deb822.PkgRelation.parse_relations("foo bar")
+            self.assertEqual(
+                cm.output,
+                ['WARNING:debian.deb822:cannot parse package relationship '
+                 '"foo bar", returning it raw'])
 
     def test_sources(self):
         # type: () -> None

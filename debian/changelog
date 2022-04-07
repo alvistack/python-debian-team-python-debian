@@ -1,3 +1,9 @@
+python-debian (0.1.44) UNRELEASED; urgency=medium
+
+  * Use logging.warning rather than warnings for data problems.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 07 Apr 2022 18:45:11 +0100
+
 python-debian (0.1.43) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]

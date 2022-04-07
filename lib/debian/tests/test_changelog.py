@@ -125,8 +125,14 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
 
  -- Somebody <nobody@debian.org>  Wed, 05 May 2010 18:01:53 -0300
 """
-        with self.assertWarns(UserWarning):
+        with self.assertLogs('debian.changelog', level='WARNING') as cm:
             cl = changelog.Changelog(cl_text)
+            self.assertEqual(
+                cm.output, [
+                    'WARNING:debian.changelog:Unexpected line while '
+                    'looking for first heading: '
+                    'THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED'])
+
         self.assertEqual(cl_text, bytes(cl))
 
     def test_add_changelog_section(self):
@@ -295,9 +301,14 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         with self.assertRaises(changelog.ChangelogParseError):
             c = changelog.Changelog(c_text, strict=True)
         # In non-strict mode, warnings should be emitted by the malformed entry
-        with self.assertWarns(Warning):
+        with self.assertLogs('debian.changelog', level='WARNING') as cm:
             c = changelog.Changelog(c_text, strict=False)
             self.assertEqual(len(c), 1)
+            self.assertEqual(
+                cm.output, [
+                    'WARNING:debian.changelog:Badly formatted trailer line:  '
+                    '-- John Smith <john.smith@example.com> '
+                    'Tue, 27 Sep 2016 14:08:04 -0600'])
 
     def test_block_iterator(self):
         # type: () -> None

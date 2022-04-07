@@ -98,10 +98,10 @@ Changelog Classes
 # and licensed under the same license as above.
 
 import email.utils
+import logging
 import os
 import re
 import socket
-import warnings
 
 # pwd is only available on Unix platforms.
 try:
@@ -138,6 +138,9 @@ except ImportError:
     pass
 
 from debian.debian_support import Version
+
+
+logger = logging.getLogger('debian.changelog')
 
 
 class ChangelogParseError(Exception):
@@ -489,7 +492,7 @@ class Changelog(object):
         # type: (str, bool) -> None
         if strict:
             raise ChangelogParseError(message)
-        warnings.warn(message)
+        logger.warning(message)
 
     def parse_changelog(self,
                         file,             # type: Optional[IterableDataSource]
