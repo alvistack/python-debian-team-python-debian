@@ -1522,7 +1522,7 @@ class PkgRelation(object):
 
             logger.warning(
                 'cannot parse package'
-                ' relationship "%s", returning it raw' % raw)
+                ' relationship "%s", returning it raw', raw)
             return {
                 'name': raw,
                 'archqual': None,
@@ -2763,8 +2763,7 @@ class _AutoDecoder(object):
                 # Evidently, the value wasn't encoded with the encoding the
                 # user specified.  Try detecting it.
                 logger.warning('decoding from %s failed; attempting to detect '
-                               'the true encoding' % self.encoding,
-                              UnicodeWarning)
+                               'the true encoding', self.encoding)
                 result = chardet.detect(value)
                 try:
                     return value.decode(result['encoding'])
