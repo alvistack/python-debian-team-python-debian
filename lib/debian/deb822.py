@@ -232,6 +232,7 @@ import collections
 import collections.abc
 import datetime
 import email.utils
+import logging
 import io
 import re
 import subprocess
@@ -340,6 +341,9 @@ def _has_fileno(f):
 
 GPGV_DEFAULT_KEYRINGS = frozenset(['/usr/share/keyrings/debian-keyring.gpg'])
 GPGV_EXECUTABLE = '/usr/bin/gpgv'
+
+
+logger = logging.getLogger('debian.deb822')
 
 
 class Error(Exception):
@@ -1516,9 +1520,9 @@ class PkgRelation(object):
                         parts['restrictions'])
                 return d
 
-            warnings.warn(
+            logger.warning(
                 'cannot parse package'
-                ' relationship "%s", returning it raw' % raw)
+                ' relationship "%s", returning it raw', raw)
             return {
                 'name': raw,
                 'archqual': None,
@@ -2758,9 +2762,8 @@ class _AutoDecoder(object):
             except UnicodeDecodeError as e:
                 # Evidently, the value wasn't encoded with the encoding the
                 # user specified.  Try detecting it.
-                warnings.warn('decoding from %s failed; attempting to detect '
-                              'the true encoding' % self.encoding,
-                              UnicodeWarning)
+                logger.warning('decoding from %s failed; attempting to detect '
+                               'the true encoding', self.encoding)
                 result = chardet.detect(value)
                 try:
                     return value.decode(result['encoding'])

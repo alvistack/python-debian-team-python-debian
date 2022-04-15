@@ -1,8 +1,12 @@
 python-debian (0.1.44) UNRELEASED; urgency=medium
 
+  [ Simon Chopin ]
   * Add support for zstd compression (LP: #1923845)
+  
+  [ Jelmer Vernooĳ ]
+  * Use logging.warning rather than warnings for data problems.
 
- -- Simon Chopin <simon.chopin@canonical.com>  Wed, 09 Feb 2022 11:39:50 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 07 Apr 2022 18:45:11 +0100
 
 python-debian (0.1.43) unstable; urgency=medium
 
