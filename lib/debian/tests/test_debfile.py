@@ -238,6 +238,11 @@ class TestDebFile(unittest.TestCase):
         "test_deb822.py",
         "test_Changes",       # signed file so won't change
     ]
+    # location for symlinks in the archive, relative to the example dir
+    link_data_dirs = [
+        "../links",
+        "/var/tests",
+    ]
 
     @contextlib.contextmanager
     def temp_deb(self, filename='test.deb', control="gztar", data="gztar"):
@@ -272,6 +277,38 @@ class TestDebFile(unittest.TestCase):
             examplespath.mkdir(parents=True)
             for f in self.example_data_files:
                 shutil.copy(find_test_file(f), str(examplespath))
+
+            # Make some symlinks for testing
+            # a) symlink within a directory (relative path)
+            dest = Path(self.example_data_files[0])
+            link = Path(examplespath / ("link_" + self.example_data_files[0]))
+            link.symlink_to(dest)
+
+            # b) symlinks traversing directories
+            for d in self.link_data_dirs:
+                # dest dir for links
+                linkspath = str(self.example_data_dir / d)
+                tmplinkpath = Path(datapath) / (linkspath if not linkspath.startswith("/") else linkspath[1:])
+                tmplinkpath.mkdir(parents=True)
+
+                # Find the correct path for the symlink according to Policy
+                # policy says to use relative paths unless the path traverses /
+                if d.startswith("/"):
+                    # it traverses root so use the absolute path
+                    destpath = Path("/") / self.example_data_dir
+                else:
+                    # relative path is acceptable
+                    # CRUFT: python < 3.6 doesn't support pathlib in os.path
+                    destpath = Path(os.path.relpath(str(self.example_data_dir), linkspath))
+                # finally, the destination where the link is supposed to point to
+                dest = destpath / self.example_data_files[0]
+                # and the actual filesystem location of the link
+                link = (tmplinkpath / self.example_data_files[0]).resolve()
+                link.symlink_to(dest)
+
+                # c) also make a symlink to a directory
+                link = (tmplinkpath / "dirlink").resolve()
+                link.symlink_to(destpath)
 
             data_member = _make_archive(str(datapath), data)
 
@@ -376,6 +413,133 @@ class TestDebFile(unittest.TestCase):
             # skip the root
             self.assertEqual(debfile_names[1:], dpkg_names[1:])
             deb.close()
+
+    def _test_file_contents(self, debname, debfilename, origfilename, modes=None, follow_symlinks=False):
+        # type: (str, Union[str, Path], Union[str, Path], Optional[List[str]], bool) -> None
+        """ helper function to test that the deb file has the right contents """
+        modes = modes or ["rb", "rt"]
+        for mode in modes:
+            with debfile.DebFile(debname) as deb:
+                with open(origfilename, mode) as fh:
+                    origdata = fh.read()
+                encoding = None if not "t" in mode else "UTF-8"
+                dfh = deb.data.get_file(str(debfilename), encoding=encoding, follow_symlinks=follow_symlinks)
+                debdata = dfh.read()
+                self.assertEqual(origdata, debdata)
+                dfh.close()
+
+    def test_data_has_file(self):
+        # type: () -> None
+        """ test for round-trip of a data file """
+        with self.temp_deb() as debname:
+            with debfile.DebFile(debname) as deb:
+                debdatafile = str(self.example_data_dir / self.example_data_files[-1])
+                self.assertTrue(deb.data.has_file(debdatafile))
+
+                self.assertFalse(deb.data.has_file("/usr/share/doc/nosuchfile"))
+                self.assertFalse(deb.data.has_file("/nosuchdir/nosuchfile"))
+
+    def test_data_has_file_symlinks(self):
+        # type: () -> None
+        """ test for round-trip of a data file """
+        def path(*args):
+            # type: (Union[str, Path]) -> str
+            return os.path.normpath(os.path.join(
+                self.example_data_dir, *args
+            ))
+
+        with self.temp_deb() as debname:
+            with debfile.DebFile(debname) as deb:
+                # link to file in same directory
+                debdatafile = str(self.example_data_dir / ( "link_" + self.example_data_files[0]))
+                self.assertTrue(deb.data.has_file(debdatafile))
+
+                # link to file in different directory
+                debdatafile = path(self.link_data_dirs[0], self.example_data_files[0])
+                self.assertTrue(deb.data.has_file(debdatafile, follow_symlinks=False))
+
+                debdatafile = path(self.link_data_dirs[0], self.example_data_files[0])
+                self.assertTrue(deb.data.has_file(debdatafile, follow_symlinks=True))
+
+                # link to file in different dir traversing /
+                debdatafile = path(self.link_data_dirs[1], self.example_data_files[0])
+                self.assertTrue(deb.data.has_file(debdatafile, follow_symlinks=False))
+
+                debdatafile = path(self.link_data_dirs[1], self.example_data_files[0])
+                self.assertTrue(deb.data.has_file(debdatafile, follow_symlinks=True))
+
+                # file beyond a directory symlink
+                debdatafile = path(self.link_data_dirs[0], "dirlink", self.example_data_files[0])
+                self.assertFalse(deb.data.has_file(debdatafile, follow_symlinks=False))
+
+                debdatafile = path(self.link_data_dirs[0], "dirlink", self.example_data_files[0])
+                self.assertTrue(deb.data.has_file(debdatafile, follow_symlinks=True))
+
+                # file beyond a directory symlink traversing /
+                debdatafile = path(self.link_data_dirs[1], "dirlink", self.example_data_files[0])
+                self.assertFalse(deb.data.has_file(debdatafile, follow_symlinks=False))
+
+                debdatafile = path(self.link_data_dirs[1], "dirlink", self.example_data_files[0])
+                self.assertTrue(deb.data.has_file(debdatafile, follow_symlinks=True))
+
+                # non-existent files and directories
+                self.assertFalse(deb.data.has_file("/usr/share/doc/nosuchfile", follow_symlinks=False))
+                self.assertFalse(deb.data.has_file("/nosuchdir/nosuchfile", follow_symlinks=True))
+                self.assertFalse(deb.data.has_file("/usr/share/doc/nosuchfile", follow_symlinks=False))
+                self.assertFalse(deb.data.has_file("/nosuchdir/nosuchfile", follow_symlinks=True))
+
+                # non-existent files beyond a symlink
+                debdatafile = path(self.link_data_dirs[1], "dirlink", "nosuchfile")
+                self.assertFalse(deb.data.has_file(debdatafile, follow_symlinks=False))
+                self.assertFalse(deb.data.has_file(debdatafile, follow_symlinks=True))
+
+    def test_data_get_file(self):
+        # type: () -> None
+        """ test for round-trip of a data file """
+        with self.temp_deb() as debname:
+            datafile = self.example_data_files[-1]
+            debdatafile = self.example_data_dir / self.example_data_files[-1]
+
+            self._test_file_contents(debname, debdatafile, find_test_file(datafile))
+
+            with self.assertRaises(debfile.DebError):
+                self._test_file_contents(debname, "/usr/share/doc/nosuchfile", find_test_file(datafile))
+
+            with self.assertRaises(debfile.DebError):
+                self._test_file_contents(debname, "/nosuchdir/nosuchfile", find_test_file(datafile))
+
+    def test_data_get_file_symlinks(self):
+        # type: () -> None
+        """ test for traversing symlinks in the package
+
+        links that are within the same directory get automatically resolved
+        by tarfile, but links that cross directories do not
+        """
+        basename = self.example_data_files[0]
+        targetdata = find_test_file(basename)
+        testlinkfiles = [
+            # Format: (path in .deb, fails without symlinks)
+            # relative symlink to a file within a directory
+            (self.example_data_dir / ("link_" + basename), False),
+            # relative symlink to a file
+            (Path(self.example_data_dir / self.link_data_dirs[0]) / basename, True),
+            # relative symlink to a directory
+            (Path(self.example_data_dir / self.link_data_dirs[0]) / "dirlink" / basename, True),
+            # absolute symlink to a file
+            (Path(self.example_data_dir / self.link_data_dirs[1]) / basename, True),
+            # absolute symlink to a directory
+            (Path(self.example_data_dir / self.link_data_dirs[1]) / "dirlink" / basename, True),
+        ]
+
+        with self.temp_deb() as debname:
+            for linkname, fail_without_symlink in testlinkfiles:
+                cleanlinkname = os.path.normpath(linkname)
+                if fail_without_symlink:
+                    with self.assertRaises(debfile.DebError):
+                        self._test_file_contents(debname, linkname, targetdata, follow_symlinks=False)
+                else:
+                    self._test_file_contents(debname, linkname, targetdata, follow_symlinks=False)
+                self._test_file_contents(debname, cleanlinkname, targetdata, follow_symlinks=True)
 
     def test_control(self):
         # type: () -> None
