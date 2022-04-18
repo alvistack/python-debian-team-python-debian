@@ -7,7 +7,8 @@ Depends:
  python3-debian,
  python3-pytest,
  debian-keyring,
- debian-archive-keyring
+ debian-archive-keyring,
+ zstd,
 
 Tests: python3-debian-no-apt-pkg
 Restrictions: allow-stderr
@@ -17,4 +18,5 @@ Depends:
  python3-debian,
  python3-pytest,
  debian-keyring,
- debian-archive-keyring
+ debian-archive-keyring,
+ zstd,
