@@ -156,6 +156,9 @@ class DebPart(object):
         """ try (not so hard) to obtain a member file name in a form that is
         stored in the .tar.gz, i.e. starting with ./ """
 
+        # os.path and pathlib operations on windows will end up with \ as the directory separator
+        fname = str(fname).replace("\\", "/")
+
         if fname.startswith('./'):
             return fname
 
@@ -175,20 +178,31 @@ class DebPart(object):
         """
         try:
             resolved_path_parts = []
-            for pathpart in path.split('/'):
+            for pathpart in path.split('/')[1:]:
                 resolved_path_parts.append(pathpart)
-                currpath = '/'.join(resolved_path_parts)
+                currpath = os.path.normpath('/'.join(resolved_path_parts))
+                currpath = DebPart.__normalize_member(currpath)
                 tinfo = self.tgz().getmember(currpath)
-                # if this part is a symlink, pop it off the resolve_path_parts
+                # if this part is a symlink, pop it off the resolved_path_parts
                 # and replace it with the link destination
                 if tinfo.issym():
-                    resolved_path_parts[-1] = tinfo.linkname
+                    if tinfo.linkname.startswith("/"):
+                        # absolute symlink replaces everything currently collected
+                        resolved_path_parts = tinfo.linkname.split("/")
+                        currpath = tinfo.linkname
+                    else:
+                        # relative symlink replaces the last part
+                        #    foo.txt -> bar.txt
+                        #    docs -> ../foo-doc/html
+                        # in the latter case, the call to `normpath`
+                        # will canonicalise it.
+                        resolved_path_parts[-1] = tinfo.linkname
 
         except KeyError:
             # the specified file is not in this .deb at all
             return None
 
-        return currpath
+        return DebPart.__normalize_member(os.path.normpath(currpath))
 
     def has_file(self, fname, follow_symlinks=False):
         # type: (str, bool) -> bool
@@ -196,14 +210,16 @@ class DebPart(object):
 
         Symlinks within the archive can be followed.
         """
-
         fname = DebPart.__normalize_member(fname)
+
+        names = self.tgz().getnames()
+        if fname in names:
+            return True
 
         if follow_symlinks:
             fname_real = self.__resolve_symlinks(fname)
             return fname_real is not None
 
-        names = self.tgz().getnames()
         return fname in names
 
     @overload
@@ -235,7 +251,10 @@ class DebPart(object):
                 raise DebError("File not found inside package")
             fname = fname_real
 
-        fobj = self.tgz().extractfile(fname)
+        try:
+            fobj = self.tgz().extractfile(fname)
+        except KeyError:
+            raise DebError("File not found inside package")
 
         if fobj is None:
             raise DebError("File not found inside package")
@@ -281,15 +300,11 @@ class DebPart(object):
         If follow_symlinks is True, then symlinks within the archive will be
         followed.
         """
-        fname = DebPart.__normalize_member(fname)
-
-        if follow_symlinks:
-            fname_real = self.__resolve_symlinks(fname)
-            if fname_real is None:
-                raise DebError("File not found inside package")
-            fname = fname_real
-
-        f = self.get_file(fname, encoding=encoding, errors=errors)
+        f = self.get_file(
+            str(fname),
+            encoding=encoding, errors=errors,
+            follow_symlinks=follow_symlinks
+        )
         content = None
         if f:   # can be None for non regular or link files
             content = f.read()
@@ -504,7 +519,7 @@ class DebFile(ArFile):
                       CHANGELOG_NATIVE % self.__pkgname]:
             try:
                 fh = self.data.get_file(fname, follow_symlinks=True)
-            except KeyError:
+            except DebError:
                 continue
 
             with gzip.GzipFile(fileobj=fh) as gz:
