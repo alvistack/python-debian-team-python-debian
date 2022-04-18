@@ -303,11 +303,13 @@ class TestDebFile(unittest.TestCase):
                 # finally, the destination where the link is supposed to point to
                 dest = destpath / self.example_data_files[0]
                 # and the actual filesystem location of the link
-                link = (tmplinkpath / self.example_data_files[0]).resolve()
+                # CRUFT: for python >= 3.6 this can be done with .resolve()
+                link = Path(os.path.normpath(str(tmplinkpath / self.example_data_files[0])))
                 link.symlink_to(dest)
 
                 # c) also make a symlink to a directory
-                link = (tmplinkpath / "dirlink").resolve()
+                # CRUFT: for python >= 3.6 this can be done with .resolve()
+                link = Path(os.path.normpath(str(tmplinkpath / "dirlink")))
                 link.symlink_to(destpath)
 
             data_member = _make_archive(str(datapath), data)
@@ -445,7 +447,7 @@ class TestDebFile(unittest.TestCase):
         def path(*args):
             # type: (Union[str, Path]) -> str
             return os.path.normpath(os.path.join(
-                self.example_data_dir, *args
+                str(self.example_data_dir), *args
             ))
 
         with self.temp_deb() as debname:
@@ -533,7 +535,7 @@ class TestDebFile(unittest.TestCase):
 
         with self.temp_deb() as debname:
             for linkname, fail_without_symlink in testlinkfiles:
-                cleanlinkname = os.path.normpath(linkname)
+                cleanlinkname = os.path.normpath(str(linkname))
                 if fail_without_symlink:
                     with self.assertRaises(debfile.DebError):
                         self._test_file_contents(debname, linkname, targetdata, follow_symlinks=False)
