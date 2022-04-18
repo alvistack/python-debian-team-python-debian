@@ -251,11 +251,11 @@ class TestDebFile(unittest.TestCase):
         :param control:
             optionally specify the compression format for the control member
             of the .deb file; allowable values are from
-            `shutil.make_archive`: `gztar`, `bztar`, `xztar`
+            `shutil.make_archive`: `gztar`, `bztar`, `xztar`, `zsttar`
         :param data:
             optionally specify the compression format for the data member
             of the .deb file; allowable values are from
-            `shutil.make_archive`: `gztar`, `bztar`, `xztar`
+            `shutil.make_archive`: `gztar`, `bztar`, `xztar`, `zsttar`
         """
         with tempfile.TemporaryDirectory(prefix="test_debfile.") as tempdir:
             tpath = Path(tempdir)
