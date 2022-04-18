@@ -26,6 +26,7 @@ import io
 import tarfile
 import sys
 import os.path
+from pathlib import Path
 
 try:
     # pylint: disable=unused-import
@@ -152,7 +153,7 @@ class DebPart(object):
 
     @staticmethod
     def __normalize_member(fname):
-        # type: (str) -> str
+        # type: (Union[str, Path]) -> str
         """ try (not so hard) to obtain a member file name in a form that is
         stored in the .tar.gz, i.e. starting with ./ """
 
@@ -205,7 +206,7 @@ class DebPart(object):
         return DebPart.__normalize_member(os.path.normpath(currpath))
 
     def has_file(self, fname, follow_symlinks=False):
-        # type: (str, bool) -> bool
+        # type: (Union[str, Path], bool) -> bool
         """Check if this part contains a given file name.
 
         Symlinks within the archive can be followed.
@@ -224,16 +225,16 @@ class DebPart(object):
 
     @overload
     def get_file(self, fname, encoding=None, errors=None, follow_symlinks=False):
-        # type: (str, None, Optional[str], bool) -> IO[bytes]
+        # type: (Union[str, Path], None, Optional[str], bool) -> IO[bytes]
         pass
 
     @overload
     def get_file(self, fname, encoding, errors=None, follow_symlinks=False):
-        # type: (str, str, Optional[str], bool) -> IO[str]
+        # type: (Union[str, Path], str, Optional[str], bool) -> IO[str]
         pass
 
     def get_file(self, fname, encoding=None, errors=None, follow_symlinks=False):
-        # type: (str, Optional[str], Optional[str], bool) -> Union[IO[bytes], IO[str]]
+        # type: (Union[str, Path], Optional[str], Optional[str], bool) -> Union[IO[bytes], IO[str]]
         """Return a file object corresponding to a given file name.
 
         If encoding is given, then the file object will return Unicode data;
@@ -266,7 +267,7 @@ class DebPart(object):
 
     @overload
     def get_content(self,
-                    fname,          # type: str
+                    fname,          # type: Union[str, Path]
                     encoding=None,  # type: Literal[None]
                     errors=None,    # type: Optional[str]
                     follow_symlinks=False,  # type: bool
@@ -276,7 +277,7 @@ class DebPart(object):
 
     @overload
     def get_content(self,
-                    fname,             # type: str
+                    fname,             # type: Union[str, Path]
                     encoding,          # type: str
                     errors=None,       # type: Optional[str]
                     follow_symlinks=False,  # type: bool
@@ -285,7 +286,7 @@ class DebPart(object):
         pass
 
     def get_content(self,
-                    fname,          # type: str
+                    fname,          # type: Union[str, Path]
                     encoding=None,  # type: Optional[str]
                     errors=None,    # type: Optional[str]
                     follow_symlinks=False,  # type: bool
@@ -318,11 +319,11 @@ class DebPart(object):
         return iter(self.tgz().getnames())
 
     def __contains__(self, fname):
-        # type: (str) -> bool
+        # type: (Union[str, Path]) -> bool
         return self.has_file(fname)
 
     def __getitem__(self, fname):
-        # type: (str) ->  Optional[Union[bytes, Text]]
+        # type: (Union[str, Path]) ->  Optional[Union[bytes, Text]]
         return self.get_content(fname)
 
     def close(self):
@@ -422,7 +423,7 @@ class DebFile(ArFile):
     """
 
     def __init__(self, filename=None, mode='r', fileobj=None):
-        # type: (Optional[str], str, Optional[BinaryIO]) -> None
+        # type: (Optional[Union[str, Path]], str, Optional[BinaryIO]) -> None
         ArFile.__init__(self, filename, mode, fileobj)
         actual_names = set(self.getnames())
 
