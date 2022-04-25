@@ -121,12 +121,13 @@ class DebPart(object):
                     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
                 )
             except (OSError, ValueError) as e:
-                raise DebError("%s" % e)
+                raise DebError("error while running command '%s' as subprocess: '%s'" %
+                               (' '.join(command_list), e))
 
             data = proc.communicate(self.__member.read())[0]
             if proc.returncode != 0:
-                raise DebError("command has failed with code '%s'" %
-                               proc.returncode)
+                raise DebError("command '%s' has failed with code '%s'" %
+                               (' '.join(command_list), proc.returncode))
 
             return io.BytesIO(data)
 
