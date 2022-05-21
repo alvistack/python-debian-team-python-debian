@@ -172,6 +172,7 @@ COMMA_SEPARATOR_FT = FormatterContentToken(',', _CONTENT_TYPE_SEPARATOR)
 def one_value_per_line_formatter(
         indentation,  # type: Union[int, Literal["FIELD_NAME_LENGTH"]]
         trailing_separator=True,  # type: bool
+        immediate_empty_line=False,  # type: bool
         ):
     # type: (...) -> FormatterCallback
     """Provide a simple formatter that can handle indentation and trailing separators
@@ -187,6 +188,8 @@ def one_value_per_line_formatter(
     indentation is set such that it aligns the values based on the field name.
     :param trailing_separator: If True, then the last value will have a trailing
     separator token (e.g., ",") after it.
+    :param immediate_empty_line: Whether the value should always start with an
+    empty line.  If True, then the result becomes something like "Field:\n value".
 
     """
     if indentation != "FIELD_NAME_LENGTH" and indentation < 1:
@@ -207,6 +210,9 @@ def one_value_per_line_formatter(
         emitted_first_line = False
         tok_iter = BufferingIterator(formatter_tokens)
         is_value = operator.attrgetter("is_value")
+        if immediate_empty_line:
+            emitted_first_line = True
+            yield "\n"
         for t in tok_iter:
             if t.is_comment:
                 if not emitted_first_line:
@@ -349,6 +355,11 @@ def format_field(formatter,  # type: FormatterCallback
     ...   1,
     ...   trailing_separator=False
     ... )
+    >>> fmt_newline_first = one_value_per_line_formatter(
+    ...   1,
+    ...   trailing_separator=False,
+    ...   immediate_empty_line=True
+    ... )
     >>> # Omit separator tokens for in the token list for simplicity (the formatter does
     >>> # not use them, and it enables us to keep the example simple by reusing the list)
     >>> tokens = [
@@ -390,12 +401,32 @@ def format_field(formatter,  # type: FormatterCallback
     >>> # Also, check single line values (to ensure it ends on a newline)
     >>> print(format_field(fmt_shortest, "Depends", COMMA_SEPARATOR_FT, tokens[2:]), end='')
     Depends: bar
+    >>> ### Changing format to the newline first format
+    >>> print(format_field(fmt_newline_first, "Depends", COMMA_SEPARATOR_FT, tokens), end='')
+    Depends:
+     foo,
+    # some comment about bar
+     bar
+    >>> print(format_field(fmt_newline_first, "Architecture", SPACE_SEPARATOR_FT, tokens), end='')
+    Architecture:
+     foo
+    # some comment about bar
+     bar
+    >>> # Control check for the special case where the field starts with a comment
+    >>> print(format_field(fmt_newline_first, "Depends", COMMA_SEPARATOR_FT, tokens[1:]), end='')
+    Depends:
+    # some comment about bar
+     bar
+    >>> # Also, check single line values (to ensure it ends on a newline)
+    >>> print(format_field(fmt_newline_first, "Depends", COMMA_SEPARATOR_FT, tokens[2:]), end='')
+    Depends:
+     bar
     """
     formatted_tokens = [field_name, ':']
     just_after_newline = False
     last_was_value_token = False
     if isinstance(token_iter, list):
-        # Some people from using this to test known "invalid" cases.
+        # Stop people from using this to test known "invalid" cases.
         last_token = token_iter[-1]
         if last_token.is_comment:
             raise ValueError("Invalid token_iter: Field values cannot end with comments")
