@@ -1,13 +1,16 @@
+import operator
+
+from debian._deb822_repro._util import BufferingIterator
 from debian._deb822_repro.tokens import Deb822Token
 
 # Consider these "opaque" enum-like values.  The actual value was chosen to
-# make repr easier to implement but they are subject to change.
+# make repr easier to implement, but they are subject to change.
 _CONTENT_TYPE_VALUE = "is_value"
 _CONTENT_TYPE_COMMENT = "is_comment"
 _CONTENT_TYPE_SEPARATOR = "is_separator"
 
 try:
-    from typing import Iterator, Union
+    from typing import Iterator, Union, Literal
     from debian._deb822_repro.types import TokenOrElement, FormatterCallback
 except ImportError:
     pass
@@ -166,37 +169,70 @@ SPACE_SEPARATOR_FT = FormatterContentToken(' ', _CONTENT_TYPE_SEPARATOR)
 COMMA_SEPARATOR_FT = FormatterContentToken(',', _CONTENT_TYPE_SEPARATOR)
 
 
-def one_value_per_line_trailing_separator(
-        name,  # type: str
-        sep_token,  # type: FormatterContentToken
-        formatter_tokens,  # type: Iterator[FormatterContentToken]
+def one_value_per_line_formatter(
+        indentation,  # type: Union[int, Literal["FIELD_NAME_LENGTH"]]
+        trailing_separator=True,  # type: bool
         ):
-    # type: (...) -> Iterator[Union[FormatterContentToken, str]]
+    # type: (...) -> FormatterCallback
+    """Provide a simple formatter that can handle indentation and trailing separators
 
-    """Use "one value per line, always trailing separator" formatting
+    All formatters returned by this function puts exactly one value per line.  This
+    pattern is commonly seen in the "Depends" field and similar fields of
+    debian/control files.
+
+    :param indentation: Either the literal string "FIELD_NAME_LENGTH" or a positive
+    integer, which determines the indentation for fields.  If it is an integer,
+    then a fixed indentation is used (notably the value 1 ensures the shortest
+    possible indentation).  Otherwise, if it is "FIELD_NAME_LENGTH", then the
+    indentation is set such that it aligns the values based on the field name.
+    :param trailing_separator: If True, then the last value will have a trailing
+    separator token (e.g., ",") after it.
+
     """
+    if indentation != "FIELD_NAME_LENGTH" and indentation < 1:
+        raise ValueError("indentation must be at least 1 (or \"FIELD_NAME_LENGTH\")")
 
-    indent_len = len(name) + 2
-    indent = ' ' * indent_len
-    emitted_first = True
-    for t in formatter_tokens:
-        if t.is_comment:
-            if emitted_first:
-                yield "\n"
-            yield t
-        elif t.is_value:
-            if emitted_first:
-                yield ' '
-            else:
-                yield indent
-            yield t
-            if not sep_token.is_whitespace:
-                yield sep_token
-            yield "\n"
+    def _formatter(
+            name,  # type: str
+            sep_token,  # type: FormatterContentToken
+            formatter_tokens,  # type: Iterator[FormatterContentToken]
+            ):
+        # type: (...) -> Iterator[Union[FormatterContentToken, str]]
+        if indentation == "FIELD_NAME_LENGTH":
+            indent_len = len(name) + 2
         else:
-            # Skip existing separators (etc.)
-            continue
-        emitted_first = False
+            indent_len = indentation
+        indent = ' ' * indent_len
+
+        emitted_first_line = False
+        tok_iter = BufferingIterator(formatter_tokens)
+        is_value = operator.attrgetter("is_value")
+        for t in tok_iter:
+            if t.is_comment:
+                if not emitted_first_line:
+                    yield "\n"
+                yield t
+            elif t.is_value:
+                if not emitted_first_line:
+                    yield ' '
+                else:
+                    yield indent
+                yield t
+                if not sep_token.is_whitespace and (trailing_separator
+                                                    or tok_iter.peek_find(is_value)):
+                    yield sep_token
+                yield "\n"
+            else:
+                # Skip existing separators (etc.)
+                continue
+            emitted_first_line = True
+    return _formatter
+
+
+one_value_per_line_trailing_separator = one_value_per_line_formatter(
+    "FIELD_NAME_LENGTH",
+    trailing_separator=True
+)
 
 
 def format_field(formatter,  # type: FormatterCallback
@@ -298,7 +334,9 @@ def format_field(formatter,  # type: FormatterCallback
     recommended to rely on verifying the output of the function rather than
     relying on the runtime checks (as these are subject to change).
 
-    :param formatter: A formatter (see FormatterCallback for an example)
+    :param formatter: A formatter (see FormatterCallback for the type).
+    Basic formatting is provided via one_value_per_line_trailing_separator
+    (a formatter) or one_value_per_line_formatter (a formatter generator).
     :param field_name: The name of the field.
     :param separator_token: One of SPACE_SEPARATOR and COMMA_SEPARATOR
     :param token_iter: An iterable of tokens to be formatted.
@@ -306,30 +344,52 @@ def format_field(formatter,  # type: FormatterCallback
     The following example shows how to define a formatter_callback along with
     a few verifications.
 
-    >>> fmt = one_value_per_line_trailing_separator
+    >>> fmt_field_len_sep = one_value_per_line_trailing_separator
+    >>> fmt_shortest = one_value_per_line_formatter(
+    ...   1,
+    ...   trailing_separator=False
+    ... )
     >>> # Omit separator tokens for in the token list for simplicity (the formatter does
-    >>> # not use them and it enables us to keep the example simple by reusing the list)
+    >>> # not use them, and it enables us to keep the example simple by reusing the list)
     >>> tokens = [
     ...     FormatterContentToken.value_token("foo"),
     ...     FormatterContentToken.comment_token("# some comment about bar\\n"),
     ...     FormatterContentToken.value_token("bar"),
     ... ]
-    >>> print(format_field(fmt, "Depends", COMMA_SEPARATOR_FT, tokens), end='')
+    >>> # Starting with fmt_dl_ts
+    >>> print(format_field(fmt_field_len_sep, "Depends", COMMA_SEPARATOR_FT, tokens), end='')
     Depends: foo,
     # some comment about bar
              bar,
-    >>> print(format_field(fmt, "Architecture", SPACE_SEPARATOR_FT, tokens), end='')
+    >>> print(format_field(fmt_field_len_sep, "Architecture", SPACE_SEPARATOR_FT, tokens), end='')
     Architecture: foo
     # some comment about bar
                   bar
     >>> # Control check for the special case where the field starts with a comment
-    >>> print(format_field(fmt, "Depends", COMMA_SEPARATOR_FT, tokens[1:]), end='')
+    >>> print(format_field(fmt_field_len_sep, "Depends", COMMA_SEPARATOR_FT, tokens[1:]), end='')
     Depends:
     # some comment about bar
              bar,
     >>> # Also, check single line values (to ensure it ends on a newline)
-    >>> print(format_field(fmt, "Depends", COMMA_SEPARATOR_FT, tokens[2:]), end='')
+    >>> print(format_field(fmt_field_len_sep, "Depends", COMMA_SEPARATOR_FT, tokens[2:]), end='')
     Depends: bar,
+    >>> ### Changing format to the shortest length
+    >>> print(format_field(fmt_shortest, "Depends", COMMA_SEPARATOR_FT, tokens), end='')
+    Depends: foo,
+    # some comment about bar
+     bar
+    >>> print(format_field(fmt_shortest, "Architecture", SPACE_SEPARATOR_FT, tokens), end='')
+    Architecture: foo
+    # some comment about bar
+     bar
+    >>> # Control check for the special case where the field starts with a comment
+    >>> print(format_field(fmt_shortest, "Depends", COMMA_SEPARATOR_FT, tokens[1:]), end='')
+    Depends:
+    # some comment about bar
+     bar
+    >>> # Also, check single line values (to ensure it ends on a newline)
+    >>> print(format_field(fmt_shortest, "Depends", COMMA_SEPARATOR_FT, tokens[2:]), end='')
+    Depends: bar
     """
     formatted_tokens = [field_name, ':']
     just_after_newline = False
