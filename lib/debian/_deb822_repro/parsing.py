@@ -2701,9 +2701,9 @@ class Deb822FileElement(Deb822Element):
                 raise ValueError("Paragraph is already a part of this file")
             raise ValueError("Paragraph is already part of another Deb822File")
 
-        # We need a separating newline if there not a whitespace token at the end of the file.
+        # We need a separating newline if there is not a whitespace token at the end of the file.
         # Note the special case where the file ends on a comment; here we insert a whitespace too
-        # to be sure.  Otherwise we would have to check that there is an empty line before that
+        # to be sure.  Otherwise, we would have to check that there is an empty line before that
         # comment and that is too much effort.
         if tail_element and not isinstance(tail_element, Deb822WhitespaceToken):
             self._token_and_elements.append(self._set_parent(Deb822WhitespaceToken('\n')))
@@ -2957,7 +2957,7 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
       implicit newlines.
     :param accept_files_with_error_tokens: If True, files with critical syntax
       or parse errors will be returned as "successfully" parsed. Usually,
-      working on files with these kind of errors are not desirable as it is
+      working on files with this kind of errors are not desirable as it is
       hard to make sense of such files (and they might in fact not be a deb822
       file at all).  When set to False (the default) a ValueError is raised if
       there is a critical syntax or parse error.
