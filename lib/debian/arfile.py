@@ -21,6 +21,7 @@ packages.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from pathlib import Path
 import sys
 
 try:
@@ -35,6 +36,7 @@ try:
         List,
         NoReturn,
         Optional,
+        Union,
     )
 except ImportError:
     # Missing types aren't important at runtime
@@ -63,7 +65,7 @@ class ArFile(object):
     """
 
     def __init__(self,
-                 filename=None,  # type: Optional[str]
+                 filename=None,  # type: Optional[Union[str, Path]]
                  mode='r',       # type: str
                  fileobj=None,   # type: Optional[BinaryIO]
                  encoding=None,  # type: Optional[str]
@@ -80,7 +82,7 @@ class ArFile(object):
         """
         self.__members = []  # type: List[ArMember]
         self.__members_dict = {}  # type: Dict[str, ArMember]
-        self.__fname = filename  # type: Optional[str]
+        self.__fname = filename  # type: Optional[Union[str, Path]]
         self.__fileobj = fileobj
         self.__encoding = encoding or sys.getfilesystemencoding()
         if errors is None:
@@ -225,7 +227,7 @@ class ArMember(object):
         # member size in bytes
         self.__size = None      # type: Optional[int]
         # file name associated with this member
-        self.__fname = ""       # type: Optional[str]
+        self.__fname = ""       # type: Optional[Union[str, Path]]
         # file pointer
         self.__fp = None        # type: Optional[BinaryIO]
         # start-of-data offset
@@ -237,7 +239,7 @@ class ArMember(object):
 
     @staticmethod
     def from_file(fp,             # type: BinaryIO
-                  fname,          # type: Optional[str]
+                  fname,          # type: Optional[Union[str, Path]]
                   encoding=None,  # type: Optional[str]
                   errors=None,    # type: Optional[str]
                   ):

@@ -26,6 +26,7 @@ import io
 import tarfile
 import sys
 import os.path
+from pathlib import Path
 
 try:
     # pylint: disable=unused-import
@@ -152,46 +153,113 @@ class DebPart(object):
 
     @staticmethod
     def __normalize_member(fname):
-        # type: (str) -> str
-        """ try (not so hard) to obtain a member file name in a form relative
-        to the .tar.gz root and with no heading '.' """
+        # type: (Union[str, Path]) -> str
+        """ try (not so hard) to obtain a member file name in a form that is
+        stored in the .tar.gz, i.e. starting with ./ """
+
+        # os.path and pathlib operations on windows will end up with \ as the directory separator
+        fname = str(fname).replace("\\", "/")
 
         if fname.startswith('./'):
-            fname = fname[2:]
-        elif fname.startswith('/'):
-            fname = fname[1:]
-        return fname
+            return fname
 
-    def has_file(self, fname):
-        # type: (str) -> bool
-        """Check if this part contains a given file name."""
+        if fname.startswith('/'):
+            return '.' + fname
+        return './' + fname
 
+    def __resolve_symlinks(self, path):
+        # type: (str) -> Optional[str]
+        """ walk the path following symlinks
+
+        returns:
+            resolved_path, info
+
+        if the path is not found even after following symlinks within the
+        archive, then None is returned.
+        """
+        try:
+            resolved_path_parts = []
+            for pathpart in path.split('/')[1:]:
+                resolved_path_parts.append(pathpart)
+                currpath = os.path.normpath('/'.join(resolved_path_parts))
+                currpath = DebPart.__normalize_member(currpath)
+                tinfo = self.tgz().getmember(currpath)
+                # if this part is a symlink, pop it off the resolved_path_parts
+                # and replace it with the link destination
+                if tinfo.issym():
+                    if tinfo.linkname.startswith("/"):
+                        # absolute symlink replaces everything currently collected
+                        resolved_path_parts = tinfo.linkname.split("/")
+                        currpath = tinfo.linkname
+                    else:
+                        # relative symlink replaces the last part
+                        #    foo.txt -> bar.txt
+                        #    docs -> ../foo-doc/html
+                        # in the latter case, the call to `normpath`
+                        # will canonicalise it.
+                        resolved_path_parts[-1] = tinfo.linkname
+
+        except KeyError:
+            # the specified file is not in this .deb at all
+            return None
+
+        return DebPart.__normalize_member(os.path.normpath(currpath))
+
+    def has_file(self, fname, follow_symlinks=False):
+        # type: (Union[str, Path], bool) -> bool
+        """Check if this part contains a given file name.
+
+        Symlinks within the archive can be followed.
+        """
         fname = DebPart.__normalize_member(fname)
+
         names = self.tgz().getnames()
-        return './' + fname in names
+        if fname in names:
+            return True
+
+        if follow_symlinks:
+            fname_real = self.__resolve_symlinks(fname)
+            return fname_real is not None
+
+        return fname in names
 
     @overload
-    def get_file(self, fname, encoding=None, errors=None):
-        # type: (str, None, Optional[str]) -> IO[bytes]
+    def get_file(self, fname, encoding=None, errors=None, follow_symlinks=False):
+        # type: (Union[str, Path], None, Optional[str], bool) -> IO[bytes]
         pass
 
     @overload
-    def get_file(self, fname, encoding, errors=None):
-        # type: (str, str, Optional[str]) -> IO[str]
+    def get_file(self, fname, encoding, errors=None, follow_symlinks=False):
+        # type: (Union[str, Path], str, Optional[str], bool) -> IO[str]
         pass
 
-    def get_file(self, fname, encoding=None, errors=None):
-        # type: (str, Optional[str], Optional[str]) -> Union[IO[bytes], IO[str]]
+    def get_file(self, fname, encoding=None, errors=None, follow_symlinks=False):
+        # type: (Union[str, Path], Optional[str], Optional[str], bool) -> Union[IO[bytes], IO[str]]
         """Return a file object corresponding to a given file name.
 
         If encoding is given, then the file object will return Unicode data;
         otherwise, it will return binary data.
+
+        If follow_symlinks is True, then symlinks within the archive will be
+        followed.
         """
 
         fname = DebPart.__normalize_member(fname)
-        fobj = self.tgz().extractfile('./' + fname)
+
+        if follow_symlinks:
+            fname_real = self.__resolve_symlinks(fname)
+            if fname_real is None:
+                raise DebError("File not found inside package")
+            fname = fname_real
+
+        try:
+            fobj = self.tgz().extractfile(fname)
+        except KeyError:
+            raise DebError("File not found inside package")
+
         if fobj is None:
             raise DebError("File not found inside package")
+
         if encoding is not None:
             return io.TextIOWrapper(fobj, encoding=encoding, errors=errors)
 
@@ -199,26 +267,29 @@ class DebPart(object):
 
     @overload
     def get_content(self,
-                    fname,          # type: str
+                    fname,          # type: Union[str, Path]
                     encoding=None,  # type: Literal[None]
                     errors=None,    # type: Optional[str]
+                    follow_symlinks=False,  # type: bool
                    ):
         # type: (...) -> Optional[bytes]
         pass
 
     @overload
     def get_content(self,
-                    fname,             # type: str
+                    fname,             # type: Union[str, Path]
                     encoding,          # type: str
                     errors=None,       # type: Optional[str]
+                    follow_symlinks=False,  # type: bool
                    ):
         # type: (...) -> Optional[Text]
         pass
 
     def get_content(self,
-                    fname,          # type: str
+                    fname,          # type: Union[str, Path]
                     encoding=None,  # type: Optional[str]
                     errors=None,    # type: Optional[str]
+                    follow_symlinks=False,  # type: bool
                    ):
         # type: (...) -> Optional[Union[Text,bytes]]
         """Return the string content of a given file, or None (e.g. for
@@ -226,9 +297,15 @@ class DebPart(object):
 
         If encoding is given, then the content will be a Unicode object;
         otherwise, it will contain binary data.
-        """
 
-        f = self.get_file(fname, encoding=encoding, errors=errors)
+        If follow_symlinks is True, then symlinks within the archive will be
+        followed.
+        """
+        f = self.get_file(
+            str(fname),
+            encoding=encoding, errors=errors,
+            follow_symlinks=follow_symlinks
+        )
         content = None
         if f:   # can be None for non regular or link files
             content = f.read()
@@ -242,11 +319,11 @@ class DebPart(object):
         return iter(self.tgz().getnames())
 
     def __contains__(self, fname):
-        # type: (str) -> bool
+        # type: (Union[str, Path]) -> bool
         return self.has_file(fname)
 
     def __getitem__(self, fname):
-        # type: (str) ->  Optional[Union[bytes, Text]]
+        # type: (Union[str, Path]) ->  Optional[Union[bytes, Text]]
         return self.get_content(fname)
 
     def close(self):
@@ -346,7 +423,7 @@ class DebFile(ArFile):
     """
 
     def __init__(self, filename=None, mode='r', fileobj=None):
-        # type: (Optional[str], str, Optional[BinaryIO]) -> None
+        # type: (Optional[Union[str, Path]], str, Optional[BinaryIO]) -> None
         ArFile.__init__(self, filename, mode, fileobj)
         actual_names = set(self.getnames())
 
@@ -441,11 +518,15 @@ class DebFile(ArFile):
 
         for fname in [CHANGELOG_DEBIAN % self.__pkgname,
                       CHANGELOG_NATIVE % self.__pkgname]:
-            if self.data.has_file(fname):
-                gz = gzip.GzipFile(fileobj=self.data.get_file(fname))
+            try:
+                fh = self.data.get_file(fname, follow_symlinks=True)
+            except DebError:
+                continue
+
+            with gzip.GzipFile(fileobj=fh) as gz:
                 raw_changelog = gz.read()
-                gz.close()
-                return Changelog(raw_changelog)
+            return Changelog(raw_changelog)
+
         return None
 
     def close(self):
