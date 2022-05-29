@@ -65,6 +65,17 @@ except ImportError:
         TypeVar = lambda t: None
 
 
+# Deterministic tests are good; automatically skipping tests because optional
+# dependencies are not available is a way of accidentally missing problems.
+# Here, we control whether missing dependencies result in skipping tests
+# or if instead, missing dependencies cause test failures.
+#
+# FORBID_MISSING_APT_PKG:
+#   any non-empty value for the environment variable FORBID_MISSING_APT_PKG
+#   will mean that tests fail if apt_pkg (from python-apt) can't be found
+FORBID_MISSING_APT_PKG = os.environ.get("FORBID_MISSING_APT_PKG", None)
+
+
 UNPARSED_PACKAGE = '''\
 Package: mutt
 Priority: standard
@@ -413,6 +424,14 @@ class TestDeb822(unittest.TestCase):
         import string
         chars = string.ascii_letters + string.digits
         return ''.join([choice(chars) for i in range(length)])
+
+    def test_apt_pkg_installed(self):
+        # type: () -> None
+        # If test suite is running in FORBID_MISSING_APT_PKG mode where
+        # python-apt is mandatory, explicitly include a failing test to
+        # highlight this problem.
+        if FORBID_MISSING_APT_PKG and not _have_apt_pkg:
+            self.fail("Required apt_pkg from python-apt is not installed (tests run in FORBID_MISSING_APT_PKG mode)")
 
     def test_parser(self):
         # type: () -> None
@@ -783,12 +802,16 @@ with open("test_deb822.pickle", "wb") as fh:
 
         s = io.BytesIO()
         l = []
-        f = open_utf8(filename)
-        for p in cls.iter_paragraphs(f, **kwargs):
-            p.dump(s)
-            s.write(b"\n")
-            l.append(p)
-        f.close()
+        with warnings.catch_warnings(record=True) as warnings_record:
+            with open_utf8(filename) as f:
+                for p in cls.iter_paragraphs(f, **kwargs):
+                    p.dump(s)
+                    s.write(b"\n")
+                    l.append(p)
+        if not _have_apt_pkg and kwargs.get("use_apt_pkg", True):
+            self.assertEqual(len(warnings_record), 1, "Expected warning not emitted from deb822")
+            self.assertIn("apt_pkg", str(warnings_record[0].message))
+            self.assertIn("python3-apt", str(warnings_record[0].message))
         self.assertEqual(s.getvalue(), packages_content)
         if kwargs["shared_storage"] is False:
             # If shared_storage is False, data should be consistent across
@@ -1135,12 +1158,15 @@ Description: python modules to work with Debian-related data formats
                         deb822.Sources.iter_paragraphs(f1),
                         deb822.Sources.iter_paragraphs(f2, use_apt_pkg=False)
                     ]:
-                p1 = next(paragraphs)
-                self.assertEqual(p1['maintainer'],
-                                'Adeodato Sim\xf3 <dato@net.com.org.es>')
-                p2 = next(paragraphs)
-                self.assertEqual(p2['uploaders'],
-                                'Frank K\xfcster <frank@debian.org>')
+                with warnings.catch_warnings(record=True) as warnings_record:
+                    p1 = next(paragraphs)
+                    self.assertEqual(p1['maintainer'],
+                                    'Adeodato Sim\xf3 <dato@net.com.org.es>')
+                    p2 = next(paragraphs)
+                    self.assertEqual(p2['uploaders'],
+                                    'Frank K\xfcster <frank@debian.org>')
+                if FORBID_MISSING_APT_PKG:
+                    self.assertFalse(warnings_record, "Warnings emitted from deb822")
 
     def test_dump_text_mode(self):
         # type: () -> None
@@ -1396,82 +1422,87 @@ class TestPkgRelations(unittest.TestCase):
         # make the syntax a bit more compact
         rel = TestPkgRelations.rel
 
-        f = open(find_test_file('test_Packages'))
-        pkgs = deb822.Packages.iter_paragraphs(f)
-        pkg1 = next(pkgs)
-        rel1 = {'breaks': [],
-                'built-using': [],
-                'conflicts': [],
-                'depends': [
-                        [rel({'name': 'file', 'archqual': 'i386'})],
-                        [rel({'name': 'libc6', 'version': ('>=', '2.7-1')})],
-                        [rel({'name': 'libpaper1'})],
-                        [rel({'name': 'psutils'})],
-                    ],
-                'enhances': [],
-                'pre-depends': [],
-                'provides': [],
-                'recommends': [
-                        [rel({'name': 'bzip2'})],
-                        [rel({'name': 'lpr'}),
-                            rel({'name': 'rlpr'}),
-                            rel({'name': 'cupsys-client'})],
-                        [rel({'name': 'wdiff'})],
-                    ],
-                'replaces': [],
-                'suggests': [
-                        [rel({'name': 'emacsen-common'})],
-                        [rel({'name': 'ghostscript'})],
-                        [rel({'name': 'graphicsmagick-imagemagick-compat'}),
-                            rel({'name': 'imagemagick'})],
-                        [rel({'name': 'groff'})],
-                        [rel({'name': 'gv'})],
-                        [rel({'name': 'html2ps'})],
-                        [rel({'name': 't1-cyrillic'})],
-                        [rel({'name': 'texlive-base-bin'})],
-                    ]
-                }
-        self.assertPkgDictEqual(rel1, pkg1.relations)
-        pkg2 = next(pkgs)
-        rel2 = {'breaks': [],
-                'built-using': [],
-                'conflicts': [],
-                'depends': [
-                        [rel({'name': 'lrzsz'})],
-                        [rel({'name': 'openssh-client'}),
-                            rel({'name': 'telnet'}),
-                            rel({'name': 'telnet-ssl'})],
-                        [rel({'name': 'libc6', 'version': ('>=', '2.6.1-1')})],
-                        [rel({'name': 'libncurses5', 'version': ('>=', '5.6')})],
-                        [rel({'name': 'libreadline5', 'version': ('>=', '5.2')})],
-                    ],
-                'enhances': [],
-                'pre-depends': [],
-                'provides': [],
-                'recommends': [],
-                'replaces': [],
-                'suggests': []
-                }
-        self.assertPkgDictEqual(rel2, pkg2.relations)
-        pkg3 = next(pkgs)
-        dep3 = [
-                [rel({'name': 'dcoprss', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kdenetwork-kfile-plugins', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kdict', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kdnssd', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kget', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'knewsticker', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kopete', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kpf', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kppp', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'krdc', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'krfb', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'ksirc', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'kwifimanager', 'version': ('>=', '4:3.5.9-2')})],
-                [rel({'name': 'librss1', 'version': ('>=', '4:3.5.9-2')})],
-            ]
-        self.assertEqual(dep3, pkg3.relations['depends'])
-        f.close()
+        with warnings.catch_warnings(record=True) as warnings_record:
+            f = open(find_test_file('test_Packages'))
+            pkgs = deb822.Packages.iter_paragraphs(f)
+            pkg1 = next(pkgs)
+            rel1 = {'breaks': [],
+                    'built-using': [],
+                    'conflicts': [],
+                    'depends': [
+                            [rel({'name': 'file', 'archqual': 'i386'})],
+                            [rel({'name': 'libc6', 'version': ('>=', '2.7-1')})],
+                            [rel({'name': 'libpaper1'})],
+                            [rel({'name': 'psutils'})],
+                        ],
+                    'enhances': [],
+                    'pre-depends': [],
+                    'provides': [],
+                    'recommends': [
+                            [rel({'name': 'bzip2'})],
+                            [rel({'name': 'lpr'}),
+                                rel({'name': 'rlpr'}),
+                                rel({'name': 'cupsys-client'})],
+                            [rel({'name': 'wdiff'})],
+                        ],
+                    'replaces': [],
+                    'suggests': [
+                            [rel({'name': 'emacsen-common'})],
+                            [rel({'name': 'ghostscript'})],
+                            [rel({'name': 'graphicsmagick-imagemagick-compat'}),
+                                rel({'name': 'imagemagick'})],
+                            [rel({'name': 'groff'})],
+                            [rel({'name': 'gv'})],
+                            [rel({'name': 'html2ps'})],
+                            [rel({'name': 't1-cyrillic'})],
+                            [rel({'name': 'texlive-base-bin'})],
+                        ]
+                    }
+            self.assertPkgDictEqual(rel1, pkg1.relations)
+            pkg2 = next(pkgs)
+            rel2 = {'breaks': [],
+                    'built-using': [],
+                    'conflicts': [],
+                    'depends': [
+                            [rel({'name': 'lrzsz'})],
+                            [rel({'name': 'openssh-client'}),
+                                rel({'name': 'telnet'}),
+                                rel({'name': 'telnet-ssl'})],
+                            [rel({'name': 'libc6', 'version': ('>=', '2.6.1-1')})],
+                            [rel({'name': 'libncurses5', 'version': ('>=', '5.6')})],
+                            [rel({'name': 'libreadline5', 'version': ('>=', '5.2')})],
+                        ],
+                    'enhances': [],
+                    'pre-depends': [],
+                    'provides': [],
+                    'recommends': [],
+                    'replaces': [],
+                    'suggests': []
+                    }
+            self.assertPkgDictEqual(rel2, pkg2.relations)
+            pkg3 = next(pkgs)
+            dep3 = [
+                    [rel({'name': 'dcoprss', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kdenetwork-kfile-plugins', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kdict', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kdnssd', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kget', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'knewsticker', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kopete', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kpf', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kppp', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'krdc', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'krfb', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'ksirc', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'kwifimanager', 'version': ('>=', '4:3.5.9-2')})],
+                    [rel({'name': 'librss1', 'version': ('>=', '4:3.5.9-2')})],
+                ]
+            self.assertEqual(dep3, pkg3.relations['depends'])
+            f.close()
+        if FORBID_MISSING_APT_PKG:
+            # Don't permit this test to succeed if warnings about apt_pkg
+            # being missing were generated
+            self.assertFalse(warnings_record, "Warnings emitted from deb822")
 
     def test_pkgrelation_str(self):
         # type: () -> None
@@ -1505,67 +1536,73 @@ class TestPkgRelations(unittest.TestCase):
         # make the syntax a bit more compact
         rel = TestPkgRelations.rel
 
-        f = open_utf8(find_test_file('test_Sources'))
-        pkgs = deb822.Sources.iter_paragraphs(f)
-        pkg1 = next(pkgs)
-        rel1 = {'build-conflicts': [],
-                'build-conflicts-indep': [],
-                'build-conflicts-arch': [],
-                'build-depends': [
-                        [rel({'name': 'apache2-src', 'version': ('>=', '2.2.9')})],
-                        [rel({'name': 'libaprutil1-dev'})],
-                        [rel({'arch': [(False, 'kfreebsd-i386'), (False, 'kfreebsd-amd64'), (False, 'hurd-i386')],
-                            'name': 'libcap-dev'})],
-                        [rel({'name': 'autoconf'})],
-                        [rel({'name': 'debhelper', 'version': ('>>', '5.0.0')})],
-                    ],
-                'build-depends-indep': [],
-                'build-depends-arch': [],
-                'binary': [
-                        [rel({'name': 'apache2-mpm-itk'})]
-                    ]
-                }
-        self.assertPkgDictEqual(rel1, pkg1.relations)
-        pkg2 = next(pkgs)
-        rel2 = {'build-conflicts': [],
-                'build-conflicts-indep': [],
-                'build-conflicts-arch': [],
-                'build-depends': [
-                        [rel({'name': 'dpkg-dev', 'version': ('>=', '1.13.9')})],
-                        [rel({'name': 'autoconf', 'version': ('>=', '2.13')})],
-                        [rel({'name': 'bash'})],
-                        [rel({'name': 'bison', 'archqual': 'amd64'})],
-                        [rel({'name': 'flex'})],
-                        [rel({'name': 'gettext', 'archqual': 'any'})],
-                        [rel({'name': 'texinfo',
-                            'restrictions': [
-                                [(False, 'stage1')],
-                                [(False, 'stage2'),
-                                 (False, 'cross')]
-                            ]})],
-                        [rel({'arch': [(True, 'hppa')], 'name': 'expect-tcl8.3',
-                            'version': ('>=', '5.32.2'),
-                            'restrictions': [[(False, 'stage1')]]})],
-                        [rel({'name': 'dejagnu', 'version': ('>=', '1.4.2-1.1'), 'arch': None})],
-                        [rel({'name': 'dpatch'})],
-                        [rel({'name': 'file'})],
-                        [rel({'name': 'bzip2', 'archqual': 'native'})],
-                        [rel({'name': 'lsb-release'})],
-                    ],
-                'build-depends-indep': [],
-                'build-depends-arch': [],
-                'binary': [
-                        [rel({'name': 'binutils'})],
-                        [rel({'name': 'binutils-dev'})],
-                        [rel({'name': 'binutils-multiarch'})],
-                        [rel({'name': 'binutils-hppa64'})],
-                        [rel({'name': 'binutils-spu'})],
-                        [rel({'name': 'binutils-doc'})],
-                        [rel({'name': 'binutils-source'})],
-                    ]
-                }
-        self.assertPkgDictEqual(rel2, pkg2.relations)
-        f.close()
+        # Should not get warnings about missing python-apt from this code
+        with warnings.catch_warnings(record=True) as warnings_record:
+            f = open_utf8(find_test_file('test_Sources'))
+            pkgs = deb822.Sources.iter_paragraphs(f)
+            pkg1 = next(pkgs)
+            rel1 = {'build-conflicts': [],
+                    'build-conflicts-indep': [],
+                    'build-conflicts-arch': [],
+                    'build-depends': [
+                            [rel({'name': 'apache2-src', 'version': ('>=', '2.2.9')})],
+                            [rel({'name': 'libaprutil1-dev'})],
+                            [rel({'arch': [(False, 'kfreebsd-i386'), (False, 'kfreebsd-amd64'), (False, 'hurd-i386')],
+                                'name': 'libcap-dev'})],
+                            [rel({'name': 'autoconf'})],
+                            [rel({'name': 'debhelper', 'version': ('>>', '5.0.0')})],
+                        ],
+                    'build-depends-indep': [],
+                    'build-depends-arch': [],
+                    'binary': [
+                            [rel({'name': 'apache2-mpm-itk'})]
+                        ]
+                    }
+            self.assertPkgDictEqual(rel1, pkg1.relations)
+            pkg2 = next(pkgs)
+            rel2 = {'build-conflicts': [],
+                    'build-conflicts-indep': [],
+                    'build-conflicts-arch': [],
+                    'build-depends': [
+                            [rel({'name': 'dpkg-dev', 'version': ('>=', '1.13.9')})],
+                            [rel({'name': 'autoconf', 'version': ('>=', '2.13')})],
+                            [rel({'name': 'bash'})],
+                            [rel({'name': 'bison', 'archqual': 'amd64'})],
+                            [rel({'name': 'flex'})],
+                            [rel({'name': 'gettext', 'archqual': 'any'})],
+                            [rel({'name': 'texinfo',
+                                'restrictions': [
+                                    [(False, 'stage1')],
+                                    [(False, 'stage2'),
+                                    (False, 'cross')]
+                                ]})],
+                            [rel({'arch': [(True, 'hppa')], 'name': 'expect-tcl8.3',
+                                'version': ('>=', '5.32.2'),
+                                'restrictions': [[(False, 'stage1')]]})],
+                            [rel({'name': 'dejagnu', 'version': ('>=', '1.4.2-1.1'), 'arch': None})],
+                            [rel({'name': 'dpatch'})],
+                            [rel({'name': 'file'})],
+                            [rel({'name': 'bzip2', 'archqual': 'native'})],
+                            [rel({'name': 'lsb-release'})],
+                        ],
+                    'build-depends-indep': [],
+                    'build-depends-arch': [],
+                    'binary': [
+                            [rel({'name': 'binutils'})],
+                            [rel({'name': 'binutils-dev'})],
+                            [rel({'name': 'binutils-multiarch'})],
+                            [rel({'name': 'binutils-hppa64'})],
+                            [rel({'name': 'binutils-spu'})],
+                            [rel({'name': 'binutils-doc'})],
+                            [rel({'name': 'binutils-source'})],
+                        ]
+                    }
+            self.assertPkgDictEqual(rel2, pkg2.relations)
+            f.close()
+        if FORBID_MISSING_APT_PKG:
+            # Don't permit this test to succeed if warnings about apt_pkg
+            # being missing were generated
+            self.assertFalse(warnings_record, "Warnings emitted from deb822")
 
     def test_restrictions_parse(self):   # type: ignore
         """ test parsing of restriction formulas """
