@@ -9,6 +9,10 @@ include /usr/share/dpkg/pkg-info.mk
 # tell pybuild which module to install into the packages
 export PYBUILD_NAME=debian
 
+# for packaging, insist that all optional dependencies are installed
+# when running the test suite
+export FORBID_MISSING_APT_PKG ?= 1
+
 %:
 	dh $@ --with python3 --buildsystem pybuild
 
