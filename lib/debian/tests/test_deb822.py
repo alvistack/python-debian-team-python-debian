@@ -65,6 +65,14 @@ except ImportError:
         TypeVar = lambda t: None
 
 
+# Only run tests that rely on the gpgv signature validation executable if
+# it is installed
+#
+# TODO: For portability, should we use shutil.which()? and set
+# deb822.GPGV_EXECUTABLE to match that?
+_have_gpgv = os.path.exists('/usr/bin/gpgv')
+
+
 # Deterministic tests are good; automatically skipping tests because optional
 # dependencies are not available is a way of accidentally missing problems.
 # Here, we control whether missing dependencies result in skipping tests
@@ -73,7 +81,12 @@ except ImportError:
 # FORBID_MISSING_APT_PKG:
 #   any non-empty value for the environment variable FORBID_MISSING_APT_PKG
 #   will mean that tests fail if apt_pkg (from python-apt) can't be found
+#
+# FORBID_MISSING_GPGV:
+#   any non-empty value for the environment variable FORBID_MISSING_GPGV
+#   will mean that tests fail if the gpgv program can't be found
 FORBID_MISSING_APT_PKG = os.environ.get("FORBID_MISSING_APT_PKG", None)
+FORBID_MISSING_GPGV = os.environ.get("FORBID_MISSING_GPGV", None)
 
 
 UNPARSED_PACKAGE = '''\
@@ -433,6 +446,14 @@ class TestDeb822(unittest.TestCase):
         if FORBID_MISSING_APT_PKG and not _have_apt_pkg:
             self.fail("Required apt_pkg from python-apt is not installed (tests run in FORBID_MISSING_APT_PKG mode)")
 
+    def test_gpgv_installed(self):
+        # type: () -> None
+        # If test suite is running in FORBID_MISSING_GPGV mode where
+        # having gpgv is mandatory, explicitly include a failing test to
+        # highlight this problem.
+        if FORBID_MISSING_GPGV and not _have_gpgv:
+            self.fail("Required gpgv executable is not installed (tests run in FORBID_MISSING_GPGV mode)")
+
     def test_parser(self):
         # type: () -> None
         deb822_ = deb822.Deb822(UNPARSED_PACKAGE.splitlines())
@@ -580,7 +601,7 @@ with open("test_deb822.pickle", "wb") as fh:
             deb822_ = deb822.Deb822(unparsed_with_gpg.splitlines())
             self.assertWellParsed(deb822_, PARSED_PACKAGE)
 
-    @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
+    @unittest.skipUnless(_have_gpgv, "gpgv not installed")
     def test_gpg_info(self):
         # type: () -> None
         unparsed_with_gpg = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
@@ -610,7 +631,7 @@ with open("test_deb822.pickle", "wb") as fh:
             self.assertEqual(result['VALIDSIG'], valid['VALIDSIG'])
             self.assertEqual(result['SIG_ID'][1:], valid['SIG_ID'][1:])
 
-    @unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
+    @unittest.skipUnless(_have_gpgv, "gpgv not installed")
     def test_gpg_info2(self):
         # type: () -> None
         with open(find_test_file('test_Dsc.badsig'), mode='rb') as f:
@@ -1675,7 +1696,7 @@ class TestVersionAccessor(unittest.TestCase):
         self.assertTrue(isinstance(p['Version'], str))
 
 
-@unittest.skipUnless(os.path.exists('/usr/bin/gpgv'), "gpgv not installed")
+@unittest.skipUnless(_have_gpgv, "gpgv not installed")
 class TestGpgInfo(unittest.TestCase):
 
     def setUp(self):
