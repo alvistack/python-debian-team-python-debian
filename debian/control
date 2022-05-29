@@ -11,7 +11,7 @@ Uploaders:
  Stuart Prescott <stuart@debian.org>,
  Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends:
- binutils,
+ binutils <!nocheck>,
  debhelper-compat (= 13),
  dh-python,
  python3-all,
