@@ -1,12 +1,23 @@
-python-debian (0.1.44) UNRELEASED; urgency=medium
+python-debian (0.1.44) unstable; urgency=medium
 
   [ Simon Chopin ]
-  * Add support for zstd compression (LP: #1923845)
-  
+  * Add support for zstd compression in .deb files (LP: #1923845) with thanks
+    also to Athos Ribeiro and Quirin Pamp for contributions to this feature.
+
   [ Jelmer Vernooĳ ]
   * Use logging.warning rather than warnings for data problems.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 07 Apr 2022 18:45:11 +0100
+  [ Stuart Prescott ]
+  * Support for finding files (including changelog.Debian.gz) that are beyond
+    a symlink within the package (Closes: #875305).
+  * Update packaging for zstd compressed .deb code.
+  * Annotate binutils build-dep with <!nocheck>.
+  * Update Standards-Version to 4.6.1 (no changes required).
+
+  [ Niels Thykier ]
+  * Various improvements to the round-trip-safe deb822 parser.
+
+ -- Stuart Prescott <stuart@debian.org>  Sun, 29 May 2022 12:06:57 +1000
 
 python-debian (0.1.43) unstable; urgency=medium
 
