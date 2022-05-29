@@ -1,7 +1,13 @@
 default:
   image: debian:unstable
 
-.depends-minimal:
+variables:
+  PYTHON: python3
+
+### Dependency installation
+
+.depends-debian-minimal:
+  # Mandatory run-time and test-time dependencies
   before_script:
   - apt-get update
   - apt-get -y install make dpkg-dev
@@ -10,26 +16,48 @@ default:
     OPTIONAL_DEPS: ""
     JOB_DEPS: ""
 
-.depends-full:
+.depends-debian-full:
+  # Additional run-time and test-time dependencies for optional features
   extends:
-    .depends-minimal
+    .depends-debian-minimal
   variables:
-    OPTIONAL_DEPS: python3-apt
+    OPTIONAL_DEPS: python3-apt gpgv binutils
 
-.unit-tests:
+.depends-pip:
+  before_script:
+  - $PYTHON -m pip install chardet setuptools pytest $OPTIONAL_PIP_DEPS $JOB_PIP_DEPS
+  variables:
+    OPTIONAL_PIP_DEPS: ""
+    JOB_PIP_DEPS: ""
+
+### Unit testing runners
+
+.unit-tests-generic:
   script:
-  - ./debian/rules lib/debian/__init__.py
-  - LC_ALL=C py.test-3 --doctest-modules $COVERAGE --verbose lib/
-  - LC_ALL=C.UTF-8 py.test-3 --doctest-modules $COVERAGE $COVERAGE_REPORT --verbose lib/
+  - LC_ALL=C $PYTHON -m pytest --doctest-modules $COVERAGE --verbose lib/
+  - LC_ALL=C.UTF-8 $PYTHON -m pytest --doctest-modules $COVERAGE $COVERAGE_REPORT --verbose lib/
   variables:
     # Only generate coverage data and a report once in the test matrix
     COVERAGE: ""
     COVERAGE_REPORT: ""
+    # control whether missing tools result in test failures
+    FORBID_MISSING_APT_PKG: ""
+    FORBID_MISSING_GPGV: ""
+    FORBID_MISSING_AR: ""
+
+.unit-tests-debian:
+  extends:
+  - .unit-tests-generic
+  script:
+  - ./debian/rules lib/debian/__init__.py
+  - !reference [.unit-tests-generic, script]
+
+### Unit testing configurations (Debian)
 
 unit-tests:
   extends:
-  - .depends-full
-  - .unit-tests
+  - .depends-debian-full
+  - .unit-tests-debian
   after_script:
   - python3-coverage html
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
@@ -39,43 +67,103 @@ unit-tests:
     # Generate a coverage report for the pages
     COVERAGE_REPORT: --cov-report=
     JOB_DEPS: python3-pytest-cov python3-coverage
+    # require optional dependencies to be installed at test time
+    FORBID_MISSING_APT_PKG: "1"
+    FORBID_MISSING_GPGV: "1"
+    FORBID_MISSING_AR: "1"
   artifacts:
     paths:
       - htmlcov
 
 unit-tests-minimal:
   extends:
-  - .depends-minimal
-  - .unit-tests
+  - .depends-debian-minimal
+  - .unit-tests-debian
 
 unit-tests-stable:
   image: debian:stable
   extends:
-  - .depends-full
-  - .unit-tests
+  - .depends-debian-full
+  - .unit-tests-debian
+  variables:
+    # require optional dependencies to be installed at test time
+    FORBID_MISSING_APT_PKG: "1"
+    FORBID_MISSING_GPGV: "1"
+    FORBID_MISSING_AR: "1"
 
 unit-tests-oldstable:
   image: debian:oldstable
   extends:
-  - .depends-full
-  - .unit-tests
+  - .depends-debian-full
+  - .unit-tests-debian
+  variables:
+    # require optional dependencies to be installed at test time
+    FORBID_MISSING_APT_PKG: "1"
+    FORBID_MISSING_GPGV: "1"
+    FORBID_MISSING_AR: "1"
 
 unit-tests-oldoldstable:
   image: debian:oldoldstable
   extends:
-  - .depends-full
-  - .unit-tests
+  - .depends-debian-full
+  - .unit-tests-debian
+  variables:
+    # require optional dependencies to be installed at test time
+    FORBID_MISSING_APT_PKG: "1"
+    FORBID_MISSING_GPGV: "1"
+    FORBID_MISSING_AR: "1"
+
+### Unit testing configurations (non-Debian)
+
+unit-tests-truncated-debian:
+  extends:
+  - .depends-debian-minimal
+  - .unit-tests-generic
+  script:
+  - ./debian/rules lib/debian/__init__.py
+  - rm -f /usr/bin/ar /usr/bin/gpgv
+  - !reference [.unit-tests-generic, script]
+
+unit-tests-alpine:
+  image: python:alpine
+  extends:
+  - .depends-pip
+  - .unit-tests-generic
+
+unit-tests-windows:
+  tags:
+  - shared-windows
+  - windows
+  - windows-1809
+  rules:
+  - if: $CI_SERVER_HOST !~ /debian.org$/
+  extends:
+  - .depends-pip
+  before_script:
+  - Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+  - choco install python3 --yes --force --no-progress
+  - refreshenv
+  - python -m pip install -U pip wheel
+  - python -m pip install chardet setuptools pytest
+  script:
+  - python -m pytest --doctest-modules --verbose lib/
+  variables:
+    PYTHON: python
+
+### Coding style checks
 
 style:
-  extends: .depends-full
+  extends: .depends-debian-full
   script:
   - ./debian/rules qa
   - rm lib/debian/_version.py
   variables:
     JOB_DEPS: pylint mypy
 
+### Documentation: build and deploy
+
 docs:
-  extends: .depends-full
+  extends: .depends-debian-full
   script:
   - rm -f docs/api/*
   - ./debian/rules doc
