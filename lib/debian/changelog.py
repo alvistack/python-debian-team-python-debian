@@ -40,7 +40,6 @@ file if there are some entries, or ``None`` to create an empty changelog::
      * Some change
     <BLANKLINE>
      -- John Doe <joe@example.com>  Wed, 31 Mar 2021 20:31:55 -0000
-    <BLANKLINE>
 
 
 If you have the full contents of a changelog, but are only interested in the
@@ -900,7 +899,9 @@ be uploaded."""
         block = ChangeBlock(package, version, distributions,
                             urgency, urgency_comment,
                             changes, author, date, other_pairs, encoding)
-        block.add_trailing_line('')
+        if self._blocks:
+            # #998715 - only add a trailing line if there are other blocks.
+            block.add_trailing_line('')
         self._blocks.insert(0, block)
 
     def write_to_open_file(self, filehandle):
