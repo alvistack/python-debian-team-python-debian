@@ -2710,6 +2710,29 @@ class Deb822FileElement(Deb822Element):
         self._token_and_elements.append(self._set_parent(paragraph))
         paragraph.parent_element = self
 
+    def remove(self, paragraph):
+        # type: (Deb822ParagraphElement) -> None
+        if paragraph.parent_element is not self:
+            raise ValueError("Paragraph is part of a different file")
+        it = self._token_and_elements.iter_nodes()
+        previous_node = None
+        for node in it:
+            if node.value is paragraph:
+                break
+            previous_node = node
+        else:
+            raise RuntimeError("unable to find paragraph")
+        self._token_and_elements.remove_node(node)  # pylint: disable=undefined-loop-variable
+        try:
+            next_node = next(it)
+        except StopIteration:
+            if previous_node and isinstance(previous_node.value, Deb822WhitespaceToken):
+                previous_node.remove()
+        else:
+            if isinstance(next_node.value, Deb822WhitespaceToken):
+                next_node.remove()
+        paragraph.parent_element = None
+
     def _set_parent(self, t):
         # type: (TE) -> TE
         t.parent_element = self

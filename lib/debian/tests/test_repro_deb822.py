@@ -783,6 +783,78 @@ class FormatPreservingDeb822ParserTests(TestCase):
                          "Mutation should have worked while preserving "
                          "comments")
 
+    def test_remove_paragraph(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          Package: bar
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = list(deb822_file)[1]
+        self.assertEqual('bar', binary_paragraph['Package'])
+
+        deb822_file.remove(binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+        source_paragraph = list(deb822_file)[0]
+        self.assertEqual('foo', source_paragraph['Source'])
+
+        deb822_file.remove(source_paragraph)
+
+        expected = textwrap.dedent('''\
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
+        original = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          Package: bar
+
+          # Comment
+
+          Package: la
+          ''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        binary_paragraph = list(deb822_file)[1]
+        self.assertEqual('bar', binary_paragraph['Package'])
+
+        deb822_file.remove(binary_paragraph)
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          # Comment
+
+          Package: la
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked while preserving "
+                         "comments")
+
     def test_duplicate_fields(self):
         # type: () -> None
 
