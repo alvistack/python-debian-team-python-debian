@@ -84,6 +84,12 @@ except ImportError:
             " incompatibilities")
 
 
+# Re-exports
+import debian._arch_table
+
+DpkgArchTable = debian._arch_table.DpkgArchTable
+
+
 class ParseError(Exception):
     """An exception which is used to signal a parse failure.
 
