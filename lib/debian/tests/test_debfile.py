@@ -371,50 +371,47 @@ class TestDebFile(unittest.TestCase):
         """ test various compression schemes for the data member """
         for compression in self.compressions:
             with self.temp_deb(data=compression) as debname:
-                deb = debfile.DebFile(debname)
-                # random test on the data part, just to check that content access
-                # is OK
-                all_files = [os.path.normpath(f) for f in deb.data.tgz().getnames()]
-                for f in self.example_data_files:
-                    testfile = os.path.normpath(str(self.example_data_dir / f))
-                    self.assertIn(testfile, all_files,
+                with debfile.DebFile(debname) as deb:
+                    # random test on the data part, just to check that content access
+                    # is OK
+                    all_files = [os.path.normpath(f) for f in deb.data.tgz().getnames()]
+                    for f in self.example_data_files:
+                        testfile = os.path.normpath(str(self.example_data_dir / f))
+                        self.assertIn(testfile, all_files,
+                            "Data part failed on compression %s" % compression)
+                    self.assertIn(os.path.normpath(str(self.example_data_dir)), all_files,
                         "Data part failed on compression %s" % compression)
-                self.assertIn(os.path.normpath(str(self.example_data_dir)), all_files,
-                    "Data part failed on compression %s" % compression)
-                deb.close()
 
     def test_control_compression(self):
         # type: () -> None
         """ test various compression schemes for the control member """
         for compression in self.compressions:
             with self.temp_deb(data=compression) as debname:
-                deb = debfile.DebFile(debname)
-                # random test on the control part
-                self.assertIn(
-                    'control',
-                    [os.path.normpath(p) for p in deb.control.tgz().getnames()],
-                    "Control part failed on compression %s" % compression
-                )
-                self.assertIn(
-                    'md5sums',
-                    [os.path.normpath(p) for p in deb.control.tgz().getnames()],
-                    "Control part failed on compression %s" % compression
-                )
-                deb.close()
+                with debfile.DebFile(debname) as deb:
+                    # random test on the control part
+                    self.assertIn(
+                        'control',
+                        [os.path.normpath(p) for p in deb.control.tgz().getnames()],
+                        "Control part failed on compression %s" % compression
+                    )
+                    self.assertIn(
+                        'md5sums',
+                        [os.path.normpath(p) for p in deb.control.tgz().getnames()],
+                        "Control part failed on compression %s" % compression
+                    )
 
     def test_data_names(self):
         # type: () -> None
         """ test for file list equality """
         with self.temp_deb() as debname:
-            deb = debfile.DebFile(debname)
-            tgz = deb.data.tgz()
-            with os.popen("dpkg-deb --fsys-tarfile %s | tar t" % debname) as tar:
-                dpkg_names = [os.path.normpath(x.strip()) for x in tar.readlines()]
-            debfile_names = [os.path.normpath(name) for name in tgz.getnames()]
+            with debfile.DebFile(debname) as deb:
+                tgz = deb.data.tgz()
+                with os.popen("dpkg-deb --fsys-tarfile %s | tar t" % debname) as tar:
+                    dpkg_names = [os.path.normpath(x.strip()) for x in tar.readlines()]
+                debfile_names = [os.path.normpath(name) for name in tgz.getnames()]
 
-            # skip the root
-            self.assertEqual(debfile_names[1:], dpkg_names[1:])
-            deb.close()
+                # skip the root
+                self.assertEqual(debfile_names[1:], dpkg_names[1:])
 
     def _test_file_contents(self, debname, debfilename, origfilename, modes=None, follow_symlinks=False):
         # type: (str, Union[str, Path], Union[str, Path], Optional[List[str]], bool) -> None
@@ -550,30 +547,28 @@ class TestDebFile(unittest.TestCase):
             with os.popen("dpkg-deb -f %s" % debname) as dpkg_deb:
                 filecontrol = "".join(dpkg_deb.readlines())
 
-            deb = debfile.DebFile(debname)
-            self.assertEqual(
-                not_none(deb.control.get_content("control")).decode("utf-8"),
-                filecontrol)
-            self.assertEqual(
-                deb.control.get_content("control", encoding="utf-8"),
-                filecontrol)
-            deb.close()
+            with debfile.DebFile(debname) as deb:
+                self.assertEqual(
+                    not_none(deb.control.get_content("control")).decode("utf-8"),
+                    filecontrol)
+                self.assertEqual(
+                    deb.control.get_content("control", encoding="utf-8"),
+                    filecontrol)
 
     def test_md5sums(self):
         # type: () -> None
         """test md5 extraction from .debs"""
         with self.temp_deb() as debname:
-            deb = debfile.DebFile(debname)
-            md5b = deb.md5sums()
-            md5 = deb.md5sums(encoding="UTF-8")
+            with debfile.DebFile(debname) as deb:
+                md5b = deb.md5sums()
+                md5 = deb.md5sums(encoding="UTF-8")
 
-            data = [
-                (self.example_data_dir / "test_Changes", "73dbb291e900d8cd08e2bb76012a3829"),
-            ]
-            for f, h in data:
-                self.assertEqual(md5b[str(f).encode('UTF-8')], h)
-                self.assertEqual(md5[str(f)], h)
-            deb.close()
+                data = [
+                    (self.example_data_dir / "test_Changes", "73dbb291e900d8cd08e2bb76012a3829"),
+                ]
+                for f, h in data:
+                    self.assertEqual(md5b[str(f).encode('UTF-8')], h)
+                    self.assertEqual(md5[str(f)], h)
 
     def test_contextmanager(self):
         # type: () -> None
@@ -588,11 +583,10 @@ class TestDebFile(unittest.TestCase):
         # type: () -> None
         """test use of DebFile without the contextmanager"""
         with self.temp_deb() as debname:
-            deb = debfile.DebFile(debname)
-            all_files = deb.data.tgz().getnames()
-            self.assertTrue(all_files)
-            self.assertTrue(deb.control.get_content("control"))
-            deb.close()
+            with debfile.DebFile(debname) as deb:
+                all_files = deb.data.tgz().getnames()
+                self.assertTrue(all_files)
+                self.assertTrue(deb.control.get_content("control"))
 
 
 if __name__ == '__main__':
