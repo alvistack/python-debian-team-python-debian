@@ -5,7 +5,7 @@ other people.  Copyright years imported from the sources.
 
 @copyright: 2006-2015 Guillem Jover <guillem@debian.org>
 @copyright: 2014, Ansgar Burchardt <ansgar@debian.org>
-@copyright: 2014-2017, Johannes Schauer <j.schauer@email.de>
+@copyright: 2014-2017, Johannes Schauer Marin Rodrigues <josch@debian.org>
 @copyright: 2022, Niels Thykier <niels@thykier.net>
 @license: GPL-2+
 """
