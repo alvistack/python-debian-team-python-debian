@@ -226,29 +226,29 @@ class DpkgArchTable:
             return False
         return dpkg_arch in dpkg_wildcard
 
-    def arch_equals(self, arch1, arch2):
+    def architecture_equals(self, arch1, arch2):
         # type: (str, str) -> bool
         """Determine whether two dpkg architecture are exactly the same [debarch_eq]
 
         Unlike Python's `==` operator, this method also accounts for things like `linux-amd64` is
         a valid spelling of the dpkg architecture `amd64` (i.e.,
-        `arch_equals("linux-amd64", "amd64")` is True).
+        `architecture_equals("linux-amd64", "amd64")` is True).
 
         This method is the closest match to dpkg's Dpkg::Arch::debarch_eq function.
 
         >>> arch_table = DpkgArchTable.load_arch_table()
-        >>> arch_table.arch_equals("linux-amd64", "amd64")
+        >>> arch_table.architecture_equals("linux-amd64", "amd64")
         True
-        >>> arch_table.arch_equals("amd64", "linux-i386")
+        >>> arch_table.architecture_equals("amd64", "linux-i386")
         False
-        >>> arch_table.arch_equals("i386", "linux-amd64")
+        >>> arch_table.architecture_equals("i386", "linux-amd64")
         False
-        >>> arch_table.arch_equals("amd64", "amd64")
+        >>> arch_table.architecture_equals("amd64", "amd64")
         True
-        >>> arch_table.arch_equals("i386", "amd64")
+        >>> arch_table.architecture_equals("i386", "amd64")
         False
         >>> # Compatibility with dpkg: if the parameters are equal, then it always return True
-        >>> arch_table.arch_equals("unknown", "unknown")
+        >>> arch_table.architecture_equals("unknown", "unknown")
         True
 
         Compatibility note: The method emulates Dpkg::Arch::debarch_eq function and therefore
