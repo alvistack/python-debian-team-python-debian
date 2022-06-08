@@ -16,19 +16,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
+import os.path
 import unittest
+from unittest import skipIf
 
 from debian.debian_support import DpkgArchTable
+from debian.tests.stubbed_arch_table import StubbedDpkgArchTable
+
+
+if os.path.isfile("/usr/share/dpkg/tupletable"):
+    load_arch_table = DpkgArchTable.load_arch_table
+    HAS_REAL_DATA = True
+else:
+    load_arch_table = StubbedDpkgArchTable.load_arch_table
+    HAS_REAL_DATA = False
 
 
 class TestDpkgArchTable(unittest.TestCase):
     
     def test_matches_architecture(self):
         # type: () -> None
-        # NOTE: load_arch_table is stubbed and loads a reduced data set.  Check conftest.py
-        # (this is to support non-Debian system)
-        arch_table = DpkgArchTable.load_arch_table()
+        arch_table = load_arch_table()
         self.assertTrue(arch_table.matches_architecture("amd64", "linux-any"))
         self.assertTrue(arch_table.matches_architecture("i386", "linux-any"))
         self.assertTrue(arch_table.matches_architecture("amd64", "amd64"))
@@ -64,9 +72,7 @@ class TestDpkgArchTable(unittest.TestCase):
 
     def test_arch_equals(self):
         # type: () -> None
-        # NOTE: load_arch_table is stubbed and loads a reduced data set.  Check conftest.py
-        # (this is to support non-Debian system)
-        arch_table = DpkgArchTable.load_arch_table()
+        arch_table = load_arch_table()
         self.assertTrue(arch_table.architecture_equals("linux-amd64", "amd64"))
         self.assertFalse(arch_table.architecture_equals("amd64", "linux-i386"))
         self.assertFalse(arch_table.architecture_equals("i386", "linux-amd64"))
@@ -78,9 +84,7 @@ class TestDpkgArchTable(unittest.TestCase):
 
     def test_architecture_is_concerned(self):
         # type: () -> None
-        # NOTE: load_arch_table is stubbed and loads a reduced data set.  Check conftest.py
-        # (this is to support non-Debian system)
-        arch_table = DpkgArchTable.load_arch_table()
+        arch_table = load_arch_table()
         self.assertTrue(arch_table.architecture_is_concerned("linux-amd64", ["amd64", "i386"]))
         self.assertFalse(arch_table.architecture_is_concerned("amd64", ["!amd64", "!i386"]))
         # This is False because the "!amd64" is matched first.
@@ -98,11 +102,19 @@ class TestDpkgArchTable(unittest.TestCase):
 
     def test_is_wildcard(self):
         # type: () -> None
-        # NOTE: load_arch_table is stubbed and loads a reduced data set.  Check conftest.py
-        # (this is to support non-Debian system)
-        arch_table = DpkgArchTable.load_arch_table()
+        arch_table = load_arch_table()
         self.assertTrue(arch_table.is_wildcard("linux-any"))
         self.assertFalse(arch_table.is_wildcard("amd64"))
         self.assertFalse(arch_table.is_wildcard("unknown"))
         # Compatibility with the dpkg version of the function.
         self.assertTrue(arch_table.is_wildcard("unknown-any"))
+
+    # Indicator test to make it easier to see if the test ran with real or stubbed data
+    @skipIf(not HAS_REAL_DATA, "Missing real data")
+    def test_has_real_data(self):
+        # type: () -> None
+        arch_table = DpkgArchTable.load_arch_table()
+        # The tests here rely on the production data, so we can use mips (which is not present in
+        # our stubbed data).
+
+        self.assertTrue(arch_table.matches_architecture('mipsel', 'any-mipsel'))

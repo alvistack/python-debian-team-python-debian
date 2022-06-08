@@ -77,7 +77,7 @@ class DpkgArchTable:
     @classmethod
     def load_arch_table(cls, path='/usr/share/dpkg'):
         # type: (Union[str, PathLike[str]]) -> DpkgArchTable
-        # NOTE! This method is stubbed in tests (including doctests) to support non-Debian systems
+        # NOTE! This method is stubbed in including doctests to support non-Debian systems
         #   See conftest.py for the concrete implementation and the limited data set available.
         """Load the Dpkg Architecture Table
 
