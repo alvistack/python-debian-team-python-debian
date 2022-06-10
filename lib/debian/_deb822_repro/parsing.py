@@ -138,8 +138,15 @@ if sys.version_info >= (3, 8) or TYPE_CHECKING:
 else:
     # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
     # - use this little hack to work around it
-    class _Deb822ParsedTokenList_ContextManager(contextlib.AbstractContextManager, Generic[T]):
-        pass
+    # Note that Python 3.5 is so old that it does not have AbstractContextManager,
+    # so we re-implement it here.
+    class _Deb822ParsedTokenList_ContextManager(Generic[T]):
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return None
 
 
 class Deb822ParsedTokenList(Generic[VE, ST],
@@ -570,7 +577,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
     def sort_elements(self, *,
                       key=None,  # type: Optional[Callable[[VE], Any]]
-                      reverse=False,  # type: bool
+                      reverse=False  # type: bool
                       ):
         # type: (...) -> None
         """Sort the elements (abstract values) in this list.
@@ -651,8 +658,8 @@ class Deb822ParsedTokenList(Generic[VE, ST],
     def sort(self,
              *,
              key=None,  # type: Optional[Callable[[str], Any]]
-             **kwargs,  # type: Any
-    ):
+             **kwargs  # type: Any
+             ):
         # type: (...) -> None
         """Sort the values (rendered as str) in this list.
 
@@ -677,7 +684,7 @@ class Interpretation(Generic[T]):
 
     def interpret(self,
                   kvpair_element,  # type: Deb822KeyValuePairElement
-                  discard_comments_on_read=True,  # type: bool
+                  discard_comments_on_read=True  # type: bool
                   ):
         # type: (...) -> T
         raise NotImplementedError  # pragma: no cover
@@ -687,7 +694,7 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
 
     def __init__(self,
                  tokenizer,  # type: Callable[[str], Iterable['Deb822Token']]
-                 value_parser,  # type: StreamingValueParser[VE]
+                 value_parser  # type: StreamingValueParser[VE]
                  ):
         # type: (...) -> None
         super().__init__()
@@ -697,13 +704,13 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
     def _high_level_interpretation(self,
                                    kvpair_element,  # type: Deb822KeyValuePairElement
                                    token_list,  # type: List['TokenOrElement']
-                                   discard_comments_on_read=True,  # type: bool
+                                   discard_comments_on_read=True  # type: bool
                                    ):
         # type: (...) -> T
         raise NotImplementedError  # pragma: no cover
 
     def _parse_stream(self,
-                      buffered_iterator,  # type: BufferingIterator[Deb822Token]
+                      buffered_iterator  # type: BufferingIterator[Deb822Token]
                       ):
         # type: (...) -> Iterable[Union[Deb822Token, VE]]
 
@@ -716,7 +723,7 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
 
     def _parse_kvpair(
             self,
-            kvpair,  # type: Deb822KeyValuePairElement
+            kvpair  # type: Deb822KeyValuePairElement
     ):
         # type: (...) -> Iterable[Union[Deb822Token, VE]]
         content = kvpair.value_element.convert_to_text()
@@ -735,7 +742,7 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
 
     def interpret(self,
                   kvpair_element,  # type: Deb822KeyValuePairElement
-                  discard_comments_on_read=True,  # type: bool
+                  discard_comments_on_read=True  # type: bool
                   ):
         # type: (...) -> T
         token_list = []  # type: List['TokenOrElement']
@@ -790,7 +797,7 @@ class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList
                  vtype,  # type: Type[VE]
                  stype,  # type: Type[ST]
                  default_separator_factory,  # type: Callable[[], ST]
-                 render_factory,  # type: Callable[[bool], Callable[[VE], str]]
+                 render_factory  # type: Callable[[bool], Callable[[VE], str]]
                  ):
         # type: (...) -> None
         super().__init__(tokenizer, value_parser)
@@ -802,7 +809,7 @@ class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList
     def _high_level_interpretation(self,
                                    kvpair_element,  # type: Deb822KeyValuePairElement
                                    token_list,  # type: List['TokenOrElement']
-                                   discard_comments_on_read=True,  # type: bool
+                                   discard_comments_on_read=True  # type: bool
                                    ):
         # type: (...) -> Deb822ParsedTokenList[VE, ST]
         return Deb822ParsedTokenList(
@@ -923,7 +930,7 @@ class Deb822Element:
                 yield part
 
     def iter_recurse(self, *,
-                     only_element_or_token_type=None,  # type: Optional[Type[TE]]
+                     only_element_or_token_type=None  # type: Optional[Type[TE]]
                      ):
         # type: (...) -> Iterable[TE]
         for part in self.iter_parts():
@@ -994,7 +1001,7 @@ class Deb822ValueLineElement(Deb822Element):
                  trailing_whitespace_token,  # type: Optional[Deb822WhitespaceToken]
                  # only optional if it is the last line of the file and the file does not
                  # end with a newline.
-                 newline_token,  # type: Optional[Deb822WhitespaceToken]
+                 newline_token  # type: Optional[Deb822WhitespaceToken]
                  ):
         # type: (...) -> None
         super().__init__()
@@ -1165,7 +1172,7 @@ class Deb822KeyValuePairElement(Deb822Element):
                  comment_element,  # type: Optional[Deb822CommentElement]
                  field_token,  # type: Deb822FieldNameToken
                  separator_token,  # type: Deb822FieldSeparatorToken
-                 value_element,  # type: Deb822ValueElement
+                 value_element  # type: Deb822ValueElement
                  ):
         # type: (...) -> None
         super().__init__()
@@ -1199,7 +1206,7 @@ class Deb822KeyValuePairElement(Deb822Element):
 
     def interpret_as(self,
                      interpreter,  # type: Interpretation[T]
-                     discard_comments_on_read=True,  # type: bool
+                     discard_comments_on_read=True  # type: bool
                      ):
         # type: (...) -> T
         return interpreter.interpret(self, discard_comments_on_read=discard_comments_on_read)
@@ -1245,7 +1252,7 @@ def _format_comment(c):
 
 
 def _unpack_key(item,  # type: ParagraphKey
-                raise_if_indexed=False,  # type: bool
+                raise_if_indexed=False  # type: bool
                 ):
     # type: (...) -> Tuple[_strI, Optional[int], Optional[Deb822FieldNameToken]]
     index = None  # type: Optional[int]
@@ -1272,7 +1279,7 @@ def _unpack_key(item,  # type: ParagraphKey
 
 
 def _convert_value_lines_to_lines(value_lines,  # type: Iterable[Deb822ValueLineElement]
-                                  strip_comments,  # type: bool
+                                  strip_comments  # type: bool
                                   ):
     # type: (...) -> Iterable[str]
     if not strip_comments:
@@ -1453,7 +1460,7 @@ class AbstractDeb822ParagraphWrapper(AutoResolvingMixin[T], ABC):
                  paragraph,  # type: Deb822ParagraphElement
                  *,
                  auto_resolve_ambiguous_fields=False,  # type: bool
-                 discard_comments_on_read=True,  # type: bool
+                 discard_comments_on_read=True  # type: bool
                  ):
         # type: (...) -> None
         self.__paragraph = paragraph
@@ -1483,7 +1490,7 @@ class Deb822InterpretingParagraphWrapper(AbstractDeb822ParagraphWrapper[T]):
                  interpretation,  # type: Interpretation[T]
                  *,
                  auto_resolve_ambiguous_fields=False,  # type: bool
-                 discard_comments_on_read=True,  # type: bool
+                 discard_comments_on_read=True  # type: bool
                  ):
         # type: (...) -> None
         super().__init__(paragraph,
@@ -1507,7 +1514,7 @@ class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str],
                  auto_map_initial_line_whitespace=True,  # type: bool
                  auto_resolve_ambiguous_fields=False,  # type: bool
                  preserve_field_comments_on_field_updates=True,  # type: bool
-                 auto_map_final_newline_in_multiline_values=True,  # type: bool
+                 auto_map_final_newline_in_multiline_values=True  # type: bool
                  ):
         # type: (...) -> None
         super().__init__(paragraph,
@@ -1574,7 +1581,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
     def as_interpreted_dict_view(self,
                                  interpretation,  # type: Interpretation[T]
                                  *,
-                                 auto_resolve_ambiguous_fields=True,  # type: bool
+                                 auto_resolve_ambiguous_fields=True  # type: bool
                                  ):
         # type: (...) -> Deb822InterpretingParagraphWrapper[T]
         r"""Provide a Dict-like view of the paragraph
@@ -1657,7 +1664,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                         auto_map_initial_line_whitespace=True,  # type: bool
                         auto_resolve_ambiguous_fields=True,  # type: bool
                         preserve_field_comments_on_field_updates=True,  # type: bool
-                        auto_map_final_newline_in_multiline_values=True,  # type: bool
+                        auto_map_final_newline_in_multiline_values=True  # type: bool
                         ):
         # type: (...) -> Deb822DictishParagraphWrapper
         r"""Provide a Dict[str, str]-like view of this paragraph with non-standard parameters
@@ -1844,7 +1851,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
 
     def get_kvpair_element(self,
                            item,  # type: ParagraphKey
-                           use_get=False,  # type: bool
+                           use_get=False  # type: bool
                            ):
         # type: (...) -> Optional[Deb822KeyValuePairElement]
         raise NotImplementedError  # pragma: no cover
@@ -1858,7 +1865,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         raise NotImplementedError  # pragma: no cover
 
     def sort_fields(self,
-                    key=None,  # type: Optional[Callable[[str], Any]]
+                    key=None  # type: Optional[Callable[[str], Any]]
                     ):
         # type: (...) -> None
         """Re-order all fields
@@ -1874,7 +1881,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                                   simple_value,  # type: str
                                   *,
                                   preserve_original_field_comment=None,  # type: Optional[bool]
-                                  field_comment=None,  # type: Optional[Commentish]
+                                  field_comment=None  # type: Optional[Commentish]
                                   ):
         # type: (...) -> None
         r"""Sets a field in this paragraph to a simple "word" or "phrase"
@@ -1942,7 +1949,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
                                   raw_string_value,  # type: str
                                   *,
                                   preserve_original_field_comment=None,  # type: Optional[bool]
-                                  field_comment=None,  # type: Optional[Commentish]
+                                  field_comment=None  # type: Optional[Commentish]
                                   ):
         # type: (...) -> None
         """Sets a field in this paragraph to a given text value
@@ -2001,7 +2008,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
           field has a comment then that will be preserved (assuming
           field_comment is None).
         :param field_comment: If not None, add or replace the comment for
-          the field.  Each string in the in the list will become one comment
+          the field.  Each string in the list will become one comment
           line (inserted directly before the field name). Will appear in the
           same order as they do in the list.
 
@@ -2076,7 +2083,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
 
     @overload
     def dump(self,
-             fd,  # type: IO[bytes]
+             fd  # type: IO[bytes]
              ):
         # type: (...) -> None
         pass
@@ -2087,7 +2094,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         pass
 
     def dump(self,
-             fd=None,  # type: Optional[IO[bytes]]
+             fd=None  # type: Optional[IO[bytes]]
              ):
         # type: (...) -> Optional[str]
         if fd is None:
@@ -2106,7 +2113,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def __init__(self,
                  kvpair_elements,  # type: List[Deb822KeyValuePairElement]
-                 kvpair_order,  # type: OrderedSet
+                 kvpair_order  # type: OrderedSet
                  ):
         # type: (...) -> None
         super().__init__()
@@ -2175,7 +2182,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def get_kvpair_element(self,
                            item,  # type: ParagraphKey
-                           use_get=False,  # type: bool
+                           use_get=False  # type: bool
                            ):
         # type: (...) -> Optional[Deb822KeyValuePairElement]
         item, _, _ = _unpack_key(item, raise_if_indexed=True)
@@ -2388,8 +2395,8 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
                                 nodes,  # type: List[KVPNode]
                                 key,  # type: str
                                 index,  # type: Optional[int]
-                                name_token, # type: Optional[Deb822FieldNameToken]
-                                use_get=False,  # type: bool
+                                name_token,  # type: Optional[Deb822FieldNameToken]
+                                use_get=False  # type: bool
                                 ):
         # type: (...) -> Optional[KVPNode]
         if index is None:
@@ -2415,7 +2422,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def get_kvpair_element(self,
                            item,  # type: ParagraphKey
-                           use_get=False,  # type: bool
+                           use_get=False  # type: bool
                            ):
         # type: (...) -> Optional[Deb822KeyValuePairElement]
         key, index, name_token = _unpack_key(item)
@@ -2433,7 +2440,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
     @staticmethod
     def _find_node_via_name_token(
             name_token,  # type: Deb822FieldNameToken
-            elements,  # type: Iterable[KVPNode]
+            elements  # type: Iterable[KVPNode]
     ):
         # type: (...) -> Optional[KVPNode]
         # if we are given a name token, then it is non-ambiguous if we have exactly
@@ -2769,7 +2776,7 @@ class Deb822FileElement(Deb822Element):
 
     @overload
     def dump(self,
-             fd,  # type: IO[bytes]
+             fd  # type: IO[bytes]
              ):
         # type: (...) -> None
         pass
@@ -2780,7 +2787,7 @@ class Deb822FileElement(Deb822Element):
         pass
 
     def dump(self,
-             fd=None,  # type: Optional[IO[bytes]]
+             fd=None  # type: Optional[IO[bytes]]
              ):
         # type: (...) -> Optional[str]
         if fd is None:
@@ -2837,7 +2844,7 @@ def _non_end_of_line_token(v):
     return not isinstance(v, Deb822WhitespaceToken) or v.text != '\n'
 
 
-def _build_value_line(token_stream,  # type: Iterable[Union[TokenOrElement, Deb822CommentElement]]
+def _build_value_line(token_stream  # type: Iterable[Union[TokenOrElement, Deb822CommentElement]]
                       ):
     # type: (...) -> Iterable[Union[TokenOrElement, Deb822ValueLineElement]]
     """Parser helper - consumes tokens part of a Deb822ValueEntryElement and turns them into one"""

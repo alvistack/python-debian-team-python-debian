@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element']
               *,
               end_marker_after=5,  # type: Optional[int]
-              output_function=None,  # type: Optional[Callable[[str], None]]
+              output_function=None  # type: Optional[Callable[[str], None]]
               ):
     # type: (...) -> None
     """Debugging aid, which can dump a Deb822Element or a list of tokens/elements
@@ -83,7 +83,7 @@ def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element'
 def combine_into_replacement(source_class,  # type: Type[TE]
                              replacement_class,  # type: Type[R]
                              *,
-                             constructor=None,  # type: Optional[Callable[[List[TE]], R]]
+                             constructor=None  # type: Optional[Callable[[List[TE]], R]]
                              ):
     # type: (...) -> _combine_parts_ret_type[TE, R]
     """Combines runs of one type into another type
@@ -173,7 +173,7 @@ class BufferingIterator(_bufferingIterator_Base[T], Generic[T]):
 
     def peek_find(self,
                   predicate,  # type: Callable[[T], bool]
-                  limit=None,  # type: Optional[int]
+                  limit=None  # type: Optional[int]
                   ):
         # type: (...) -> Optional[int]
         buffer = self._buffer
@@ -229,7 +229,7 @@ class BufferingIterator(_bufferingIterator_Base[T], Generic[T]):
 
 def len_check_iterator(content,  # type: str
                        stream,  # type: Iterable[TE]
-                       content_len=None,  # type: Optional[int]
+                       content_len=None  # type: Optional[int]
                        ):
     # type: (...) -> Iterable[TE]
     """Flatten a parser's output into tokens and verify it covers the entire line/text"""
