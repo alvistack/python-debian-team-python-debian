@@ -133,13 +133,16 @@ class Copyright(object):
     associated method docstrings.
     """
 
-    def __init__(self, sequence=None, strict=True):
+    def __init__(self, sequence=None, encoding='utf-8', strict=True):
         # type: (Optional[Union[List[str], IO[str]]], str, bool) -> None
         """ Create a new copyright file in the current format.
 
         :param sequence: Sequence of lines, e.g. a list of strings or a
             file-like object.  If not specified, a blank Copyright object is
             initialized.
+        :param encoding: Encoding to use, in case input is raw byte strings.
+            It is recommended to use unicode objects everywhere instead, e.g.
+            by opening files in text mode.
         :param strict: Raise if format errors are detected in the data.
 
         Raises:
@@ -153,7 +156,7 @@ class Copyright(object):
 
         if sequence is not None:
             header = None
-            self.__file = parse_deb822_file(sequence=sequence)
+            self.__file = parse_deb822_file(sequence=sequence, encoding=encoding)
             for p in self.__file:
                 if header is None:
                     header = Header(p)

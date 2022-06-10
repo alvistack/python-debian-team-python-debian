@@ -595,7 +595,7 @@ class Deb822Dict(_Deb822Dict_base):
 class Deb822(Deb822Dict):
     """ Generic Deb822 data
 
-    :param sequence: a string, or any any object that returns a line of
+    :param sequence: a string, or any object that returns a line of
         input each time, normally a file.  Alternately, sequence can
         be a dict that contains the initial key-value pairs. When
         python-apt is present, sequence can also be a compressed object,

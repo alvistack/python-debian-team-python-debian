@@ -1461,7 +1461,8 @@ class Deb822InterpretingParagraphWrapper(AbstractDeb822ParagraphWrapper[T]):
                  *,
                  auto_resolve_ambiguous_fields=False,  # type: bool
                  discard_comments_on_read=True,  # type: bool
-                 ) -> None:
+                 ):
+        # type: (...) -> None
         super().__init__(paragraph,
                          auto_resolve_ambiguous_fields=auto_resolve_ambiguous_fields,
                          discard_comments_on_read=discard_comments_on_read,
@@ -2965,10 +2966,11 @@ def _build_field_with_value(
             yield token_or_element
 
 
-def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
+def parse_deb822_file(sequence,  # type: Union[Iterable[Union[str, bytes]], str]
                       *,
                       accept_files_with_error_tokens=False,  # type: bool
-                      accept_files_with_duplicated_fields=False  # type: bool
+                      accept_files_with_duplicated_fields=False,  # type: bool
+                      encoding='utf-8'  # type: str
                       ):
     # type: (...) -> Deb822FileElement
     """
@@ -2996,20 +2998,27 @@ def parse_deb822_file(sequence,  # type: Iterable[Union[str, bytes]]
       Deb822ParagraphElement.configured_view).  If False, then this method
       will raise a ValueError if any duplicated fields are seen inside any
       paragraph.
+    :param encoding: The encoding to use (this is here to support Deb822-like
+       APIs, new code should not use this parameter).
     """
+
+    if isinstance(sequence, (str, bytes)):
+        # Match the deb822 API.
+        sequence = sequence.splitlines(True)
+
     # The order of operations are important here.  As an example,
     # _build_value_line assumes that all comment tokens have been merged
     # into comment elements.  Likewise, _build_field_and_value assumes
     # that value tokens (along with their comments) have been combined
     # into elements.
-    tokens = tokenize_deb822_file(sequence)  # type: Iterable[TokenOrElement]
+    tokens = tokenize_deb822_file(sequence, encoding=encoding)  # type: Iterable[TokenOrElement]
     tokens = _combine_comment_tokens_into_elements(tokens)
     tokens = _build_value_line(tokens)
     tokens = _combine_vl_elements_into_value_elements(tokens)
     tokens = _build_field_with_value(tokens)
     tokens = _combine_kvp_elements_into_paragraphs(tokens)
     # Combine any free-floating error tokens into error elements.  We do
-    # this last as it enable other parts of the parser to include error
+    # this last as it enables other parts of the parser to include error
     # tokens in their error elements if they discover something is wrong.
     tokens = _combine_error_tokens_into_elements(tokens)
 
