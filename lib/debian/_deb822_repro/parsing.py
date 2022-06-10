@@ -1904,7 +1904,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             raise ValueError("Cannot use set_field_to_simple_value for values with newlines")
 
         # Reformat it with a leading space and trailing newline. The latter because it is
-        # necessary if there any fields after it and the former because it looks nicer so
+        # necessary if there are any fields after it and the former because it looks nicer so
         # have single space after the field separator
         raw_value = ' ' + simple_value.strip() + "\n"
         self.set_field_from_raw_string(
@@ -2127,8 +2127,13 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
         unpacked_ref_field, _, _ = _unpack_key(reference_field, raise_if_indexed=True)
         self._kvpair_order.order_after(unpacked_field, unpacked_ref_field)
 
+    # Overload to narrow the type to just str.
+    def __iter__(self):
+        # type: () -> Iterator[str]
+        return iter(str(k) for k in self._kvpair_order)
+
     def iter_keys(self):
-        # type: () -> Iterable[ParagraphKey]
+        # type: () -> Iterable[str]
         yield from (str(k) for k in self._kvpair_order)
 
     def remove_kvpair_element(self, key):
