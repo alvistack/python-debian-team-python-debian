@@ -21,10 +21,9 @@
 import collections
 import contextlib
 import logging
-import sys
 import textwrap
 from debian.deb822 import Deb822
-from unittest import TestCase, SkipTest
+from unittest import TestCase
 
 from debian._deb822_repro import (parse_deb822_file,
                                   AmbiguousDeb822FieldKeyError,
@@ -179,11 +178,6 @@ ROUND_TRIP_CASES = [
 
 
 class FormatPreservingDeb822ParserTests(TestCase):
-
-    def setUp(self) -> None:
-
-        if sys.version_info < (3, 9):
-            raise SkipTest('The format preserving parser assume python 3.9')
 
     def test_round_trip_cases(self):
         # type: () -> None
