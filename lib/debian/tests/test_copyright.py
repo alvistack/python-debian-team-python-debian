@@ -135,6 +135,131 @@ License: 123
 FORMAT = 'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'
 
 
+class RestrictedWrapperTest(unittest.TestCase):
+    class Wrapper(copyright._RestrictedWrapper):
+        restricted_field = deb822.RestrictedField('Restricted-Field')
+        required_field = deb822.RestrictedField('Required-Field', allow_none=False)
+        space_separated = deb822.RestrictedField(
+                'Space-Separated',
+                from_str=lambda s: tuple((s or '').split()),
+                to_str=lambda seq: ' '.join(_no_space(s) for s in seq) or None)
+
+    def test_unrestricted_get_and_set(self):
+        # type: () -> None
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Foo'] = 'bar'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual('bar', wrapper['Foo'])
+        wrapper['foo'] = 'baz'
+        self.assertEqual('baz', wrapper['Foo'])
+        self.assertEqual('baz', wrapper['foo'])
+
+        multiline = 'First line\n Another line'
+        wrapper['X-Foo-Bar'] = multiline
+        self.assertEqual(multiline, wrapper['X-Foo-Bar'])
+        self.assertEqual(multiline, wrapper['x-foo-bar'])
+
+        expected_data = Deb822ParagraphElement.new_empty_paragraph()
+        expected_data['Foo'] = 'baz'
+        expected_data['X-Foo-Bar'] = multiline
+        self.assertEqual(expected_data.keys(), data.keys())
+        self.assertEqual(expected_data, data)
+
+    def test_trivially_restricted_get_and_set(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Required-Field'] = 'some value'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual('some value', wrapper.required_field)
+        self.assertEqual('some value', wrapper['Required-Field'])
+        self.assertEqual('some value', wrapper['required-field'])
+        self.assertIsNone(wrapper.restricted_field)
+
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['Required-Field'] = 'foo'
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['required-field'] = 'foo'
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['Restricted-Field'] = 'foo'
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['Restricted-field'] = 'foo'
+
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['Required-Field']
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['required-field']
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['Restricted-Field']
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['restricted-field']
+
+        with self.assertRaises(TypeError):
+            wrapper.required_field = None           # type: ignore
+
+        wrapper.restricted_field = 'special value'  # type: ignore
+        self.assertEqual('special value', data['Restricted-Field'])
+        wrapper.restricted_field = None             # type: ignore
+        self.assertFalse('Restricted-Field' in data)
+        self.assertIsNone(wrapper.restricted_field)
+
+        wrapper.required_field = 'another value'    # type: ignore
+        self.assertEqual('another value', data['Required-Field'])
+
+    def test_set_already_none_to_none(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        wrapper = self.Wrapper(data)
+        wrapper.restricted_field = 'Foo'   # type: ignore
+        wrapper.restricted_field = None    # type: ignore
+        self.assertFalse('restricted-field' in data)
+        wrapper.restricted_field = None    # type: ignore
+        self.assertFalse('restricted-field' in data)
+
+    def test_processed_get_and_set(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Space-Separated'] = 'foo bar baz'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual(('foo', 'bar', 'baz'), wrapper.space_separated)
+        wrapper.space_separated = ['bar', 'baz', 'quux']     # type: ignore
+        self.assertEqual('bar baz quux', data['space-separated'])
+        self.assertEqual('bar baz quux', wrapper['space-separated'])
+        self.assertEqual(('bar', 'baz', 'quux'), wrapper.space_separated)
+
+        with self.assertRaises(ValueError) as cm:
+            wrapper.space_separated = ('foo', 'bar baz')    # type: ignore
+        self.assertEqual(('whitespace not allowed',), cm.exception.args)
+
+        wrapper.space_separated = None     # type: ignore
+        self.assertEqual((), wrapper.space_separated)
+        self.assertFalse('space-separated' in data)
+        self.assertFalse('Space-Separated' in data)
+
+        wrapper.space_separated = ()     # type: ignore
+        self.assertEqual((), wrapper.space_separated)
+        self.assertFalse('space-separated' in data)
+        self.assertFalse('Space-Separated' in data)
+
+    def test_dump(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Foo'] = 'bar'
+        data['Baz'] = 'baz'
+        data['Space-Separated'] = 'baz quux'
+        data['Required-Field'] = 'required value'
+        data['Restricted-Field'] = 'restricted value'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual(data.dump(), wrapper.dump())
+
+        wrapper.restricted_field = 'another value'        # type: ignore
+        wrapper.space_separated = ('bar', 'baz', 'quux')  # type: ignore
+        self.assertEqual(data.dump(), wrapper.dump())
+
+
 class LineBasedTest(unittest.TestCase):
     """Test for _LineBased.{to,from}_str"""
 
@@ -866,6 +991,14 @@ class HeaderTest(unittest.TestCase):
         h.license = None   # type: ignore
         self.assertIsNone(h.license)
         self.assertFalse('license' in h)   # type: ignore
+
+
+def _no_space(s):
+    # type: (str) -> str
+    """Returns s.  Raises ValueError if s contains any whitespace."""
+    if re.search(r'\s', s):
+        raise ValueError('whitespace not allowed')
+    return s
 
 
 if __name__ == '__main__':
