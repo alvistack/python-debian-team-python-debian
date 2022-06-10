@@ -2,19 +2,19 @@
 
 import collections.abc
 import contextlib
+import sys
 import textwrap
 import weakref
 from abc import ABC
 from types import TracebackType
 from weakref import ReferenceType
 
+from debian._deb822_repro._util import (combine_into_replacement, BufferingIterator,
+                                        len_check_iterator,
+                                        )
 from debian._deb822_repro.formatter import (
     FormatterContentToken, one_value_per_line_trailing_separator, format_field,
 )
-from debian._util import (
-    resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
-)
-from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
 from debian._deb822_repro.tokens import (
     Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
     Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
@@ -22,9 +22,10 @@ from debian._deb822_repro.tokens import (
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
     tokenize_deb822_file, comma_split_tokenizer, whitespace_split_tokenizer,
 )
-from debian._deb822_repro._util import (combine_into_replacement, BufferingIterator,
-                                        len_check_iterator,
-                                        )
+from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
+from debian._util import (
+    resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
+)
 
 try:
     from typing import (
@@ -38,9 +39,14 @@ try:
         ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
         FormatterCallback,
     )
-    StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
-    StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
-    KVPNode = LinkedListNode['Deb822KeyValuePairElement']
+    if TYPE_CHECKING:
+        StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
+        StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
+        KVPNode = LinkedListNode['Deb822KeyValuePairElement']
+    else:
+        StreamingValueParser = None
+        StrToValueParser = None
+        KVPNode = None
 except ImportError:
     if not TYPE_CHECKING:
         cast = lambda t, v: v
@@ -127,8 +133,17 @@ class ValueReference(Generic[TE]):
         self._node = None
 
 
+if sys.version_info >= (3, 8) or TYPE_CHECKING:
+    _Deb822ParsedTokenList_ContextManager = contextlib.AbstractContextManager[T]
+else:
+    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # - use this little hack to work around it
+    class _Deb822ParsedTokenList_ContextManager(contextlib.AbstractContextManager, Generic[T]):
+        pass
+
+
 class Deb822ParsedTokenList(Generic[VE, ST],
-                            contextlib.AbstractContextManager['Deb822ParsedTokenList[VE, ST]']
+                            _Deb822ParsedTokenList_ContextManager['Deb822ParsedTokenList[VE, ST]']
                             ):
 
     def __init__(self,
@@ -1268,10 +1283,19 @@ def _convert_value_lines_to_lines(value_lines,  # type: Iterable[Deb822ValueLine
                           if not x.is_comment)
 
 
+if sys.version_info >= (3, 8) or TYPE_CHECKING:
+    _ParagraphMapping_Base = collections.abc.Mapping[ParagraphKey, T]
+else:
+    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # - use this little hack to work around it
+    class _ParagraphMapping_Base(collections.abc.Mapping, Generic[T], ABC):
+        pass
+
+
 # Deb822ParagraphElement uses this Mixin (by having `_paragraph` return self).
 # Therefore the Mixin needs to call the "proper" methods on the paragraph to
 # avoid doing infinite recursion.
-class AutoResolvingMixin(Generic[T], collections.abc.Mapping[ParagraphKey, T]):
+class AutoResolvingMixin(Generic[T], _ParagraphMapping_Base[T]):
 
     @property
     def _auto_resolve_ambiguous_fields(self):
@@ -1317,7 +1341,6 @@ class AutoResolvingMixin(Generic[T], collections.abc.Mapping[ParagraphKey, T]):
 # Therefore the Mixin needs to call the "proper" methods on the paragraph to
 # avoid doing infinite recursion.
 class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
-                                       collections.abc.MutableMapping[ParagraphKey, str],
                                        ABC):
 
     @property

@@ -1,13 +1,15 @@
 import collections
 import collections.abc
 import logging
+import sys
 import textwrap
+from abc import ABC
 
 try:
     from typing import (
         Optional, Union, Iterable, Callable, TYPE_CHECKING, Iterator,
-        Type, cast, List,
-    )
+        Type, cast, List, Generic,
+)
     from debian._util import T
     from debian._deb822_repro.types import TE, R, TokenOrElement
 
@@ -114,9 +116,19 @@ def combine_into_replacement(source_class,  # type: Type[TE]
     return _impl
 
 
-class BufferingIterator(collections.abc.Iterator[T]):
+if sys.version_info >= (3, 8) or TYPE_CHECKING:
+    _bufferingIterator_Base = collections.abc.Iterator[T]
+else:
+    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # - use this little hack to work around it
+    class _bufferingIterator_Base(collections.abc.Iterator, Generic[T], ABC):
+        pass
 
-    def __init__(self, stream: Iterable[T]) -> None:
+
+class BufferingIterator(_bufferingIterator_Base[T], Generic[T]):
+
+    def __init__(self, stream):
+        # type: (Iterable[T]) -> None
         self._stream = iter(stream)  # type: Iterator[T]
         self._buffer = collections.deque()  # type: collections.deque[T]
         self._expired = False  # type: bool
