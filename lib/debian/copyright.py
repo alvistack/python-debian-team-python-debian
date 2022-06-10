@@ -712,6 +712,6 @@ class Header(RestrictedWrapper):
         'Files-Excluded', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
 
-    files_included = deb822.RestrictedField(
+    files_included = RestrictedField(
         'Files-Included', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
