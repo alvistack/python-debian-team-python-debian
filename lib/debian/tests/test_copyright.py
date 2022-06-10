@@ -23,6 +23,7 @@ import warnings
 
 from debian import copyright
 from debian import deb822
+from debian._deb822_repro import parse_deb822_file, Deb822ParagraphElement
 
 
 try:
@@ -396,7 +397,7 @@ class MultlineTest(unittest.TestCase):
 
     def setUp(self):
         # type: () -> None
-        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines(True)))
+        paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
         self.formatted = paragraphs[1]['License']
         self.parsed = 'GPL-2+\n' + GPL_TWO_PLUS_TEXT
         self.parsed_lines = self.parsed.splitlines()
@@ -506,7 +507,7 @@ class LicenseTest(unittest.TestCase):
 
     def test_typical(self):
         # type: () -> None
-        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines(True)))
+        paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
         p = paragraphs[1]
         l = copyright.License.from_str(p['license'])
         if l is not None:
@@ -523,7 +524,7 @@ class LicenseParagraphTest(unittest.TestCase):
 
     def test_properties(self):
         # type: () -> None
-        d = deb822.Deb822()
+        d = Deb822ParagraphElement.new_empty_paragraph()
         d['License'] = 'GPL-2'
         lp = copyright.LicenseParagraph(d)
         self.assertEqual('GPL-2', lp['License'])
@@ -544,14 +545,14 @@ class LicenseParagraphTest(unittest.TestCase):
 
     def test_no_license(self):
         # type: () -> None
-        d = deb822.Deb822()
+        d = Deb822ParagraphElement.new_empty_paragraph()
         with self.assertRaises(ValueError) as cm:
             copyright.LicenseParagraph(d)
         self.assertEqual(('"License" field required',), cm.exception.args)
 
     def test_also_has_files(self):
         # type: () -> None
-        d = deb822.Deb822()
+        d = Deb822ParagraphElement.new_empty_paragraph()
         d['License'] = 'GPL-2\n [LICENSE TEXT]'
         d['Files'] = '*'
         with self.assertRaises(ValueError) as cm:
@@ -561,10 +562,13 @@ class LicenseParagraphTest(unittest.TestCase):
 
     def test_try_set_files(self):
         # type: () -> None
-        lp = copyright.LicenseParagraph(
-            deb822.Deb822({'License': 'GPL-2\n [LICENSE TEXT]'}))
+
+        d = Deb822ParagraphElement.new_empty_paragraph()
+        d['License'] = 'GPL-2\n [LICENSE TEXT]'
+        lp = copyright.LicenseParagraph(d)
         with self.assertRaises(deb822.RestrictedFieldError):
             lp['Files'] = 'foo/*'
+
 
 class GlobsToReTest(unittest.TestCase):
 
@@ -689,7 +693,7 @@ class FilesParagraphTest(unittest.TestCase):
 
     def setUp(self):
         # type: () -> None
-        self.prototype = deb822.Deb822()
+        self.prototype = Deb822ParagraphElement.new_empty_paragraph()
         self.prototype['Files'] = '*'
         self.prototype['Copyright'] = 'Foo'
         self.prototype['License'] = 'ISC'
@@ -777,13 +781,13 @@ class HeaderTest(unittest.TestCase):
 
     def test_format_upgrade_no_header(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         with self.assertRaises(copyright.NotMachineReadableError):
             copyright.Header(data=data)
 
     def test_format_https_upgrade(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = "http%s" % FORMAT[5:]
         with self.assertLogs('debian.copyright', level='WARNING') as cm:
             self.assertIsNotNone(cm)
@@ -805,7 +809,7 @@ class HeaderTest(unittest.TestCase):
 
     def test_upstream_contact_single_read(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = FORMAT
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>'
         h = copyright.Header(data=data)
@@ -813,7 +817,7 @@ class HeaderTest(unittest.TestCase):
 
     def test_upstream_contact_multi1_read(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = FORMAT
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>\n http://bar.com/foo'
         h = copyright.Header(data=data)
@@ -823,7 +827,7 @@ class HeaderTest(unittest.TestCase):
 
     def test_upstream_contact_multi2_read(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = FORMAT
         data['Upstream-Contact'] = (
             '\n Foo Bar <foo@bar.com>\n http://bar.com/foo')
