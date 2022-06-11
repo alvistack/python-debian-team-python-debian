@@ -1074,8 +1074,6 @@ class Deb822(Deb822Dict):
     # regexps for finding the gpg header around signed data
     _gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
                         br'PGP (?P<what>[^-]+)-----[\r\t ]*$')
-    _blank_line_whitespace = re.compile(br'^\s*$')
-    _blank_line_no_whitespace = re.compile(br'^$')
 
     @staticmethod
     def split_gpg_and_payload(sequence,         # type: Union[Iterator[bytes], Iterator[str]]
@@ -1106,10 +1104,7 @@ class Deb822(Deb822Dict):
 
         # Include whitespace-only lines in blank lines to split paragraphs.
         # (see #715558)
-        if strict.get('whitespace-separates-paragraphs', True):
-            blank_line = Deb822._blank_line_whitespace
-        else:
-            blank_line = Deb822._blank_line_no_whitespace
+        accept_empty_or_whitespace = strict.get('whitespace-separates-paragraphs', True)
         first_line = True
 
         for line_ in sequence:
@@ -1130,11 +1125,15 @@ class Deb822(Deb822Dict):
                     continue
                 first_line = False
 
-            m = Deb822._gpgre.match(line)
+            m = Deb822._gpgre.match(line) if line.startswith(b'-') else None
+            # We unconditionally compute whether it is a blank line.  We need it for all lines
+            # that are not GPG lines (which is the vast major of lines).  For Packages files,
+            # using this "simple" solution is about 5% faster than regexes.
+            is_empty_line = not line or line.isspace() if accept_empty_or_whitespace else not line
 
             if not m:
                 if state == b'SAFE':
-                    if not blank_line.match(line):
+                    if not is_empty_line:
                         lines.append(line)
                     else:
                         if not gpg_pre_lines:
@@ -1142,7 +1141,7 @@ class Deb822(Deb822Dict):
                             # this blank line
                             break
                 elif state == b'SIGNED MESSAGE':
-                    if blank_line.match(line):
+                    if is_empty_line:
                         state = b'SAFE'
                     else:
                         gpg_pre_lines.append(line)
@@ -1154,7 +1153,7 @@ class Deb822(Deb822Dict):
                 elif m.group('action') == b'END':
                     gpg_post_lines.append(line)
                     break
-                if not blank_line.match(line):
+                if not is_empty_line:
                     if not lines:
                         gpg_pre_lines.append(line)
                     else:
