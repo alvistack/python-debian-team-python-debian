@@ -1097,7 +1097,6 @@ class Deb822(Deb822Dict):
     # regexps for finding the gpg header around signed data
     _gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
                         br'PGP (?P<what>[^-]+)-----[\r\t ]*$')
-    _initial_blank_line = re.compile(br'^\s*$')
     _blank_line_whitespace = re.compile(br'^\s*$')
     _blank_line_no_whitespace = re.compile(br'^$')
 
@@ -1150,7 +1149,7 @@ class Deb822(Deb822Dict):
 
             # skip initial blank lines, if any
             if first_line:
-                if Deb822._initial_blank_line.match(line):
+                if not line or line.isspace():
                     continue
                 first_line = False
 
