@@ -232,7 +232,12 @@ class LinkedList(Generic[T]):
         else:
             # Primarily as a hint to mypy
             assert self.tail_node is not None
-            self.tail_node.insert_after(node)
+            # Optimize for lots of appends (will happen if you are reading a Packages file) by
+            # inlining relevant bits of tail_node.insert_after (removing unnecessary checks and
+            # linking).
+            assert self.tail_node is not node
+            node.previous_node = self.tail_node
+            self.tail_node.next_node = node
             self.tail_node = node
         self._size += 1
         return node
