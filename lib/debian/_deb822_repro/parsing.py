@@ -3001,6 +3001,18 @@ def _build_field_with_value(
             yield token_or_element
 
 
+def _abort_on_error_tokens(sequence):
+    # type: (Iterable[TokenOrElement]) -> Iterable[TokenOrElement]
+    for token in sequence:
+        # We are always called while the sequence consists entirely of tokens
+        if isinstance(token, Deb822ErrorToken):
+            error_as_text = token.text.replace('\n', '\\n')
+            raise ValueError('Syntax or Parse error on the line: "{error_as_text}"'.format(
+                error_as_text=error_as_text
+            ))
+        yield token
+
+
 def parse_deb822_file(sequence,  # type: Union[Iterable[Union[str, bytes]], str]
                       *,
                       accept_files_with_error_tokens=False,  # type: bool
@@ -3047,6 +3059,8 @@ def parse_deb822_file(sequence,  # type: Union[Iterable[Union[str, bytes]], str]
     # that value tokens (along with their comments) have been combined
     # into elements.
     tokens = tokenize_deb822_file(sequence, encoding=encoding)  # type: Iterable[TokenOrElement]
+    if not accept_files_with_error_tokens:
+        tokens = _abort_on_error_tokens(tokens)
     tokens = _combine_comment_tokens_into_elements(tokens)
     tokens = _build_value_line(tokens)
     tokens = _combine_vl_elements_into_value_elements(tokens)
@@ -3058,14 +3072,6 @@ def parse_deb822_file(sequence,  # type: Union[Iterable[Union[str, bytes]], str]
     tokens = _combine_error_tokens_into_elements(tokens)
 
     deb822_file = Deb822FileElement(LinkedList(tokens))
-
-    if not accept_files_with_error_tokens:
-        error_element = deb822_file.find_first_error_element()
-        if error_element is not None:
-            error_as_text = error_element.convert_to_text().replace('\n', '\\n')
-            raise ValueError('Syntax or Parse error on the line: "{error_as_text}"'.format(
-                error_as_text=error_as_text
-            ))
 
     if not accept_files_with_duplicated_fields:
         for no, paragraph in enumerate(deb822_file):
