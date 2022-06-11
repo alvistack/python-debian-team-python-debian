@@ -777,9 +777,7 @@ class Deb822(Deb822Dict):
     # regexps for parsing the Deb822 data
     # The key is non-whitespace, non-colon characters before any colon.
     _key_part = r"^(?P<key>[^: \t\n\r\f\v]+)\s*:\s*"
-    _single = re.compile(_key_part + r"(?P<data>\S.*?)\s*$")
-    _multi = re.compile(_key_part + r"$")
-    _multidata = re.compile(r"^\s(?P<data>.+?)\s*$")
+    _new_field_re = re.compile(_key_part + r"(?P<data>(?:\S+(\s+\S+)*)?)\s*$")
 
     # Explicit source entries in the file can be either:
     #   Source: source_package
@@ -810,7 +808,7 @@ class Deb822(Deb822Dict):
                 self._skip_useless_lines(sequence), strict):
             line = self.decoder.decode(linebytes)
 
-            m = self._single.match(line)
+            m = self._new_field_re.match(line)
             if m:
                 if curkey:
                     self[curkey] = content
@@ -823,22 +821,9 @@ class Deb822(Deb822Dict):
                 content = m.group('data')
                 continue
 
-            m = self._multi.match(line)
-            if m:
-                if curkey:
-                    self[curkey] = content
-
-                if not wanted_field(m.group('key')):
-                    curkey = None
-                    continue
-
-                curkey = m.group('key')
-                content = ""
-                continue
-
-            m = self._multidata.match(line)
-            if m:
-                content += '\n' + line   # XXX not m.group('data')?
+            # Skip lines that entirely whitespace
+            if line and line[0].isspace() and not line.isspace():
+                content += '\n' + line
                 continue
 
         if curkey:
