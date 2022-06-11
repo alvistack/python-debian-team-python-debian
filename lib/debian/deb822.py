@@ -813,11 +813,12 @@ class Deb822(Deb822Dict):
                 if curkey:
                     self[curkey] = content
 
-                if not wanted_field(m.group('key')):
+                curkey = m.group('key')
+
+                if not wanted_field(curkey):
                     curkey = None
                     continue
 
-                curkey = m.group('key')
                 content = m.group('data')
                 continue
 
