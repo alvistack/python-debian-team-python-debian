@@ -232,6 +232,7 @@ import collections
 import collections.abc
 import datetime
 import email.utils
+import functools
 import logging
 import io
 import re
@@ -337,6 +338,13 @@ def _has_fileno(f):
         return True
     except (AttributeError, io.UnsupportedOperation):
         return False
+
+
+# In Python 3.10, there is a default of 128. Python 3.5 requires an explicit cache size.
+@functools.lru_cache(128)
+def _cached_strI(v):
+    # type: (str) -> _strI
+    return _strI(v)
 
 
 GPGV_DEFAULT_KEYRINGS = frozenset(['/usr/share/keyrings/debian-keyring.gpg'])
@@ -467,9 +475,9 @@ class Deb822Dict(_Deb822Dict_base):
         if _parsed is not None:
             self.__parsed = _parsed
             if _fields is None:
-                self.__keys.extend([_strI(k) for k in self.__parsed])
+                self.__keys.extend([_cached_strI(k) for k in self.__parsed])
             else:
-                self.__keys.extend([_strI(f) for f in _fields if f in self.__parsed])
+                self.__keys.extend([_cached_strI(f) for f in _fields if f in self.__parsed])
 
     # ### BEGIN collections.abc.MutableMapping methods
 
@@ -484,7 +492,8 @@ class Deb822Dict(_Deb822Dict_base):
 
     def __setitem__(self, key, value):
         # type: (str, Deb822ValueType) -> None
-        keyi = _strI(key)
+        # The `_cached_strI` pays off in the long run (with Packages files or similar sized files)
+        keyi = _cached_strI(key)
         self.__keys.add(keyi)
         self.__dict[keyi] = value
 
