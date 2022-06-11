@@ -754,31 +754,23 @@ class Deb822(Deb822Dict):
 
     @staticmethod
     def _skip_useless_lines(sequence):
-        # type: (IterableInputDataType) -> Union[Iterator[bytes], Iterator[str]]
+        # type: (IterableInputDataType) -> Union[Iterator[bytes]]
         """Yields only lines that do not begin with '#'.
 
         Also skips any blank lines at the beginning of the input.
         """
         at_beginning = True
         for line in sequence:
-            # The bytes/str polymorphism required here to support Python 3
-            # is unpleasant, but fortunately limited.  We need this because
-            # at this point we might have been given either bytes or
-            # Unicode, and we haven't yet got to the point where we can try
-            # to decode a whole paragraph and detect its encoding.
-            if isinstance(line, bytes):
-                if line.startswith(b'#'):
-                    continue
-            else:
-                if line.startswith('#'):
-                    continue
+            # _skip_useless_lines is only called before one place and that prefers
+            # bytes, so we can just convert the input into bytes and simplify
+            # our checks.
+            if isinstance(line, str):
+                line = line.encode()
+            if line.startswith(b'#'):
+                continue
             if at_beginning:
-                if isinstance(line, bytes):
-                    if not line.rstrip(b'\r\n'):
-                        continue
-                else:
-                    if not line.rstrip('\r\n'):
-                        continue
+                if not line.rstrip(b'\r\n'):
+                    continue
                 at_beginning = False
             yield line
 
