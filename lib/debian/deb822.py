@@ -1218,10 +1218,15 @@ class Deb822(Deb822Dict):
         if value.endswith('\n'):
             raise ValueError("value must not end in '\\n'")
 
+        if '\n' not in value:
+            return
+
         # Make sure there are no blank lines (actually, the first one is
         # allowed to be blank, but no others), and each subsequent line starts
         # with whitespace
-        for line in value.splitlines()[1:]:
+        for no, line in enumerate(value.splitlines()):
+            if no == 0:
+                continue
             if not line:
                 raise ValueError("value must not have blank lines")
             if not line[0].isspace():
