@@ -322,8 +322,7 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
                 raise ValueError("Input is inconsistent with its line endings! Lines must "
                                  "consistently be *with* or *without* line endings")
             line += "\n"
-
-        if not line.endswith("\n"):
+        elif not line.endswith("\n"):
             # We expect newlines at the end of each line except the last.
             if text_stream.peek() is not None:
                 raise ValueError("Invalid line iterator: Line " + str(no) + " did not end on a"
