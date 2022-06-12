@@ -2963,24 +2963,21 @@ def _build_field_with_value(
 
         if start_of_field:
             field_name = token_or_element
-            next_tokens = buffered_stream.peek_many(2)
-            if len(next_tokens) < 2:
+            separator = next(buffered_stream, None)
+            value_element = next(buffered_stream, None)
+            if separator is None or value_element is None:
                 # Early EOF - should not be possible with how the tokenizer works
                 # right now, but now it is future proof.
                 if comment_element:
                     yield comment_element
                 error_elements = [field_name]
-                error_elements.extend(buffered_stream)
+                if separator is not None:
+                    error_elements.append(separator)
                 yield Deb822ErrorElement(error_elements)
                 return
-            separator, value_element = next_tokens
 
             if isinstance(separator, Deb822FieldSeparatorToken) \
                     and isinstance(value_element, Deb822ValueElement):
-                # Consume the two tokens to align the stream
-                next(buffered_stream, None)
-                next(buffered_stream, None)
-
                 yield Deb822KeyValuePairElement(comment_element,
                                                 cast('Deb822FieldNameToken', field_name),
                                                 separator,
