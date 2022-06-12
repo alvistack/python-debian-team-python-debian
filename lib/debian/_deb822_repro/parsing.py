@@ -2883,7 +2883,13 @@ def _build_value_line(token_stream  # type: Iterable[Union[TokenOrElement, Deb82
 
     for token in buffered_stream:
         start_of_value_entry = False
-        if isinstance(token, Deb822CommentElement):
+        if isinstance(token, Deb822ValueContinuationToken):
+            continuation_line_token = token
+            start_of_value_entry = True
+            token = None
+        elif isinstance(token, Deb822FieldSeparatorToken):
+            start_of_value_entry = True
+        elif isinstance(token, Deb822CommentElement):
             next_token = buffered_stream.peek()
             # If the next token is a continuation line token, then this comment
             # belong to a value and we might as well just start the value
@@ -2902,12 +2908,6 @@ def _build_value_line(token_stream  # type: Iterable[Union[TokenOrElement, Deb82
                                                next(buffered_stream, None)
                                                )
                 assert continuation_line_token is not None
-        elif isinstance(token, Deb822ValueContinuationToken):
-            continuation_line_token = token
-            start_of_value_entry = True
-            token = None
-        elif isinstance(token, Deb822FieldSeparatorToken):
-            start_of_value_entry = True
 
         if token is not None:
             yield token
@@ -2948,7 +2948,9 @@ def _build_field_with_value(
     for token_or_element in buffered_stream:
         start_of_field = False
         comment_element = None
-        if isinstance(token_or_element, Deb822CommentElement):
+        if isinstance(token_or_element, Deb822FieldNameToken):
+            start_of_field = True
+        elif isinstance(token_or_element, Deb822CommentElement):
             comment_element = token_or_element
             next_token = buffered_stream.peek()
             start_of_field = isinstance(next_token, Deb822FieldNameToken)
@@ -2958,8 +2960,6 @@ def _build_field_with_value(
                     token_or_element = next(buffered_stream)
                 except StopIteration:  # pragma: no cover
                     raise AssertionError
-        elif isinstance(token_or_element, Deb822FieldNameToken):
-            start_of_field = True
 
         if start_of_field:
             field_name = token_or_element
