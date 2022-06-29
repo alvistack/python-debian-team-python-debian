@@ -165,7 +165,7 @@ usertags for the BTS view) is as follows:
 .. include:: bts-usercategories.txt
    :literal:
 
-The usertags are derived from the Python names of he (sub)modules.
+The usertags are derived from the Python names of the (sub)modules.
 Note that usertags cannot include underscores and thus the the Python
 module name `debian_support` becomes the BTS usertag `debian-support`.
 
