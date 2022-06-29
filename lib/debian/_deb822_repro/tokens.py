@@ -251,7 +251,8 @@ class Deb822FieldSeparatorToken(Deb822Token):
 
     __slots__ = ()
 
-    def __init__(self) -> None:
+    def __init__(self):
+        # type: () -> None
         super().__init__(':')
 
 
@@ -260,7 +261,8 @@ class Deb822CommaToken(Deb822SeparatorToken):
 
     __slots__ = ()
 
-    def __init__(self) -> None:
+    def __init__(self):
+        # type: () -> None
         super().__init__(',')
 
 
@@ -269,7 +271,8 @@ class Deb822PipeToken(Deb822SeparatorToken):
 
     __slots__ = ()
 
-    def __init__(self) -> None:
+    def __init__(self):
+        # type: () -> None
         super().__init__('|')
 
 
@@ -290,19 +293,22 @@ class Deb822ValueDependencyVersionRelationOperatorToken(Deb822Token):
     __slots__ = ()
 
 
-def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb822Token]:
-    # type(Iterable[Union[str, bytes]]) -> Iterable[Deb822Token]
+def tokenize_deb822_file(sequence, encoding='utf-8'):
+    # type: (Iterable[Union[str, bytes]], str) -> Iterable[Deb822Token]
     """Tokenize a deb822 file
 
     :param sequence: An iterable of lines (a file open for reading will do)
+    :param encoding: The encoding to use (this is here to support Deb822-like
+       APIs, new code should not use this parameter).
     """
     current_field_name = None
     field_name_cache = {}  # type: Dict[str, _strI]
 
-    def _as_str(s: Iterable[Union[str, bytes]]) -> Iterable[str]:
+    def _as_str(s):
+        # type: (Iterable[Union[str, bytes]]) -> Iterable[str]
         for x in s:
             if isinstance(x, bytes):
-                x = x.decode('utf-8')
+                x = x.decode(encoding)
             yield x
 
     text_stream = BufferingIterator(_as_str(sequence))  # type: BufferingIterator[str]

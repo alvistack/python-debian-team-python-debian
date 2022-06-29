@@ -23,6 +23,7 @@ import warnings
 
 from debian import copyright
 from debian import deb822
+from debian._deb822_repro import parse_deb822_file, Deb822ParagraphElement
 
 
 try:
@@ -132,6 +133,131 @@ License: 123
 """
 
 FORMAT = 'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'
+
+
+class RestrictedWrapperTest(unittest.TestCase):
+    class Wrapper(copyright._RestrictedWrapper):
+        restricted_field = deb822.RestrictedField('Restricted-Field')
+        required_field = deb822.RestrictedField('Required-Field', allow_none=False)
+        space_separated = deb822.RestrictedField(
+                'Space-Separated',
+                from_str=lambda s: tuple((s or '').split()),
+                to_str=lambda seq: ' '.join(_no_space(s) for s in seq) or None)
+
+    def test_unrestricted_get_and_set(self):
+        # type: () -> None
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Foo'] = 'bar'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual('bar', wrapper['Foo'])
+        wrapper['foo'] = 'baz'
+        self.assertEqual('baz', wrapper['Foo'])
+        self.assertEqual('baz', wrapper['foo'])
+
+        multiline = 'First line\n Another line'
+        wrapper['X-Foo-Bar'] = multiline
+        self.assertEqual(multiline, wrapper['X-Foo-Bar'])
+        self.assertEqual(multiline, wrapper['x-foo-bar'])
+
+        expected_data = Deb822ParagraphElement.new_empty_paragraph()
+        expected_data['Foo'] = 'baz'
+        expected_data['X-Foo-Bar'] = multiline
+        self.assertEqual(expected_data.keys(), data.keys())
+        self.assertEqual(expected_data, data)
+
+    def test_trivially_restricted_get_and_set(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Required-Field'] = 'some value'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual('some value', wrapper.required_field)
+        self.assertEqual('some value', wrapper['Required-Field'])
+        self.assertEqual('some value', wrapper['required-field'])
+        self.assertIsNone(wrapper.restricted_field)
+
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['Required-Field'] = 'foo'
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['required-field'] = 'foo'
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['Restricted-Field'] = 'foo'
+        with self.assertRaises(deb822.RestrictedFieldError):
+            wrapper['Restricted-field'] = 'foo'
+
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['Required-Field']
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['required-field']
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['Restricted-Field']
+        with self.assertRaises(deb822.RestrictedFieldError):
+            del wrapper['restricted-field']
+
+        with self.assertRaises(TypeError):
+            wrapper.required_field = None           # type: ignore
+
+        wrapper.restricted_field = 'special value'  # type: ignore
+        self.assertEqual('special value', data['Restricted-Field'])
+        wrapper.restricted_field = None             # type: ignore
+        self.assertFalse('Restricted-Field' in data)
+        self.assertIsNone(wrapper.restricted_field)
+
+        wrapper.required_field = 'another value'    # type: ignore
+        self.assertEqual('another value', data['Required-Field'])
+
+    def test_set_already_none_to_none(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        wrapper = self.Wrapper(data)
+        wrapper.restricted_field = 'Foo'   # type: ignore
+        wrapper.restricted_field = None    # type: ignore
+        self.assertFalse('restricted-field' in data)
+        wrapper.restricted_field = None    # type: ignore
+        self.assertFalse('restricted-field' in data)
+
+    def test_processed_get_and_set(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Space-Separated'] = 'foo bar baz'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual(('foo', 'bar', 'baz'), wrapper.space_separated)
+        wrapper.space_separated = ['bar', 'baz', 'quux']     # type: ignore
+        self.assertEqual('bar baz quux', data['space-separated'])
+        self.assertEqual('bar baz quux', wrapper['space-separated'])
+        self.assertEqual(('bar', 'baz', 'quux'), wrapper.space_separated)
+
+        with self.assertRaises(ValueError) as cm:
+            wrapper.space_separated = ('foo', 'bar baz')    # type: ignore
+        self.assertEqual(('whitespace not allowed',), cm.exception.args)
+
+        wrapper.space_separated = None     # type: ignore
+        self.assertEqual((), wrapper.space_separated)
+        self.assertFalse('space-separated' in data)
+        self.assertFalse('Space-Separated' in data)
+
+        wrapper.space_separated = ()     # type: ignore
+        self.assertEqual((), wrapper.space_separated)
+        self.assertFalse('space-separated' in data)
+        self.assertFalse('Space-Separated' in data)
+
+    def test_dump(self):   # type: ignore
+        # mypy can't cope with the metaprogramming here
+        data = Deb822ParagraphElement.new_empty_paragraph()
+        data['Foo'] = 'bar'
+        data['Baz'] = 'baz'
+        data['Space-Separated'] = 'baz quux'
+        data['Required-Field'] = 'required value'
+        data['Restricted-Field'] = 'restricted value'
+
+        wrapper = self.Wrapper(data)
+        self.assertEqual(data.dump(), wrapper.dump())
+
+        wrapper.restricted_field = 'another value'        # type: ignore
+        wrapper.space_separated = ('bar', 'baz', 'quux')  # type: ignore
+        self.assertEqual(data.dump(), wrapper.dump())
 
 
 class LineBasedTest(unittest.TestCase):
@@ -294,7 +420,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_basic_parse_success(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         self.assertEqual(FORMAT, c.header.format)
         self.assertEqual(FORMAT, c.header['Format'])
         self.assertEqual('X Solitaire', c.header.upstream_name)
@@ -307,13 +433,13 @@ class CopyrightTest(unittest.TestCase):
 
     def test_parse_and_dump(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         dumped = c.dump()
         self.assertEqual(SIMPLE, dumped)
 
     def test_all_paragraphs(self):
         # type: () -> None
-        c = copyright.Copyright(MULTI_LICENSE.splitlines())
+        c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
         expected = []  # type: List[copyright.AllParagraphTypes]
         expected.append(c.header)
         expected.extend(list(c.all_files_paragraphs()))
@@ -323,7 +449,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_all_files_paragraphs(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         self.assertEqual(
             [('*',), ('debian/*',)],
             [fp.files for fp in c.all_files_paragraphs()])
@@ -333,7 +459,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_find_files_paragraph(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         paragraphs = list(c.all_files_paragraphs())
 
         self.assertIs(paragraphs[0], c.find_files_paragraph('Makefile'))
@@ -357,10 +483,10 @@ class CopyrightTest(unittest.TestCase):
 
     def test_all_license_paragraphs(self):
         # type: () -> None
-        c = copyright.Copyright(sequence=SIMPLE.splitlines())
+        c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         self.assertEqual([], list(c.all_license_paragraphs()))
 
-        c = copyright.Copyright(MULTI_LICENSE.splitlines())
+        c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
         self.assertEqual(
             [copyright.License('ABC', '[ABC TEXT]'),
              copyright.License('123', '[123 TEXT]')],
@@ -376,7 +502,7 @@ class CopyrightTest(unittest.TestCase):
 
     def test_error_on_invalid(self):
         # type: () -> None
-        lic = SIMPLE.splitlines()
+        lic = SIMPLE.splitlines(True)
         with self.assertRaises(copyright.MachineReadableFormatError) as cm:
             # missing License field from 1st Files stanza
             c = copyright.Copyright(sequence=lic[0:10])
@@ -396,7 +522,7 @@ class MultlineTest(unittest.TestCase):
 
     def setUp(self):
         # type: () -> None
-        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines()))
+        paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
         self.formatted = paragraphs[1]['License']
         self.parsed = 'GPL-2+\n' + GPL_TWO_PLUS_TEXT
         self.parsed_lines = self.parsed.splitlines()
@@ -506,7 +632,7 @@ class LicenseTest(unittest.TestCase):
 
     def test_typical(self):
         # type: () -> None
-        paragraphs = list(deb822.Deb822.iter_paragraphs(SIMPLE.splitlines()))
+        paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
         p = paragraphs[1]
         l = copyright.License.from_str(p['license'])
         if l is not None:
@@ -523,7 +649,7 @@ class LicenseParagraphTest(unittest.TestCase):
 
     def test_properties(self):
         # type: () -> None
-        d = deb822.Deb822()
+        d = Deb822ParagraphElement.new_empty_paragraph()
         d['License'] = 'GPL-2'
         lp = copyright.LicenseParagraph(d)
         self.assertEqual('GPL-2', lp['License'])
@@ -544,14 +670,14 @@ class LicenseParagraphTest(unittest.TestCase):
 
     def test_no_license(self):
         # type: () -> None
-        d = deb822.Deb822()
+        d = Deb822ParagraphElement.new_empty_paragraph()
         with self.assertRaises(ValueError) as cm:
             copyright.LicenseParagraph(d)
         self.assertEqual(('"License" field required',), cm.exception.args)
 
     def test_also_has_files(self):
         # type: () -> None
-        d = deb822.Deb822()
+        d = Deb822ParagraphElement.new_empty_paragraph()
         d['License'] = 'GPL-2\n [LICENSE TEXT]'
         d['Files'] = '*'
         with self.assertRaises(ValueError) as cm:
@@ -561,10 +687,13 @@ class LicenseParagraphTest(unittest.TestCase):
 
     def test_try_set_files(self):
         # type: () -> None
-        lp = copyright.LicenseParagraph(
-            deb822.Deb822({'License': 'GPL-2\n [LICENSE TEXT]'}))
+
+        d = Deb822ParagraphElement.new_empty_paragraph()
+        d['License'] = 'GPL-2\n [LICENSE TEXT]'
+        lp = copyright.LicenseParagraph(d)
         with self.assertRaises(deb822.RestrictedFieldError):
             lp['Files'] = 'foo/*'
+
 
 class GlobsToReTest(unittest.TestCase):
 
@@ -689,7 +818,7 @@ class FilesParagraphTest(unittest.TestCase):
 
     def setUp(self):
         # type: () -> None
-        self.prototype = deb822.Deb822()
+        self.prototype = Deb822ParagraphElement.new_empty_paragraph()
         self.prototype['Files'] = '*'
         self.prototype['Copyright'] = 'Foo'
         self.prototype['License'] = 'ISC'
@@ -777,13 +906,13 @@ class HeaderTest(unittest.TestCase):
 
     def test_format_upgrade_no_header(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         with self.assertRaises(copyright.NotMachineReadableError):
             copyright.Header(data=data)
 
     def test_format_https_upgrade(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = "http%s" % FORMAT[5:]
         with self.assertLogs('debian.copyright', level='WARNING') as cm:
             self.assertIsNotNone(cm)
@@ -805,7 +934,7 @@ class HeaderTest(unittest.TestCase):
 
     def test_upstream_contact_single_read(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = FORMAT
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>'
         h = copyright.Header(data=data)
@@ -813,7 +942,7 @@ class HeaderTest(unittest.TestCase):
 
     def test_upstream_contact_multi1_read(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = FORMAT
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>\n http://bar.com/foo'
         h = copyright.Header(data=data)
@@ -823,7 +952,7 @@ class HeaderTest(unittest.TestCase):
 
     def test_upstream_contact_multi2_read(self):
         # type: () -> None
-        data = deb822.Deb822()
+        data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = FORMAT
         data['Upstream-Contact'] = (
             '\n Foo Bar <foo@bar.com>\n http://bar.com/foo')
@@ -862,6 +991,14 @@ class HeaderTest(unittest.TestCase):
         h.license = None   # type: ignore
         self.assertIsNone(h.license)
         self.assertFalse('license' in h)   # type: ignore
+
+
+def _no_space(s):
+    # type: (str) -> str
+    """Returns s.  Raises ValueError if s contains any whitespace."""
+    if re.search(r'\s', s):
+        raise ValueError('whitespace not allowed')
+    return s
 
 
 if __name__ == '__main__':

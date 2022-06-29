@@ -36,6 +36,7 @@ try:
     from typing import (
         Any,
         Callable,
+        FrozenSet,
         IO,
         Iterable,
         Iterator,
@@ -45,8 +46,8 @@ try:
         Text,
         Tuple,
         Union,
-        TYPE_CHECKING,
-    )
+        TYPE_CHECKING, cast,
+)
 
     ParagraphTypes = Union["FilesParagraph", "LicenseParagraph"]
     AllParagraphTypes = Union["Header", "FilesParagraph", "LicenseParagraph"]
@@ -54,8 +55,18 @@ except ImportError:
     # Lack of typing is not important at runtime
     TYPE_CHECKING = False
 
-from debian import deb822
+from debian._deb822_repro.parsing import (
+    parse_deb822_file,
+    Deb822ParagraphElement,
+    Deb822FileElement, Deb822NoDuplicateFieldsParagraphElement,
+)
+from debian.deb822 import RestrictedField, RestrictedFieldError
 
+try:
+    # Typing only
+    from debian.deb822 import Deb822ValueType
+except ImportError:
+    pass
 
 _CURRENT_FORMAT = (
     'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/')
@@ -147,17 +158,15 @@ class Copyright(object):
         """
         super(Copyright, self).__init__()
 
-        self.__paragraphs = []  # type: List[ParagraphTypes]
+        self.__paragraphs = []  # type: List[AllParagraphTypes]
 
         if sequence is not None:
-            paragraphs = list(deb822.Deb822.iter_paragraphs(
-                sequence=sequence, encoding=encoding))
-            if not paragraphs:
-                raise NotMachineReadableError('no paragraphs in input')
-            self.__header = Header(paragraphs[0])
-            for i in range(1, len(paragraphs)):
-                p = paragraphs[i]
-                if 'Files' in p:
+            header = None
+            self.__file = parse_deb822_file(sequence=sequence, encoding=encoding)
+            for p in self.__file:
+                if header is None:
+                    header = Header(p)
+                elif 'Files' in p:
                     pf = FilesParagraph(p, strict)
                     self.__paragraphs.append(pf)
                 elif 'License' in p:
@@ -166,9 +175,15 @@ class Copyright(object):
                 else:
                     _complain('Non-header paragraph has neither "Files" nor '
                               '"License" fields', strict)
+            if not header:
+                raise NotMachineReadableError('no paragraphs in input')
+            self.__header = header
 
         else:
+            self.__file = Deb822FileElement.new_empty_file()
             self.__header = Header()
+            self.__file.append(self.__header._underlying_paragraph)
+            self.__paragraphs.append(self.__header)
 
     @property
     def header(self):
@@ -236,6 +251,7 @@ class Copyright(object):
             if isinstance(p, FilesParagraph):
                 last_i = i
         self.__paragraphs.insert(last_i + 1, paragraph)
+        self.__file.insert(last_i + 1, paragraph._underlying_paragraph)
 
     def all_license_paragraphs(self):
         # type: () -> Iterator[LicenseParagraph]
@@ -251,6 +267,7 @@ class Copyright(object):
         if not isinstance(paragraph, LicenseParagraph):
             raise TypeError('paragraph must be a LicenseParagraph instance')
         self.__paragraphs.append(paragraph)
+        self.__file.append(paragraph._underlying_paragraph)
 
     def dump(self, f=None):
         # type: (Optional[IO[Text]]) -> Optional[str]
@@ -261,17 +278,13 @@ class Copyright(object):
         (i.e. that accepts unicode objects directly).  It is thus up to the
         caller to arrange for the file to do any appropriate encoding.
         """
-        return_string = False
-        if f is None:
-            return_string = True
-            f = io.StringIO()
-        self.header.dump(f, text_mode=True)
-        for p in self.__paragraphs:
-            f.write('\n')
-            p.dump(f, text_mode=True)
-        if return_string:
-            return f.getvalue()    # type: ignore
-        return None
+        # TODO(jelmer): Write bytes
+        s = self.__file.dump()
+        if f is not None:
+            f.write(s)
+            return None
+        return s
+
 
 def _single_line(s):
     # type: (str) -> str
@@ -359,7 +372,7 @@ class _SpaceSeparated(object):
 
 def format_multiline(s):
     # type: (Optional[str]) -> Optional[str]
-    """Formats multiline text for insertion in a Deb822 field.
+    """Formats multiline text for insertion in a Deb822ParagraphElement field.
 
     Each line except for the first one is prefixed with a single space.  Lines
     that are blank or only whitespace are replaced with ' .'
@@ -500,7 +513,176 @@ def globs_to_re(globs):
     return re.compile(buf.getvalue(), re.MULTILINE | re.DOTALL)
 
 
-class FilesParagraph(deb822.RestrictedWrapper):
+class _ClassInitMeta(type):
+    """Metaclass for classes that can be initialized at creation time.
+
+    Implement the method::
+
+      @classmethod
+      def _class_init(cls, new_attrs):
+          pass
+
+    on a class, and apply this metaclass to it.  The _class_init method will be
+    called right after the class is created.  The 'new_attrs' param is a dict
+    containing the attributes added in the definition of the class.
+    """
+
+    def __init__(cls,          # type: Any
+                 name,         # type: Any
+                 bases,        # type: Any
+                 attrs,        # type: Any
+                 ):
+        # type (...) -> None
+        super(_ClassInitMeta, cls).__init__(name, bases, attrs)
+        cls._class_init(attrs)
+
+
+class _RestrictedWrapper(metaclass=_ClassInitMeta):
+    """Base class to wrap a Deb822 object, restricting write access to some keys.
+
+    The underlying data is hidden internally.  Subclasses may keep a reference
+    to the data before giving it to this class's constructor, if necessary, but
+    RestrictedField should cover most use-cases.  The dump method from
+    Deb822 is directly proxied.
+
+    Typical usage::
+
+        class Foo(object):
+            def __init__(self, ...):
+                # ...
+
+            @staticmethod
+            def from_str(self, s):
+                # Parse s...
+                return Foo(...)
+
+            def to_str(self):
+                # Return in string format.
+                return ...
+
+        class MyClass(deb822._RestrictedWrapper):
+            def __init__(self):
+                data = Deb822ParagraphElement.new_empty_paragraph()
+                data['Bar'] = 'baz'
+                super(MyClass, self).__init__(data)
+
+            foo = deb822.RestrictedField(
+                    'Foo', from_str=Foo.from_str, to_str=Foo.to_str)
+
+            bar = deb822.RestrictedField('Bar', allow_none=False)
+
+        d = MyClass()
+        d['Bar'] # returns 'baz'
+        d['Bar'] = 'quux' # raises RestrictedFieldError
+        d.bar = 'quux'
+        d.bar # returns 'quux'
+        d['Bar'] # returns 'quux'
+
+        d.foo = Foo(...)
+        d['Foo'] # returns string representation of foo
+    """
+
+    __restricted_fields = frozenset()    # type: FrozenSet[str]
+
+    @classmethod
+    def _class_init(cls, new_attrs):  # type: ignore
+        restricted_fields = []
+        for attr_name, val in new_attrs.items():
+            if isinstance(val, RestrictedField):
+                restricted_fields.append(val.name.lower())
+                cls.__init_restricted_field(attr_name, val)  # type: ignore
+        cls.__restricted_fields = frozenset(restricted_fields)
+
+    @classmethod
+    def __init_restricted_field(cls, attr_name, field):  # type: ignore
+        def getter(self):
+            # type: (_RestrictedWrapper) -> Deb822ValueType
+            val = self.__data.get(field.name)
+            if field.from_str is not None:
+                return field.from_str(val)
+            return val
+
+        def setter(self, val):
+            # type: (_RestrictedWrapper, Deb822ValueType) -> None
+            if val is not None and field.to_str is not None:
+                val = field.to_str(val)
+            if val is None:
+                if field.allow_none:
+                    if field.name in self.__data:
+                        del self.__data[field.name]
+                else:
+                    raise TypeError('value must not be None')
+            else:
+                self.__data[field.name] = val
+
+        setattr(cls, attr_name, property(getter, setter, None, field.name))
+
+    def __init__(self, data):
+        # type: (Deb822ParagraphElement) -> None
+        """Initializes the wrapper over 'data', a Deb822ParagraphElement object."""
+        super(_RestrictedWrapper, self).__init__()
+        if not isinstance(data, Deb822NoDuplicateFieldsParagraphElement):
+            raise ValueError("Paragraph has duplicated fields: " + str(data.__class__.__qualname__))
+        self.__data = data    # type: Deb822NoDuplicateFieldsParagraphElement
+
+    @property
+    def _underlying_paragraph(self):
+        # type: () -> Deb822ParagraphElement
+        return self.__data
+
+    def __getitem__(self, key):
+        # type: (str) -> Deb822ValueType
+        return self.__data[key]
+
+    def __setitem__(self, key, value):
+        # type: (str, Deb822ValueType) -> None
+        if key.lower() in self.__restricted_fields:
+            raise RestrictedFieldError(
+                '%s may not be modified directly; use the associated'
+                ' property' % key)
+        self.__data[key] = value
+
+    def __delitem__(self, key):
+        # type: (str) -> None
+        if key.lower() in self.__restricted_fields:
+            raise RestrictedFieldError(
+                '%s may not be modified directly; use the associated'
+                ' property' % key)
+        del self.__data[key]
+
+    def __iter__(self):
+        # type: () -> Iterable[str]
+        return iter(self.__data)
+
+    def __len__(self):
+        # type: () -> int
+        return len(self.__data)
+
+    def dump(self,
+             fd=None,             # type: Optional[Union[IO[str], IO[bytes]]]
+             encoding=None,       # type: Optional[str]
+             text_mode=False,     # type: bool
+             ):
+        # type: (...) -> Optional[str]
+        """Calls dump() on the underlying data object.
+
+        See Deb822.dump for more information.
+        """
+        if fd is not None:
+            if encoding is None and not text_mode:
+                self.__data.dump(cast('IO[bytes]', fd))
+                return None
+            # Compat with Deb822's dump
+            as_str = self.__data.dump()
+            if encoding is not None:
+                cast('IO[bytes]', fd).write(as_str.encode(encoding))
+            elif text_mode:
+                cast('IO[str]', fd).write(as_str)
+            return None
+        return self.__data.dump()
+
+
+class FilesParagraph(_RestrictedWrapper):
     """Represents a Files paragraph of a debian/copyright file.
 
     This kind of paragraph is used to specify the copyright and license for a
@@ -510,7 +692,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
     _default_re = re.compile('')
 
     def __init__(self, data, _internal_validate=True, strict=True):
-        # type: (deb822.Deb822, bool, bool) -> None
+        # type: (Deb822ParagraphElement, bool, bool) -> None
         super(FilesParagraph, self).__init__(data)
 
         if _internal_validate:
@@ -540,7 +722,7 @@ class FilesParagraph(deb822.RestrictedWrapper):
         :param license: The Licence for the files.
         """
         # pylint: disable=redefined-builtin
-        p = cls(deb822.Deb822(), _internal_validate=False)
+        p = cls(Deb822ParagraphElement.new_empty_paragraph(), _internal_validate=False)
         # mypy doesn't handle the metaprogrammed properties at all
         p.files = files          # type: ignore
         p.copyright = copyright  # type: ignore
@@ -568,20 +750,20 @@ class FilesParagraph(deb822.RestrictedWrapper):
             return False
         return pat.match(filename) is not None
 
-    files = deb822.RestrictedField(
+    files = RestrictedField(
         'Files', from_str=_SpaceSeparated.from_str,
         to_str=_SpaceSeparated.to_str, allow_none=False)
 
-    copyright = deb822.RestrictedField('Copyright', allow_none=False)
+    copyright = RestrictedField('Copyright', allow_none=False)
 
-    license = deb822.RestrictedField(
+    license = RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
         allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')
+    comment = RestrictedField('Comment')
 
 
-class LicenseParagraph(deb822.RestrictedWrapper):
+class LicenseParagraph(_RestrictedWrapper):
     """Represents a standalone license paragraph of a debian/copyright file.
 
     Minimally, this kind of paragraph requires a 'License' field and has no
@@ -590,7 +772,7 @@ class LicenseParagraph(deb822.RestrictedWrapper):
     """
 
     def __init__(self, data, _internal_validate=True):
-        # type: (deb822.Deb822, bool) -> None
+        # type: (Deb822ParagraphElement, bool) -> None
         super(LicenseParagraph, self).__init__(data)
         if _internal_validate:
             if 'License' not in data:
@@ -606,24 +788,24 @@ class LicenseParagraph(deb822.RestrictedWrapper):
         # pylint: disable=redefined-builtin
         if not isinstance(license, License):
             raise TypeError('license must be a License instance')
-        paragraph = cls(deb822.Deb822(), _internal_validate=False)
+        paragraph = cls(Deb822ParagraphElement.new_empty_paragraph(), _internal_validate=False)
         paragraph.license = license   # type: ignore  ## properties
         return paragraph
 
     # TODO(jsw): Validate that the synopsis of the license is a short name or
     # short name with exceptions (not an alternatives expression).  This
     # requires help from the License class.
-    license = deb822.RestrictedField(
+    license = RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str,
         allow_none=False)
 
-    comment = deb822.RestrictedField('Comment')
+    comment = RestrictedField('Comment')
 
     # Hide 'Files'.
-    __files = deb822.RestrictedField('Files')  # pylint: disable=unused-private-member
+    __files = RestrictedField('Files')
 
 
-class Header(deb822.RestrictedWrapper):
+class Header(_RestrictedWrapper):
     """Represents the header paragraph of a debian/copyright file.
 
     Property values are all immutable, such that in order to modify them you
@@ -631,14 +813,14 @@ class Header(deb822.RestrictedWrapper):
     """
 
     def __init__(self, data=None):
-        # type: (Optional[deb822.Deb822]) -> None
+        # type: (Optional[Deb822ParagraphElement]) -> None
         """Initializer.
 
-        :param data: A deb822.Deb822 object for underlying data.  If None, a
+        :param data: A Deb822ParagraphElement object for underlying data.  If None, a
             new one will be created.
         """
         if data is None:
-            data = deb822.Deb822()
+            data = Deb822ParagraphElement.new_empty_paragraph()
             data['Format'] = _CURRENT_FORMAT
 
         if 'Format-Specification' in data:
@@ -681,31 +863,31 @@ class Header(deb822.RestrictedWrapper):
         return self.format == _CURRENT_FORMAT   # type: ignore
 
     # lots of type ignores due to  https://github.com/python/mypy/issues/1279
-    format = deb822.RestrictedField(
+    format = RestrictedField(
         'Format', to_str=_single_line, allow_none=False)
 
-    upstream_name = deb822.RestrictedField(
+    upstream_name = RestrictedField(
         'Upstream-Name', to_str=_single_line)
 
-    upstream_contact = deb822.RestrictedField(
+    upstream_contact = RestrictedField(
         'Upstream-Contact', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
 
-    source = deb822.RestrictedField('Source')
+    source = RestrictedField('Source')
 
-    disclaimer = deb822.RestrictedField('Disclaimer')
+    disclaimer = RestrictedField('Disclaimer')
 
-    comment = deb822.RestrictedField('Comment')
+    comment = RestrictedField('Comment')
 
-    license = deb822.RestrictedField(
+    license = RestrictedField(
         'License', from_str=License.from_str, to_str=License.to_str)
 
-    copyright = deb822.RestrictedField('Copyright')
+    copyright = RestrictedField('Copyright')
 
-    files_excluded = deb822.RestrictedField(
+    files_excluded = RestrictedField(
         'Files-Excluded', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)
 
-    files_included = deb822.RestrictedField(
+    files_included = RestrictedField(
         'Files-Included', from_str=_LineBased.from_str,
         to_str=_LineBased.to_str)

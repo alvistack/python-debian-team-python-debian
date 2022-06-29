@@ -228,7 +228,6 @@ Deb822 Classes
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import collections
 import collections.abc
 import datetime
 import email.utils
@@ -604,7 +603,7 @@ class Deb822Dict(_Deb822Dict_base):
 class Deb822(Deb822Dict):
     """ Generic Deb822 data
 
-    :param sequence: a string, or any any object that returns a line of
+    :param sequence: a string, or any object that returns a line of
         input each time, normally a file.  Alternately, sequence can
         be a dict that contains the initial key-value pairs. When
         python-apt is present, sequence can also be a compressed object,
@@ -946,7 +945,7 @@ class Deb822(Deb822Dict):
              text_mode=False,     # type: bool
             ):
         # type: (...) -> Optional[str]
-        """Dump the the contents in the original format
+        """Dump the contents in the original format
 
         :param fd: file-like object to which the data should be written
             (see notes below)
@@ -2408,30 +2407,6 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
         return debian.debian_support.Version(version)
 
 
-class _ClassInitMeta(type):
-    """Metaclass for classes that can be initialized at creation time.
-
-    Implement the method::
-
-      @classmethod
-      def _class_init(cls, new_attrs):
-          pass
-
-    on a class, and apply this metaclass to it.  The _class_init method will be
-    called right after the class is created.  The 'new_attrs' param is a dict
-    containing the attributes added in the definition of the class.
-    """
-
-    def __init__(cls,          # type: Any
-                 name,         # type: Any
-                 bases,        # type: Any
-                 attrs,        # type: Any
-                 ):
-        # type (...) -> None
-        super(_ClassInitMeta, cls).__init__(name, bases, attrs)
-        cls._class_init(attrs)
-
-
 class RestrictedField(collections.namedtuple(
         'RestrictedField', 'name from_str to_str allow_none')):
     """Placeholder for a property providing access to a restricted field.
@@ -2466,134 +2441,6 @@ class RestrictedField(collections.namedtuple(
         return super(RestrictedField, cls).__new__(
             cls, name, from_str=from_str, to_str=to_str,
             allow_none=allow_none)
-
-
-class RestrictedWrapper(metaclass=_ClassInitMeta):
-    """Base class to wrap a Deb822 object, restricting write access to some keys.
-
-    The underlying data is hidden internally.  Subclasses may keep a reference
-    to the data before giving it to this class's constructor, if necessary, but
-    RestrictedField should cover most use-cases.  The dump method from
-    Deb822 is directly proxied.
-
-    Typical usage::
-
-        class Foo(object):
-            def __init__(self, ...):
-                # ...
-
-            @staticmethod
-            def from_str(self, s):
-                # Parse s...
-                return Foo(...)
-
-            def to_str(self):
-                # Return in string format.
-                return ...
-
-        class MyClass(deb822.RestrictedWrapper):
-            def __init__(self):
-                data = deb822.Deb822()
-                data['Bar'] = 'baz'
-                super(MyClass, self).__init__(data)
-
-            foo = deb822.RestrictedField(
-                    'Foo', from_str=Foo.from_str, to_str=Foo.to_str)
-
-            bar = deb822.RestrictedField('Bar', allow_none=False)
-
-        d = MyClass()
-        d['Bar'] # returns 'baz'
-        d['Bar'] = 'quux' # raises RestrictedFieldError
-        d.bar = 'quux'
-        d.bar # returns 'quux'
-        d['Bar'] # returns 'quux'
-
-        d.foo = Foo(...)
-        d['Foo'] # returns string representation of foo
-    """
-
-    __restricted_fields = frozenset()    # type: FrozenSet[str]
-
-    @classmethod
-    def _class_init(cls, new_attrs): # type: ignore
-        restricted_fields = []
-        for attr_name, val in new_attrs.items():
-            if isinstance(val, RestrictedField):
-                restricted_fields.append(val.name.lower())
-                cls.__init_restricted_field(attr_name, val)  # type: ignore
-        cls.__restricted_fields = frozenset(restricted_fields)
-
-    @classmethod
-    def __init_restricted_field(cls, attr_name, field):  # type: ignore
-        def getter(self):
-            # type: (RestrictedWrapper) -> Deb822ValueType
-            val = self.__data.get(field.name)
-            if field.from_str is not None:
-                return field.from_str(val)
-            return val
-
-        def setter(self, val):
-            # type: (RestrictedWrapper, Deb822ValueType) -> None
-            if val is not None and field.to_str is not None:
-                val = field.to_str(val)
-            if val is None:
-                if field.allow_none:
-                    if field.name in self.__data:
-                        del self.__data[field.name]
-                else:
-                    raise TypeError('value must not be None')
-            else:
-                self.__data[field.name] = val
-
-        setattr(cls, attr_name, property(getter, setter, None, field.name))
-
-    def __init__(self, data):
-        # type: (Deb822) -> None
-        """Initializes the wrapper over 'data', a Deb822 object."""
-        super(RestrictedWrapper, self).__init__()
-        self.__data = data    # type: Deb822
-
-    def __getitem__(self, key):
-        # type: (str) -> Deb822ValueType
-        return self.__data[key]
-
-    def __setitem__(self, key, value):
-        # type: (str, Deb822ValueType) -> None
-        if key.lower() in self.__restricted_fields:
-            raise RestrictedFieldError(
-                '%s may not be modified directly; use the associated'
-                ' property' % key)
-        self.__data[key] = value
-
-    def __delitem__(self, key):
-        # type: (str) -> None
-        if key.lower() in self.__restricted_fields:
-            raise RestrictedFieldError(
-                '%s may not be modified directly; use the associated'
-                ' property' % key)
-        del self.__data[key]
-
-    def __iter__(self):
-        # type: () -> Iterable[str]
-        return iter(self.__data)
-
-    def __len__(self):
-        # type: () -> int
-        return len(self.__data)
-
-    def dump(self,
-             fd=None,             # type: Optional[Union[IO[str], IO[bytes]]]
-             encoding=None,       # type: Optional[str]
-             text_mode=False,     # type: bool
-             ):
-        # type: (...) -> Optional[str]
-        """Calls dump() on the underlying data object.
-
-        See Deb822.dump for more information.
-        """
-        return self.__data.dump(fd, encoding, text_mode)
-
 
 class Removals(Deb822):
     """Represent an ftp-master removals.822 file

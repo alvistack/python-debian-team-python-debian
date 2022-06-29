@@ -1,13 +1,15 @@
 import collections
 import collections.abc
 import logging
+import sys
 import textwrap
+from abc import ABC
 
 try:
     from typing import (
         Optional, Union, Iterable, Callable, TYPE_CHECKING, Iterator,
-        Type, cast, List,
-    )
+        Type, cast, List, Generic,
+)
     from debian._util import T
     from debian._deb822_repro.types import TE, R, TokenOrElement
 
@@ -28,7 +30,7 @@ if TYPE_CHECKING:
 def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element']
               *,
               end_marker_after=5,  # type: Optional[int]
-              output_function=None,  # type: Optional[Callable[[str], None]]
+              output_function=None  # type: Optional[Callable[[str], None]]
               ):
     # type: (...) -> None
     """Debugging aid, which can dump a Deb822Element or a list of tokens/elements
@@ -81,7 +83,7 @@ def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element'
 def combine_into_replacement(source_class,  # type: Type[TE]
                              replacement_class,  # type: Type[R]
                              *,
-                             constructor=None,  # type: Optional[Callable[[List[TE]], R]]
+                             constructor=None  # type: Optional[Callable[[List[TE]], R]]
                              ):
     # type: (...) -> _combine_parts_ret_type[TE, R]
     """Combines runs of one type into another type
@@ -114,9 +116,19 @@ def combine_into_replacement(source_class,  # type: Type[TE]
     return _impl
 
 
-class BufferingIterator(collections.abc.Iterator[T]):
+if sys.version_info >= (3, 8) or TYPE_CHECKING:
+    _bufferingIterator_Base = collections.abc.Iterator[T]
+else:
+    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # - use this little hack to work around it
+    class _bufferingIterator_Base(collections.abc.Iterator, Generic[T], ABC):
+        pass
 
-    def __init__(self, stream: Iterable[T]) -> None:
+
+class BufferingIterator(_bufferingIterator_Base[T], Generic[T]):
+
+    def __init__(self, stream):
+        # type: (Iterable[T]) -> None
         self._stream = iter(stream)  # type: Iterator[T]
         self._buffer = collections.deque()  # type: collections.deque[T]
         self._expired = False  # type: bool
@@ -161,7 +173,7 @@ class BufferingIterator(collections.abc.Iterator[T]):
 
     def peek_find(self,
                   predicate,  # type: Callable[[T], bool]
-                  limit=None,  # type: Optional[int]
+                  limit=None  # type: Optional[int]
                   ):
         # type: (...) -> Optional[int]
         buffer = self._buffer
@@ -217,7 +229,7 @@ class BufferingIterator(collections.abc.Iterator[T]):
 
 def len_check_iterator(content,  # type: str
                        stream,  # type: Iterable[TE]
-                       content_len=None,  # type: Optional[int]
+                       content_len=None  # type: Optional[int]
                        ):
     # type: (...) -> Iterable[TE]
     """Flatten a parser's output into tokens and verify it covers the entire line/text"""

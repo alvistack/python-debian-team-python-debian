@@ -10,46 +10,20 @@ try:
 
     TokenOrElement = Union['Deb822Element', 'Deb822Token']
     TE = TypeVar('TE', bound=TokenOrElement)
-    TE.__doc__ = """
-    Generic "Token or Element" type
-    """
 
     # Used as a resulting element for "mapping" functions that map TE -> R (see _combine_parts)
     R = TypeVar('R', bound='Deb822Element')
-    R.__doc__ = """
-    For internal usage in _deb822_repro
-    """
 
     VE = TypeVar('VE', bound='Deb822Element')
-    VE.__doc__ = """
-    Value type/element in a list interpretation of a field value
-    """
 
     ST = TypeVar('ST', bound='Deb822Token')
-    ST.__doc__ = """
-    Separator type/token in a list interpretation of a field value
-    """
 
     # Internal type for part of the paragraph key.  Used to facility _unpack_key.
     ParagraphKeyBase = Union['Deb822FieldNameToken', str]
-    ParagraphKeyBase.__doc__ = """
-    For internal usage in _deb822_repro
-    """
 
     ParagraphKey = Union[ParagraphKeyBase, Tuple[str, int]]
-    ParagraphKey.__doc__ = """
-    Anything accepted as a key for a paragraph field lookup.  The simple case being
-    a str. Alternative variants are mostly interesting for paragraphs with repeated
-    fields (to enable unambiguous lookups)
-    """
 
     Commentish = Union[List[str], 'Deb822CommentElement']
-    Commentish.__doc__ = """
-    Anything accepted as input for a Comment. The simple case is the list
-    of string (each element being a line of comment). The alternative format is
-    there for enable reuse of an existing element (e.g. to avoid "unpacking"
-    only to "re-pack" an existing comment element).
-    """
 
     FormatterCallback = Callable[[
                                      str,
@@ -58,11 +32,42 @@ try:
                                  ],
                                  Iterator[Union['FormatterContentToken', str]]
                                  ]
-    FormatterCallback.__doc__ = """\
-    Formatter callback used with the round-trip safe parser
-
-    See debian._repro_deb822.formatter.format_field for details
-    """
+    try:
+        # Set __doc__ attributes if possible
+        TE.__doc__ = """
+        Generic "Token or Element" type
+        """
+        R.__doc__ = """
+        For internal usage in _deb822_repro
+        """
+        VE.__doc__ = """
+        Value type/element in a list interpretation of a field value
+        """
+        ST.__doc__ = """
+        Separator type/token in a list interpretation of a field value
+        """
+        ParagraphKeyBase.__doc__ = """
+        For internal usage in _deb822_repro
+        """
+        ParagraphKey.__doc__ = """
+        Anything accepted as a key for a paragraph field lookup.  The simple case being
+        a str. Alternative variants are mostly interesting for paragraphs with repeated
+        fields (to enable unambiguous lookups)
+        """
+        Commentish.__doc__ = """
+        Anything accepted as input for a Comment. The simple case is the list
+        of string (each element being a line of comment). The alternative format is
+        there for enable reuse of an existing element (e.g. to avoid "unpacking"
+        only to "re-pack" an existing comment element).
+        """
+        FormatterCallback.__doc__ = """\
+        Formatter callback used with the round-trip safe parser
+    
+        See debian._repro_deb822.formatter.format_field for details
+        """
+    except AttributeError:
+        # Python 3.5 does not allow update to the __doc__ attribute - ignore that
+        pass
 except ImportError:
     pass
 
