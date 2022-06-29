@@ -33,6 +33,7 @@ unit-tests:
   - .unit-tests
   after_script:
   - python3-coverage html
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   variables:
     # Omit --cov-report to generate a report that gitlab can pick up with its log parser
     COVERAGE: --cov --cov-branch --cov-append
