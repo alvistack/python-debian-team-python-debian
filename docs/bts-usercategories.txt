@@ -11,6 +11,7 @@ usercategory module
   + changelog module [5:changelog]
   + debfile/arfile modules [5:debfile]
   + debtags module [5:debtags]
+  + substvars module [5:substvars]
   + watch module [5:watch]
   + new modules [9:new]
 
