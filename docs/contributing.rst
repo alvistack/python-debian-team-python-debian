@@ -50,21 +50,21 @@ situations, `python-debian` should remain consistent with other implementations.
 Notable specifications:
 
  - `Debian Policy`_
- - `dpkg-dev man pages <https://manpages.debian.org/stretch/dpkg-dev/>`_ including:
-    - `deb-control(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-control.5.html>`_,
+ - `dpkg-dev man pages <https://manpages.debian.org/sid/dpkg-dev/>`_ including:
+    - `deb-control(5) <https://manpages.debian.org/sid/dpkg-dev/deb-control.5.html>`_,
       the `control` file in the binary package (generated from
       `debian/control` in the source package)
-    - `deb-version(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-version.5.html>`_,
+    - `deb-version(5) <https://manpages.debian.org/sid/dpkg-dev/deb-version.5.html>`_,
       Debian version strings.
-    - `deb-changelog(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-changelog.5.html>`_,
+    - `deb-changelog(5) <https://manpages.debian.org/sid/dpkg-dev/deb-changelog.5.html>`_,
       changelogs for Debian packages.
-    - `deb-changes(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-changes.5.html>`_,
+    - `deb-changes(5) <https://manpages.debian.org/sid/dpkg-dev/deb-changes.5.html>`_,
       `changes` files that developers upload to add new packages to the
       archive.
     - `deb-substvars(5) <https://manpages.debian.org/sid/dpkg-dev/deb-substvars.5.html>`_,
       `substvars` files that track substitution variables in packaging that
       help automate package steps.
-    - `dsc(5) <https://manpages.debian.org/stretch/dpkg-dev/dsc.5.html>`_,
+    - `dsc(5) <https://manpages.debian.org/sid/dpkg-dev/dsc.5.html>`_,
       Debian Source Control file that defines the files that are part of a
       source package.
  - `Debian mirror format <http://wiki.debian.org/RepositoryFormat>`_,
