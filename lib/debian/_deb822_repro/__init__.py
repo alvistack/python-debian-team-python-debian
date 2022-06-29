@@ -1,4 +1,4 @@
-# The "from X import Y as Y" looks weird but we are stuck in a fight
+# The "from X import Y as Y" looks weird, but we are stuck in a fight
 # between mypy and pylint in the CI.
 #
 #    mypy --strict insists on either of following for re-exporting

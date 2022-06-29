@@ -49,8 +49,13 @@ from debian.deprecation import function_deprecated_by
 
 try:
     import apt_pkg
-    apt_pkg.init()
-    _have_apt_pkg = True
+    try:
+        apt_pkg.init()
+        _have_apt_pkg = True
+    except apt_pkg.Error:
+        # If dpkg (e.g., tupledata) is missing, we can import apt_pkg but .init()
+        # will raise an exception
+        _have_apt_pkg = False
 except ImportError:
     _have_apt_pkg = False
 
@@ -82,6 +87,12 @@ except ImportError:
             " implementation because it depends on OpenSSL, which"
             " may not be linked with this library due to license"
             " incompatibilities")
+
+
+# Re-exports
+import debian._arch_table
+
+DpkgArchTable = debian._arch_table.DpkgArchTable
 
 
 class ParseError(Exception):

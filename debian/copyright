@@ -70,6 +70,13 @@ Files:
 Copyright: Copyright (C) 2021 Niels Thykier <niels@thykier.net>
 License: GPL-2+
 
+Files: lib/debian/_arch_table.py
+Copyright: Copyright © 2006-2015 Guillem Jover <guillem@debian.org>
+           Copyright (C) 2014, Ansgar Burchardt <ansgar@debian.org>
+           Copyright (C) 2014-2017, Johannes Schauer Marin Rodrigues <josch@debian.org>
+           Copyright (C) 2022, Niels Thykier <niels@thykier.net>
+License: GPL-2+
+
 License: GPL-2+
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
