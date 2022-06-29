@@ -61,6 +61,9 @@ Notable specifications:
     - `deb-changes(5) <https://manpages.debian.org/stretch/dpkg-dev/deb-changes.5.html>`_,
       `changes` files that developers upload to add new packages to the
       archive.
+    - `deb-substvars(5) <https://manpages.debian.org/sid/dpkg-dev/deb-substvars.5.html>`_,
+      `substvars` files that track substitution variables in packaging that
+      help automate package steps.
     - `dsc(5) <https://manpages.debian.org/stretch/dpkg-dev/dsc.5.html>`_,
       Debian Source Control file that defines the files that are part of a
       source package.

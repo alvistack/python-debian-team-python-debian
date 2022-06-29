@@ -27,6 +27,7 @@ API Documentation:
    api/debian.debian_support
    api/debian.debtags
    api/debian.deprecation
+   api/debian.substvars
    api/debian._deb822_repro
    api/debian._deb822_repro.formatter
    api/debian._deb822_repro.parsing
