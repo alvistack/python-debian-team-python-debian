@@ -232,6 +232,7 @@ import collections
 import collections.abc
 import datetime
 import email.utils
+import functools
 import logging
 import io
 import re
@@ -337,6 +338,13 @@ def _has_fileno(f):
         return True
     except (AttributeError, io.UnsupportedOperation):
         return False
+
+
+# In Python 3.10, there is a default of 128. Python 3.5 requires an explicit cache size.
+@functools.lru_cache(128)
+def _cached_strI(v):
+    # type: (str) -> _strI
+    return _strI(v)
 
 
 GPGV_DEFAULT_KEYRINGS = frozenset(['/usr/share/keyrings/debian-keyring.gpg'])
@@ -467,9 +475,9 @@ class Deb822Dict(_Deb822Dict_base):
         if _parsed is not None:
             self.__parsed = _parsed
             if _fields is None:
-                self.__keys.extend([_strI(k) for k in self.__parsed])
+                self.__keys.extend([_cached_strI(k) for k in self.__parsed])
             else:
-                self.__keys.extend([_strI(f) for f in _fields if f in self.__parsed])
+                self.__keys.extend([_cached_strI(f) for f in _fields if f in self.__parsed])
 
     # ### BEGIN collections.abc.MutableMapping methods
 
@@ -484,7 +492,8 @@ class Deb822Dict(_Deb822Dict_base):
 
     def __setitem__(self, key, value):
         # type: (str, Deb822ValueType) -> None
-        keyi = _strI(key)
+        # The `_cached_strI` pays off in the long run (with Packages files or similar sized files)
+        keyi = _cached_strI(key)
         self.__keys.add(keyi)
         self.__dict[keyi] = value
 
@@ -754,40 +763,30 @@ class Deb822(Deb822Dict):
 
     @staticmethod
     def _skip_useless_lines(sequence):
-        # type: (IterableInputDataType) -> Union[Iterator[bytes], Iterator[str]]
+        # type: (IterableInputDataType) -> Union[Iterator[bytes]]
         """Yields only lines that do not begin with '#'.
 
         Also skips any blank lines at the beginning of the input.
         """
         at_beginning = True
         for line in sequence:
-            # The bytes/str polymorphism required here to support Python 3
-            # is unpleasant, but fortunately limited.  We need this because
-            # at this point we might have been given either bytes or
-            # Unicode, and we haven't yet got to the point where we can try
-            # to decode a whole paragraph and detect its encoding.
-            if isinstance(line, bytes):
-                if line.startswith(b'#'):
-                    continue
-            else:
-                if line.startswith('#'):
-                    continue
+            # _skip_useless_lines is only called before one place and that prefers
+            # bytes, so we can just convert the input into bytes and simplify
+            # our checks.
+            if isinstance(line, str):
+                line = line.encode()
+            if line.startswith(b'#'):
+                continue
             if at_beginning:
-                if isinstance(line, bytes):
-                    if not line.rstrip(b'\r\n'):
-                        continue
-                else:
-                    if not line.rstrip('\r\n'):
-                        continue
+                if not line.rstrip(b'\r\n'):
+                    continue
                 at_beginning = False
             yield line
 
     # regexps for parsing the Deb822 data
     # The key is non-whitespace, non-colon characters before any colon.
     _key_part = r"^(?P<key>[^: \t\n\r\f\v]+)\s*:\s*"
-    _single = re.compile(_key_part + r"(?P<data>\S.*?)\s*$")
-    _multi = re.compile(_key_part + r"$")
-    _multidata = re.compile(r"^\s(?P<data>.+?)\s*$")
+    _new_field_re = re.compile(_key_part + r"(?P<data>(?:\S+(\s+\S+)*)?)\s*$")
 
     # Explicit source entries in the file can be either:
     #   Source: source_package
@@ -818,35 +817,23 @@ class Deb822(Deb822Dict):
                 self._skip_useless_lines(sequence), strict):
             line = self.decoder.decode(linebytes)
 
-            m = self._single.match(line)
+            m = self._new_field_re.match(line)
             if m:
                 if curkey:
                     self[curkey] = content
 
-                if not wanted_field(m.group('key')):
+                curkey = m.group('key')
+
+                if not wanted_field(curkey):
                     curkey = None
                     continue
 
-                curkey = m.group('key')
                 content = m.group('data')
                 continue
 
-            m = self._multi.match(line)
-            if m:
-                if curkey:
-                    self[curkey] = content
-
-                if not wanted_field(m.group('key')):
-                    curkey = None
-                    continue
-
-                curkey = m.group('key')
-                content = ""
-                continue
-
-            m = self._multidata.match(line)
-            if m:
-                content += '\n' + line   # XXX not m.group('data')?
+            # Skip lines that entirely whitespace
+            if line and line[0].isspace() and not line.isspace():
+                content += '\n' + line
                 continue
 
         if curkey:
@@ -1097,9 +1084,6 @@ class Deb822(Deb822Dict):
     # regexps for finding the gpg header around signed data
     _gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
                         br'PGP (?P<what>[^-]+)-----[\r\t ]*$')
-    _initial_blank_line = re.compile(br'^\s*$')
-    _blank_line_whitespace = re.compile(br'^\s*$')
-    _blank_line_no_whitespace = re.compile(br'^$')
 
     @staticmethod
     def split_gpg_and_payload(sequence,         # type: Union[Iterator[bytes], Iterator[str]]
@@ -1130,10 +1114,7 @@ class Deb822(Deb822Dict):
 
         # Include whitespace-only lines in blank lines to split paragraphs.
         # (see #715558)
-        if strict.get('whitespace-separates-paragraphs', True):
-            blank_line = Deb822._blank_line_whitespace
-        else:
-            blank_line = Deb822._blank_line_no_whitespace
+        accept_empty_or_whitespace = strict.get('whitespace-separates-paragraphs', True)
         first_line = True
 
         for line_ in sequence:
@@ -1150,15 +1131,19 @@ class Deb822(Deb822Dict):
 
             # skip initial blank lines, if any
             if first_line:
-                if Deb822._initial_blank_line.match(line):
+                if not line or line.isspace():
                     continue
                 first_line = False
 
-            m = Deb822._gpgre.match(line)
+            m = Deb822._gpgre.match(line) if line.startswith(b'-') else None
+            # We unconditionally compute whether it is a blank line.  We need it for all lines
+            # that are not GPG lines (which is the vast major of lines).  For Packages files,
+            # using this "simple" solution is about 5% faster than regexes.
+            is_empty_line = not line or line.isspace() if accept_empty_or_whitespace else not line
 
             if not m:
                 if state == b'SAFE':
-                    if not blank_line.match(line):
+                    if not is_empty_line:
                         lines.append(line)
                     else:
                         if not gpg_pre_lines:
@@ -1166,7 +1151,7 @@ class Deb822(Deb822Dict):
                             # this blank line
                             break
                 elif state == b'SIGNED MESSAGE':
-                    if blank_line.match(line):
+                    if is_empty_line:
                         state = b'SAFE'
                     else:
                         gpg_pre_lines.append(line)
@@ -1178,7 +1163,7 @@ class Deb822(Deb822Dict):
                 elif m.group('action') == b'END':
                     gpg_post_lines.append(line)
                     break
-                if not blank_line.match(line):
+                if not is_empty_line:
                     if not lines:
                         gpg_pre_lines.append(line)
                     else:
@@ -1233,10 +1218,15 @@ class Deb822(Deb822Dict):
         if value.endswith('\n'):
             raise ValueError("value must not end in '\\n'")
 
+        if '\n' not in value:
+            return
+
         # Make sure there are no blank lines (actually, the first one is
         # allowed to be blank, but no others), and each subsequent line starts
         # with whitespace
-        for line in value.splitlines()[1:]:
+        for no, line in enumerate(value.splitlines()):
+            if no == 0:
+                continue
             if not line:
                 raise ValueError("value must not have blank lines")
             if not line[0].isspace():

@@ -23,27 +23,20 @@ def resolve_ref(ref):
 class _CaseInsensitiveString(str):
     """Case insensitive string.
     """
-    __slots__ = ['str_lower', 'str_orig']
+    __slots__ = ['str_lower']
 
     if TYPE_CHECKING:  # pragma: no cover
-        # neither pylint nor mypy cope with str_lower/str_orig being defined in __new__
+        # neither pylint nor mypy cope with str_lower being defined in __new__
         def __init__(self, s):
             # type: (str) -> None
             super(_CaseInsensitiveString, self).__init__(s)   # type: ignore
             self.str_lower = ''
-            self.str_orig = ''
 
     def __new__(cls, str_):  # type: ignore
         s = str.__new__(cls, str_)
-        # The deb822 parser modules need to preserve the original case on key iteration.
-        # We might as well cache it so it is easy to retrieve with str()
-        s.str_orig = str_
+        # We cache the lower case version of the string to speed up some operations
         s.str_lower = str_.lower()
         return s
-
-    def __str__(self):
-        # type: () -> str
-        return self.str_orig
 
     def __hash__(self):
         # type: () -> int
@@ -232,7 +225,12 @@ class LinkedList(Generic[T]):
         else:
             # Primarily as a hint to mypy
             assert self.tail_node is not None
-            self.tail_node.insert_after(node)
+            # Optimize for lots of appends (will happen if you are reading a Packages file) by
+            # inlining relevant bits of tail_node.insert_after (removing unnecessary checks and
+            # linking).
+            assert self.tail_node is not node
+            node.previous_node = self.tail_node
+            self.tail_node.next_node = node
             self.tail_node = node
         self._size += 1
         return node

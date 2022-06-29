@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from debian._deb822_repro.parsing import Deb822Element
 
 
-_RE_WHITESPACE_LINE = re.compile(r'^\s+$')
 # Consume whitespace and a single word.
 _RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
     (?P<space_before>\s*)                # Consume any whitespace before the word
@@ -329,14 +328,14 @@ def tokenize_deb822_file(sequence: Iterable[Union[str, bytes]]) -> Iterable[Deb8
             if line == '':
                 raise ValueError("Line " + str(no) + " was completely empty.  The tokenizer expects"
                                  " whitespace (including newlines) to be present")
-        if _RE_WHITESPACE_LINE.match(line):
+        if line.isspace():
             if current_field_name:
                 # Blank lines terminate fields
                 current_field_name = None
 
             # If there are multiple whitespace-only lines, we combine them
             # into one token.
-            r = list(text_stream.takewhile(lambda x: _RE_WHITESPACE_LINE.match(x) is not None))
+            r = list(text_stream.takewhile(str.isspace))
             if r:
                 line += "".join(r)
 
@@ -422,7 +421,7 @@ def _value_line_tokenizer(func):
         # type: (str) -> Iterable[Deb822Token]
         first_line = True
         for line in v.splitlines(keepends=True):
-            assert not _RE_WHITESPACE_LINE.match(v)
+            assert not v.isspace()
             if line.startswith("#"):
                 yield Deb822CommentToken(line)
                 continue
