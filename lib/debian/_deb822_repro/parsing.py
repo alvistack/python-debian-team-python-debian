@@ -493,6 +493,13 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         if force_reformat:
             self._changed = True
 
+    def clear(self):
+        # type: () -> None
+        """Like list.clear() - removes all content (including comments and spaces)"""
+        if self._token_list:
+            self._changed = True
+        self._token_list.clear()
+
     def _iter_content_as_tokens(self):
         # type: () -> Iterable[Deb822Token]
         for te in self._token_list:
@@ -539,27 +546,35 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         field_name = kvpair_element.field_name
         token_list = self._token_list
         tail = token_list.tail
+        had_tokens = False
 
         for t in self._iter_content_as_tokens():
+            had_tokens = True
             if not t.is_comment and not t.is_whitespace:
                 break
         else:
-            raise ValueError("Field must have content (i.e. non-whitespace and non-comments)")
+            if had_tokens:
+                raise ValueError("Field must be completely empty or have content "
+                                 "(i.e. non-whitespace and non-comments)")
+        if tail is not None:
+            if isinstance(tail, Deb822Token) and tail.is_comment:
+                raise ValueError("Fields must not end on a comment")
+            if not tail.convert_to_text().endswith("\n"):
+                # Always end on a newline
+                self.append_newline()
 
-        assert tail is not None
-        if isinstance(tail, Deb822Token) and tail.is_comment:
-            raise ValueError("Fields must not end on a comment")
-        if not tail.convert_to_text().endswith("\n"):
-            # Always end on a newline
-            self.append_newline()
+            if self._format_preserve_original_formatting:
+                value_text = self._generate_field_content()
+                text = ':'.join((field_name, value_text))
+            else:
+                text = self._generate_reformatted_field_content()
 
-        if self._format_preserve_original_formatting:
-            value_text = self._generate_field_content()
-            text = ':'.join((field_name, value_text))
+            new_content = text.splitlines(keepends=True)
         else:
-            text = self._generate_reformatted_field_content()
-
-        new_content = text.splitlines(keepends=True)
+            # Special-case for the empty list which will be mapped to
+            # an empty field.  Always end on a newline (avoids errors
+            # if there is a field after this)
+            new_content = [field_name + ":\n"]
 
         # As absurd as it might seem, it is easier to just use the parser to
         # construct the AST correctly
@@ -1601,7 +1616,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ...               arm64
             ...               armel
             ... '''
-            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines())
             >>> paragraph = next(iter(dfile))
             >>> list_view = paragraph.as_interpreted_dict_view(LIST_SPACE_SEPARATED_INTERPRETATION)
             >>> # With the defaults, you only deal with the semantic values
@@ -1679,7 +1694,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             ... # Inline comment (associated with the next line)
             ...          libbar,
             ... '''
-            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines())
             >>> paragraph = next(iter(dfile))
             >>> # With the defaults, you only deal with the semantic values
             >>> # - no leading or trailing whitespace on the first part of the value
@@ -1711,7 +1726,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
              another value
             >>> # On the other hand, you can choose to see the values as they are
             >>> # - We will just reset the paragraph as a "nothing up my sleeve"
-            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines())
             >>> paragraph = next(iter(dfile))
             >>> nonstd_dictview = paragraph.configured_view(
             ...     discard_comments_on_read=False,
@@ -1895,7 +1910,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             >>> example_deb822_paragraph = '''
             ... Package: foo
             ... '''
-            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines())
             >>> p = next(iter(dfile))
             >>> p.set_field_to_simple_value("Package", "mscgen")
             >>> p.set_field_to_simple_value("Architecture", "linux-any kfreebsd-any",
@@ -1936,7 +1951,12 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         # Reformat it with a leading space and trailing newline. The latter because it is
         # necessary if there are any fields after it and the former because it looks nicer so
         # have single space after the field separator
-        raw_value = ' ' + simple_value.strip() + "\n"
+        stripped = simple_value.strip()
+        if stripped:
+            raw_value = ' ' + stripped + "\n"
+        else:
+            # Special-case for empty values
+            raw_value = "\n"
         self.set_field_from_raw_string(
             item,
             raw_value,
@@ -1964,7 +1984,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
             >>> example_deb822_paragraph = '''
             ... Package: foo
             ... '''
-            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+            >>> dfile = parse_deb822_file(example_deb822_paragraph.splitlines())
             >>> p = next(iter(dfile))
             >>> raw_value = '''
             ... Build-Depends: debhelper-compat (= 12),
@@ -2654,7 +2674,7 @@ class Deb822FileElement(Deb822Element):
         ... Package: libfoo-dev
         ... Depends: libfoo1 (= ${binary:Version}), ${shlib:Depends}, ${misc:Depends}
         ... '''.lstrip()
-        >>> deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        >>> deb822_file = parse_deb822_file(original.splitlines())
         >>> para1 = Deb822ParagraphElement.new_empty_paragraph()
         >>> para1["Source"] = "foo"
         >>> para1["Build-Depends"] = "debhelper-compat (= 13)"
