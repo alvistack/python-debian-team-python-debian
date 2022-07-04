@@ -1448,12 +1448,12 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
                     field_comment=comment,
                 )
                 return
-            # Regenerate the first line with normalized whitespace
+            # Regenerate the first line with normalized whitespace if necessary
             first_line, rest = value.split("\n", 1)
-            if first_line:
+            if first_line and first_line[:1] not in ('\t', ' '):
                 value = "".join((" ", first_line.strip(), "\n", rest))
             else:
-                value = "".join(("\n", rest))
+                value = "".join((first_line, "\n", rest))
         if not value.endswith("\n"):
             if not self._auto_map_final_newline_in_multiline_values:
                 raise ValueError("Values must end with a newline (or be single line"

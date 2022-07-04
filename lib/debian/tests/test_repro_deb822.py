@@ -1773,5 +1773,16 @@ class FormatPreservingDeb822ParserTests(TestCase):
         ''')
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
-        source_paragraph['Build-Depends'] = '\n debhelper-compat (= 11),\n uuid-dev'
+        source_paragraph['Build-Depends'] = source_paragraph['Build-Depends']
+        self.assertEqual(original, deb822_file.convert_to_text())
+
+        original = textwrap.dedent('''\
+        Package: foo
+        Build-Depends: 
+         debhelper-compat (= 11),
+         uuid-dev
+        ''')
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file))
+        source_paragraph['Build-Depends'] = ' \n debhelper-compat (= 11),\n uuid-dev'
         self.assertEqual(original, deb822_file.convert_to_text())
