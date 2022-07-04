@@ -1,3 +1,39 @@
+""" Facilities for reading and writing Debian substvars files
+
+The aim of this module is to provide programmatic access to Debian substvars
+files to query and manipulate them. The format for the changelog is defined in
+`deb-substvars(5)
+<https://manpages.debian.org/stretch/dpkg-dev/deb-substvars.5.html>`_
+
+Overview
+========
+
+The most common use-case for substvars is for package helpers to add or update
+a substvars (e.g., to add a dependency).  This would look something like:
+
+    >>> from debian.substvars import Substvars
+    >>> from tempfile import TemporaryDirectory
+    >>> import os
+    >>> # Using a tmp dir for the sake of doctests
+    >>> with TemporaryDirectory() as debian_dir:
+    ...    filename = os.path.join(debian_dir, "foo.substvars")
+    ...    with Substvars.load_from_path(filename, missing_ok=True) as svars:
+    ...        svars.add_dependency("misc:Depends", "bar (>= 1.0)")
+
+By default, the module creates new substvars as "mandatory" substvars (that
+triggers a warning by dpkg-gecontrol if not used.  However, it does also
+support the "optional" substvars introduced in dpkg 1.21.8.  See
+`Substvars.as_substvars` for an example of how to use the "optional"
+substvars.
+
+
+The :class:`Substvars` class is the key class within this module.
+
+Substvars Classes
+-----------------
+"""
+
+
 import contextlib
 import errno
 import re
