@@ -301,35 +301,23 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
     current_field_name = None
     field_name_cache = {}  # type: Dict[str, _strI]
 
-    def _as_str(s):
+    def _normalize_input(s):
         # type: (Iterable[Union[str, bytes]]) -> Iterable[str]
         for x in s:
             if isinstance(x, bytes):
                 x = x.decode(encoding)
+            if not x.endswith("\n"):
+                # We always end on a newline because it makes a lot of code simpler.  The pain
+                # points relates to mutations that add content after the last field.  Sadly, these
+                # mutations can happen via adding fields, reordering fields, etc. and are too hard
+                # to track to make it worth it to support the special case that makes up missing
+                # a newline at the end of the file.
+                x += "\n"
             yield x
 
-    text_stream = BufferingIterator(_as_str(sequence))  # type: BufferingIterator[str]
-    auto_correct_newlines = False
-    first_line = text_stream.peek()
-    if first_line is not None and not first_line.endswith("\n"):
-        # Special-case: Single line files count as "last line without a newline" rather than
-        # auto-correction.
-        auto_correct_newlines = text_stream.peek_at(2) is not None
+    text_stream = BufferingIterator(_normalize_input(sequence))  # type: BufferingIterator[str]
 
-    for no, line in enumerate(text_stream, start=1):
-        if auto_correct_newlines:
-            if line.endswith("\n"):
-                raise ValueError("Input is inconsistent with its line endings! Lines must "
-                                 "consistently be *with* or *without* line endings")
-            line += "\n"
-        elif not line.endswith("\n"):
-            # We expect newlines at the end of each line except the last.
-            if text_stream.peek() is not None:
-                raise ValueError("Invalid line iterator: Line " + str(no) + " did not end on a"
-                                 " newline and it is not the last line in the stream!")
-            if line == '':
-                raise ValueError("Line " + str(no) + " was completely empty.  The tokenizer expects"
-                                 " whitespace (including newlines) to be present")
+    for line in text_stream:
         if line.isspace():
             if current_field_name:
                 # Blank lines terminate fields
@@ -355,17 +343,11 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
                 # We emit a separate whitespace token for the newline as it makes some
                 # things easier later (see _build_value_line)
                 leading = sys.intern(line[0])
-                if line.endswith('\n'):
-                    line = line[1:-1]
-                    emit_newline_token = True
-                else:
-                    line = line[1:]
-                    emit_newline_token = False
-
+                # Pull out the leading space and newline
+                line = line[1:-1]
                 yield Deb822ValueContinuationToken(leading)
                 yield Deb822ValueToken(line)
-                if emit_newline_token:
-                    yield Deb822NewlineAfterValueToken()
+                yield Deb822NewlineAfterValueToken()
             else:
                 yield Deb822ErrorToken(line)
             continue
@@ -378,7 +360,6 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
             (field_name, _, space_before, value, space_after) = field_line_match.groups()
 
             current_field_name = field_name_cache.get(field_name)
-            emit_newline_token = False
 
             if value is None or value == '':
                 # If there is no value, then merge the two space elements into space_after
@@ -389,8 +370,7 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
             if space_after:
                 # We emit a separate whitespace token for the newline as it makes some
                 # things easier later (see _build_value_line)
-                emit_newline_token = space_after.endswith('\n')
-                if emit_newline_token:
+                if space_after.endswith('\n'):
                     space_after = space_after[:-1]
 
             if current_field_name is None:
@@ -411,8 +391,7 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
                 yield Deb822ValueToken(value)
             if space_after:
                 yield Deb822WhitespaceToken(sys.intern(space_after))
-            if emit_newline_token:
-                yield Deb822NewlineAfterValueToken()
+            yield Deb822NewlineAfterValueToken()
         else:
             yield Deb822ErrorToken(line)
 
@@ -422,8 +401,8 @@ def _value_line_tokenizer(func):
     def impl(v):
         # type: (str) -> Iterable[Deb822Token]
         first_line = True
-        for line in v.splitlines(keepends=True):
-            assert not v.isspace()
+        for no, line in enumerate(v.splitlines(keepends=True)):
+            assert not v.isspace() or no == 0
             if line.startswith("#"):
                 yield Deb822CommentToken(line)
                 continue

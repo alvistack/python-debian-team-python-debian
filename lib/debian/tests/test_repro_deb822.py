@@ -60,13 +60,26 @@ RoundTripParseCase = collections.namedtuple('RoundTripParseCase',
 # NB: As a side-effect of the implementation, the tests strips '¶' unconditionally.
 # Please another fancy glyph if you need to test non-standard characters.
 ROUND_TRIP_CASES = [
-    RoundTripParseCase(input='',
+    RoundTripParseCase(input='\n',
                        is_valid_file=False,
                        error_element_count=0,
                        duplicate_fields=False,
                        paragraph_count=0
                        ),
-    RoundTripParseCase(input='A: b',
+    RoundTripParseCase(input='A: b\n',
+                       is_valid_file=True,
+                       error_element_count=0,
+                       duplicate_fields=False,
+                       paragraph_count=1
+                       ),
+    RoundTripParseCase(input=textwrap.dedent('''\
+                        Source: debhelper
+                        # Trailing-whitespace
+                        # Comment before a field
+                        Build-Depends: po4a
+                        # Ending with an empty field
+                        Empty-Field:
+                        '''),
                        is_valid_file=True,
                        error_element_count=0,
                        duplicate_fields=False,
@@ -99,6 +112,8 @@ ROUND_TRIP_CASES = [
                         # will be using the end of line marker through out this paragraph  ¶
                         Package: libdebhelper-perl¶
                         Priority:optional ¶
+                        # Allowed for debian/control file
+                        Empty-Field:¶
                         Section:   section   ¶
                         #   Field starting  with     a space + newline (special-case)¶
                         Depends:¶
@@ -111,7 +126,8 @@ ROUND_TRIP_CASES = [
                                 , something  ¶
                                 , another¶
                         # Field that ends without a newline¶
-                        Architecture: all¶'''),
+                        Architecture: all¶
+                        '''),
                        paragraph_count=3,
                        is_valid_file=True,
                        duplicate_fields=False,
@@ -238,32 +254,6 @@ class FormatPreservingDeb822ParserTests(TestCase):
                                                     " with newlines omitted")
             logging.info("Successfully passed case " + c)
 
-    def test_invalid_input_newlines(self):
-        # type: () -> None
-
-        # Newlines must be provided consistently
-        file_input = ["A: B\n",
-                      "B: C",
-                      "C: D\n",
-                      ]
-        with self.assertRaises(ValueError):
-            parse_deb822_file(file_input)
-
-        file_input = ["A: B",
-                      "B: C\n",
-                      "C: D\n",
-                      ]
-        with self.assertRaises(ValueError):
-            parse_deb822_file(file_input)
-
-        # But it is ok for the last one to be missing a newline (as that is a feature
-        # of the input that might need to be preserved)
-        file_input = ["A: B\n",
-                      "B: C\n",
-                      "C: D",
-                      ]
-        parse_deb822_file(file_input)
-
     def test_deb822_emulation(self):
         # type: () -> None
 
@@ -359,6 +349,65 @@ class FormatPreservingDeb822ParserTests(TestCase):
           ''')
         self.assertEqual(expected, deb822_file.convert_to_text(),
                          "Mutation should have worked while preserving space + tab")
+
+    def test_empty_fields(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          Field: foo
+          Empty-Field:''')
+
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+
+        source_paragraph = next(iter(deb822_file))
+        self.assertEqual("", source_paragraph['Empty-Field'])
+        source_paragraph['Another-Empty-Field'] = ""
+        self.assertEqual("", source_paragraph['Another-Empty-Field'])
+        list_view = source_paragraph.as_interpreted_dict_view(LIST_SPACE_SEPARATED_INTERPRETATION)
+        with list_view['Empty-Field'] as empty_field:
+            self.assertFalse(bool(empty_field))
+
+        with list_view['Field'] as field:
+            self.assertTrue(bool(field))
+            field.clear()
+            self.assertFalse(bool(field))
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          Field:
+          Empty-Field:
+          Another-Empty-Field:
+          ''')
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked and generate a valid file")
+
+    def test_empty_fields_reorder(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+          Source: foo
+          Field: foo
+          Empty-Field:''')
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file))
+        source_paragraph.order_last('Field')
+        expected = textwrap.dedent('''\
+          Source: foo
+          Empty-Field:
+          Field: foo
+          ''')
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked and generate a valid file")
+        # Re-parse
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        source_paragraph = next(iter(deb822_file))
+        source_paragraph.order_first('Empty-Field')
+        expected = textwrap.dedent('''\
+          Empty-Field:
+          Source: foo
+          Field: foo
+          ''')
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Mutation should have worked and generate a valid file")
 
     def test_case_preservation(self):
         # type: () -> None

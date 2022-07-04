@@ -39,7 +39,7 @@ A concrete example::
     ... # Inline comment (associated with the next line)
     ...          libbar,
     ... '''
-    >>> deb822_file = parse_deb822_file(example_deb822_paragraph.splitlines(keepends=True))
+    >>> deb822_file = parse_deb822_file(example_deb822_paragraph.splitlines())
     >>> paragraph = next(iter(deb822_file))
     >>> paragraph['Section'] = 'devel'
     >>> output = deb822_file.dump()
@@ -96,6 +96,8 @@ the round-trip safe API. Given the following source text::
     >>> import contextlib
     >>> @contextlib.contextmanager
     ... def open_input():
+    ...     # Works with and without keepends=True.
+    ...     # Keep the ends here to truly emulate an open file.
     ...     yield dctrl_input.splitlines(keepends=True)
     >>> def open_output():
     ...    return open('/dev/null', 'wb')
