@@ -92,24 +92,21 @@ class Deb822Token:
     Deb822Token.
     """
 
-    __slots__ = ('_text', '_hash', '_parent_element', '__weakref__')
+    __slots__ = ('_text', '_parent_element', '__weakref__')
 
     def __init__(self, text):
         # type: (str) -> None
         if text == '':  # pragma: no cover
             raise ValueError("Tokens must have content")
         self._text = text  # type: str
-        self._hash = None  # type: Optional[int]
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
         self._verify_token_text()
 
     def __repr__(self):
         # type: () -> str
-        if self._text != "":
-            return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
-                                                text=self._text.replace('\n', '\\n')
-                                                )
-        return self.__class__.__name__
+        return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
+                                            text=self._text.replace('\n', '\\n')
+                                            )
 
     def _verify_token_text(self):
         # type: () -> None
@@ -325,8 +322,7 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
                 raise ValueError("Input is inconsistent with its line endings! Lines must "
                                  "consistently be *with* or *without* line endings")
             line += "\n"
-
-        if not line.endswith("\n"):
+        elif not line.endswith("\n"):
             # We expect newlines at the end of each line except the last.
             if text_stream.peek() is not None:
                 raise ValueError("Invalid line iterator: Line " + str(no) + " did not end on a"
