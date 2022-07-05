@@ -1,6 +1,8 @@
 python-debian (0.1.45) UNRELEASED; urgency=medium
 
   * Add Deb822FileElement.remove method.
+  * RTS parser: don't add trailing whitespace when setting field values
+    that start with a newline. Closes: #1013485
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 05 Jun 2022 15:39:21 +0100
 

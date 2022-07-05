@@ -1448,9 +1448,12 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
                     field_comment=comment,
                 )
                 return
-            # Regenerate the first line with normalized whitespace
+            # Regenerate the first line with normalized whitespace if necessary
             first_line, rest = value.split("\n", 1)
-            value = "".join((" ", first_line.strip(), "\n", rest))
+            if first_line and first_line[:1] not in ('\t', ' '):
+                value = "".join((" ", first_line.strip(), "\n", rest))
+            else:
+                value = "".join((first_line, "\n", rest))
         if not value.endswith("\n"):
             if not self._auto_map_final_newline_in_multiline_values:
                 raise ValueError("Values must end with a newline (or be single line"
@@ -1721,7 +1724,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
              another value
             >>> # The comment is present (in case you where wondering)
             >>> print(paragraph.get_kvpair_element('Bar').convert_to_text(), end='')
-            Bar: bar
+            Bar:     bar
             #Comment
              another value
             >>> # On the other hand, you can choose to see the values as they are
