@@ -21,7 +21,7 @@ import unittest
 from unittest import skipIf
 
 from debian.debian_support import DpkgArchTable
-from debian.tests.stubbed_arch_table import StubbedDpkgArchTable
+from .stubbed_arch_table import StubbedDpkgArchTable
 
 
 if os.path.isfile("/usr/share/dpkg/tupletable"):
