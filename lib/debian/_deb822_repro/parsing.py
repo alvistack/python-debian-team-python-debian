@@ -1724,7 +1724,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
              another value
             >>> # The comment is present (in case you where wondering)
             >>> print(paragraph.get_kvpair_element('Bar').convert_to_text(), end='')
-            Bar: bar
+            Bar:     bar
             #Comment
              another value
             >>> # On the other hand, you can choose to see the values as they are
