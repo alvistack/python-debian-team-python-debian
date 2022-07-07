@@ -1,8 +1,17 @@
 python-debian (0.1.45) unstable; urgency=medium
 
+  [ Jelmer Vernooĳ ]
   * Add Deb822FileElement.remove method.
   * RTS parser: don't add trailing whitespace when setting field values
     that start with a newline. Closes: #1013485
+  * RTS parser: Add Deb822FileElement.remove().
+
+  [ Niels Thykier ]
+  * RTS parser: minor performance improvements (~5%).
+  * RTS parser: Stop preserving lack of newlines at EOF. Closes: #998715
+  * Add substvars module for handling substvars.
+  * copyright: Use RTS parser.
+  * Provide `DpkgArchTable` class as a subset of `Dpkg::Arch`. Closes: #771058
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 05 Jul 2022 16:35:04 +0100
 
