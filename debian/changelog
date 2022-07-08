@@ -1,5 +1,7 @@
 python-debian (0.1.46) UNRELEASED; urgency=medium
 
+  * Copyright.add_files_paragraph(): Append after the last existing
+    files paragraph.
   * RTS parser: Fix removing and then re-adding a paragraph.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Jul 2022 12:27:49 +0100

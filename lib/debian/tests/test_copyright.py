@@ -476,10 +476,23 @@ class CopyrightTest(unittest.TestCase):
             ['bar/*'], 'CompanyB', copyright.License('Apache'))
         c.add_files_paragraph(files1)
         c.add_files_paragraph(files2)
-        self.assertIs(files1, c.find_files_paragraph('foo/bar.cc'))
-        self.assertIs(files2, c.find_files_paragraph('bar/baz.cc'))
+        paragraphs = list(c.all_files_paragraphs())
+        self.assertIs(paragraphs[0], c.find_files_paragraph('foo/bar.cc'))
+        self.assertIs(paragraphs[1], c.find_files_paragraph('bar/baz.cc'))
         self.assertIsNone(c.find_files_paragraph('baz/quux.cc'))
         self.assertIsNone(c.find_files_paragraph('Makefile'))
+
+        self.assertEqual("""\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: foo/*
+Copyright: CompanyA
+License: ISC
+
+Files: bar/*
+Copyright: CompanyB
+License: Apache
+""", c.dump())
 
     def test_all_license_paragraphs(self):
         # type: () -> None
