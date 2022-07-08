@@ -2767,29 +2767,26 @@ class Deb822FileElement(Deb822Element):
         if tail_element and not isinstance(tail_element, Deb822WhitespaceToken):
             self._token_and_elements.append(self._set_parent(Deb822WhitespaceToken('\n')))
         self._token_and_elements.append(self._set_parent(paragraph))
-        paragraph.parent_element = self
 
     def remove(self, paragraph):
         # type: (Deb822ParagraphElement) -> None
         if paragraph.parent_element is not self:
             raise ValueError("Paragraph is part of a different file")
-        it = self._token_and_elements.iter_nodes()
-        previous_node = None
-        for node in it:
+        node = None
+        for node in self._token_and_elements.iter_nodes():
             if node.value is paragraph:
                 break
-            previous_node = node
-        else:
+        if node is None:
             raise RuntimeError("unable to find paragraph")
-        self._token_and_elements.remove_node(node)  # pylint: disable=undefined-loop-variable
-        try:
-            next_node = next(it)
-        except StopIteration:
+        previous_node = node.previous_node
+        next_node = node.next_node
+        self._token_and_elements.remove_node(node)
+        if next_node is None:
             if previous_node and isinstance(previous_node.value, Deb822WhitespaceToken):
-                previous_node.remove()
+                self._token_and_elements.remove_node(previous_node)
         else:
             if isinstance(next_node.value, Deb822WhitespaceToken):
-                next_node.remove()
+                self._token_and_elements.remove_node(next_node)
         paragraph.parent_element = None
 
     def _set_parent(self, t):
