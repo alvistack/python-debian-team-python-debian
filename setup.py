@@ -55,11 +55,9 @@ setup(
     package_dir={'': 'lib'},
     packages=[
         'debian',
-        'debian_bundle',
         'debian._deb822_repro',
     ],
     package_data={'debian': ['py.typed']},
-    py_modules=['deb822'],
     python_requires='>=3.5',
     maintainer='Debian python-debian Maintainers',
     maintainer_email='pkg-python-debian-maint@lists.alioth.debian.org',

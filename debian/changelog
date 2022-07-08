@@ -1,3 +1,9 @@
+python-debian (0.1.46) UNRELEASED; urgency=medium
+
+  * Remove deprecated deb822 and debian_bundle.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Jul 2022 12:50:44 +0100
+
 python-debian (0.1.45) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
