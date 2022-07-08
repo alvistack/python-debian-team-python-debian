@@ -2772,15 +2772,15 @@ class Deb822FileElement(Deb822Element):
         # type: (Deb822ParagraphElement) -> None
         if paragraph.parent_element is not self:
             raise ValueError("Paragraph is part of a different file")
-        it = self._token_and_elements.iter_nodes()
-        for node in it:
+        node = None
+        for node in self._token_and_elements.iter_nodes():
             if node.value is paragraph:
                 break
-        else:
+        if node is None:
             raise RuntimeError("unable to find paragraph")
         previous_node = node.previous_node
         next_node = node.next_node
-        self._token_and_elements.remove_node(node)  # pylint: disable=undefined-loop-variable
+        self._token_and_elements.remove_node(node)
         if next_node is None:
             if previous_node and isinstance(previous_node.value, Deb822WhitespaceToken):
                 self._token_and_elements.remove_node(previous_node)
