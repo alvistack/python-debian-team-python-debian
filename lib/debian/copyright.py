@@ -251,7 +251,7 @@ class Copyright(object):
             if isinstance(p, FilesParagraph):
                 last_i = i
         self.__paragraphs.insert(last_i + 1, paragraph)
-        self.__file.insert(last_i + 1, paragraph._underlying_paragraph)
+        self.__file.insert(last_i + 2, paragraph._underlying_paragraph)
 
     def all_license_paragraphs(self):
         # type: () -> Iterator[LicenseParagraph]

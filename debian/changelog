@@ -1,3 +1,10 @@
+python-debian (0.1.46) UNRELEASED; urgency=medium
+
+  * Copyright.add_files_paragraph(): Append after the last existing
+    files paragraph.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Jul 2022 15:11:03 +0100
+
 python-debian (0.1.45) unstable; urgency=medium
 
   [ Jelmer Vernooĳ ]
