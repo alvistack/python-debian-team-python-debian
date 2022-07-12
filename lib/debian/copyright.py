@@ -162,12 +162,15 @@ class Copyright(object):
 
         if sequence is not None:
             header = None
-            self.__file = parse_deb822_file(sequence=sequence, encoding=encoding)
+            self.__file = parse_deb822_file(
+                    sequence=sequence, encoding=encoding,
+                    accept_files_with_error_tokens=not strict,
+                    accept_files_with_duplicated_fields=not strict)
             for p in self.__file:
                 if header is None:
                     header = Header(p)
                 elif 'Files' in p:
-                    pf = FilesParagraph(p, strict)
+                    pf = FilesParagraph(p, strict, strict=strict)
                     self.__paragraphs.append(pf)
                 elif 'License' in p:
                     pl = LicenseParagraph(p, strict)
@@ -617,11 +620,11 @@ class _RestrictedWrapper(metaclass=_ClassInitMeta):
 
         setattr(cls, attr_name, property(getter, setter, None, field.name))
 
-    def __init__(self, data):
+    def __init__(self, data, _internal_validate=True):
         # type: (Deb822ParagraphElement) -> None
         """Initializes the wrapper over 'data', a Deb822ParagraphElement object."""
         super(_RestrictedWrapper, self).__init__()
-        if not isinstance(data, Deb822NoDuplicateFieldsParagraphElement):
+        if _internal_validate and not isinstance(data, Deb822NoDuplicateFieldsParagraphElement):
             raise ValueError("Paragraph has duplicated fields: " + str(data.__class__.__qualname__))
         self.__data = data    # type: Deb822NoDuplicateFieldsParagraphElement
 
@@ -693,7 +696,7 @@ class FilesParagraph(_RestrictedWrapper):
 
     def __init__(self, data, _internal_validate=True, strict=True):
         # type: (Deb822ParagraphElement, bool, bool) -> None
-        super(FilesParagraph, self).__init__(data)
+        super(FilesParagraph, self).__init__(data, _internal_validate)
 
         if _internal_validate:
             if 'Files' not in data:
@@ -773,7 +776,7 @@ class LicenseParagraph(_RestrictedWrapper):
 
     def __init__(self, data, _internal_validate=True):
         # type: (Deb822ParagraphElement, bool) -> None
-        super(LicenseParagraph, self).__init__(data)
+        super(LicenseParagraph, self).__init__(data, _internal_validate)
         if _internal_validate:
             if 'License' not in data:
                 raise MachineReadableFormatError('"License" field required')
