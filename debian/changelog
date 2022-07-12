@@ -1,3 +1,9 @@
+python-debian (0.1.47) UNRELEASED; urgency=medium
+
+  * copyright: Allow duplicate fields when strict=False.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Jul 2022 18:16:28 +0100
+
 python-debian (0.1.46) unstable; urgency=medium
 
   * Copyright.add_files_paragraph(): Append after the last existing
