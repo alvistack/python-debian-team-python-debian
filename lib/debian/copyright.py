@@ -164,7 +164,6 @@ class Copyright(object):
             header = None
             self.__file = parse_deb822_file(
                     sequence=sequence, encoding=encoding,
-                    accept_files_with_error_tokens=not strict,
                     accept_files_with_duplicated_fields=not strict)
             for p in self.__file:
                 if header is None:
@@ -621,12 +620,12 @@ class _RestrictedWrapper(metaclass=_ClassInitMeta):
         setattr(cls, attr_name, property(getter, setter, None, field.name))
 
     def __init__(self, data, _internal_validate=True):
-        # type: (Deb822ParagraphElement) -> None
+        # type: (Deb822ParagraphElement, bool) -> None
         """Initializes the wrapper over 'data', a Deb822ParagraphElement object."""
         super(_RestrictedWrapper, self).__init__()
         if _internal_validate and not isinstance(data, Deb822NoDuplicateFieldsParagraphElement):
             raise ValueError("Paragraph has duplicated fields: " + str(data.__class__.__qualname__))
-        self.__data = data    # type: Deb822NoDuplicateFieldsParagraphElement
+        self.__data = data    # type: Deb822ParagraphElement
 
     @property
     def _underlying_paragraph(self):
@@ -655,7 +654,7 @@ class _RestrictedWrapper(metaclass=_ClassInitMeta):
 
     def __iter__(self):
         # type: () -> Iterable[str]
-        return iter(self.__data)
+        return (str(k) for k in self.__data)
 
     def __len__(self):
         # type: () -> int
