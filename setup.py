@@ -38,7 +38,7 @@ related files. Currently handled are:
 
 setup(
     name='python-debian',
-    version=debian.__version__,
+    version='0.1.43',
     description='Debian package related modules',
     long_description=description,
     license='GPL-2+',

@@ -1,0 +1,3 @@
+python-debian source: malformed-debian-changelog-version
+python-debian source: no-debian-changes
+python-debian source: runtime-test-file-uses-supported-python-versions-without-python-all-build-depends
