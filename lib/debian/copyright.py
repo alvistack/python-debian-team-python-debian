@@ -162,9 +162,14 @@ class Copyright(object):
 
         if sequence is not None:
             header = None
-            self.__file = parse_deb822_file(
-                    sequence=sequence, encoding=encoding,
-                    accept_files_with_duplicated_fields=not strict)
+            try:
+                self.__file = parse_deb822_file(
+                        sequence=sequence, encoding=encoding,
+                        accept_files_with_duplicated_fields=not strict)
+            except ValueError as e:
+                if str(e).startswith("Syntax or Parse error on the line"):
+                    raise NotMachineReadableError(str(e))
+                raise
             for p in self.__file:
                 if header is None:
                     header = Header(p)
