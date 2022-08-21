@@ -26,7 +26,7 @@ other people.  Copyright years imported from the sources.
 import os
 
 try:
-    from typing import Iterator, Iterable, Optional, IO, List, Dict, Union
+    from typing import Iterable, Optional, IO, List, Dict, Union
     from os import PathLike
 except ImportError:
     pass
