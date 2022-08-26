@@ -22,7 +22,7 @@ from debian._deb822_repro.tokens import (
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
     tokenize_deb822_file, comma_split_tokenizer, whitespace_split_tokenizer,
 )
-from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
+from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError, SyntaxOrParseError
 from debian._util import (
     resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
 )
@@ -3024,9 +3024,9 @@ def _abort_on_error_tokens(sequence):
         # We are always called while the sequence consists entirely of tokens
         if isinstance(token, Deb822ErrorToken):
             error_as_text = token.text.replace('\n', '\\n')
-            raise ValueError('Syntax or Parse error on the line: "{error_as_text}"'.format(
-                error_as_text=error_as_text
-            ))
+            raise SyntaxOrParseError(
+                'Syntax or Parse error on the line: "{error_as_text}"'.format(
+                    error_as_text=error_as_text))
         yield token
 
 
