@@ -55,10 +55,11 @@ except ImportError:
     # Lack of typing is not important at runtime
     TYPE_CHECKING = False
 
-from debian._deb822_repro.parsing import (
+from debian._deb822_repro import (
     parse_deb822_file,
     Deb822ParagraphElement,
     Deb822FileElement, Deb822NoDuplicateFieldsParagraphElement,
+    SyntaxOrParseError,
 )
 from debian.deb822 import RestrictedField, RestrictedFieldError
 
@@ -162,9 +163,12 @@ class Copyright(object):
 
         if sequence is not None:
             header = None
-            self.__file = parse_deb822_file(
-                    sequence=sequence, encoding=encoding,
-                    accept_files_with_duplicated_fields=not strict)
+            try:
+                self.__file = parse_deb822_file(
+                        sequence=sequence, encoding=encoding,
+                        accept_files_with_duplicated_fields=not strict)
+            except SyntaxOrParseError as e:
+                raise NotMachineReadableError(str(e))
             for p in self.__file:
                 if header is None:
                     header = Header(p)

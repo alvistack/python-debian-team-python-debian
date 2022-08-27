@@ -88,3 +88,7 @@ class AmbiguousDeb822FieldKeyError(KeyError):
     The ambiguity can be resolved by using a tuple of (<field-name>, <filed-index>)
     instead of <field-name>.
     """
+
+
+class SyntaxOrParseError(ValueError):
+    """Specialized version of ValueError for syntax/parse errors."""

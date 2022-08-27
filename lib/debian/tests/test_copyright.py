@@ -162,6 +162,14 @@ License: GPL-2+
  `/usr/share/common-licenses/GPL-2'.
 """
 
+
+NOT_MACHINE_READABLE = """\
+This is the Debian GNU prepackaged version of the FSF's GNU hello
+
+Originally packaged by Joe Example <joe@example.com>
+"""
+
+
 FORMAT = 'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'
 
 
@@ -567,6 +575,11 @@ License: Apache
         with self.assertRaises(copyright.MachineReadableFormatError) as cm:
             # missing Copyright field from 1st Files stanza
             c = copyright.Copyright(sequence=(lic[0:10] + lic[11:11]))
+
+    def test_not_machine_readable(self):
+        # type: () -> None
+        with self.assertRaises(copyright.NotMachineReadableError):
+            copyright.Copyright(sequence=NOT_MACHINE_READABLE.splitlines(True))
 
 
 class MultlineTest(unittest.TestCase):
