@@ -1,10 +1,10 @@
-python-debian (0.1.47) UNRELEASED; urgency=medium
+python-debian (0.1.47) unstable; urgency=medium
 
   * copyright: Allow duplicate fields when strict=False.
   * copyright: Fix regression, raise NotMachineReadableError for files
     that clearly don't use DEP5. Closes: #1017836
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Jul 2022 18:16:28 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Aug 2022 14:23:48 +0100
 
 python-debian (0.1.46) unstable; urgency=medium
 
