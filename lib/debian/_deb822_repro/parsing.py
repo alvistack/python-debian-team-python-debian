@@ -133,10 +133,10 @@ class ValueReference(Generic[TE]):
         self._node = None
 
 
-if sys.version_info >= (3, 8) or TYPE_CHECKING:
+if sys.version_info >= (3, 9) or TYPE_CHECKING:
     _Deb822ParsedTokenList_ContextManager = contextlib.AbstractContextManager[T]
 else:
-    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # Python 3.5 - 3.8 compat - we are not allowed to subscript the abc.Iterator
     # - use this little hack to work around it
     # Note that Python 3.5 is so old that it does not have AbstractContextManager,
     # so we re-implement it here.
@@ -1305,10 +1305,10 @@ def _convert_value_lines_to_lines(value_lines,  # type: Iterable[Deb822ValueLine
                           if not x.is_comment)
 
 
-if sys.version_info >= (3, 8) or TYPE_CHECKING:
+if sys.version_info >= (3, 9) or TYPE_CHECKING:
     _ParagraphMapping_Base = collections.abc.Mapping[ParagraphKey, T]
 else:
-    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # Python 3.5 - 3.8 compat - we are not allowed to subscript the abc.Iterator
     # - use this little hack to work around it
     class _ParagraphMapping_Base(collections.abc.Mapping, Generic[T], ABC):
         pass

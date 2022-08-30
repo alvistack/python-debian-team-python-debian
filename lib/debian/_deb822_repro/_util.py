@@ -116,10 +116,10 @@ def combine_into_replacement(source_class,  # type: Type[TE]
     return _impl
 
 
-if sys.version_info >= (3, 8) or TYPE_CHECKING:
+if sys.version_info >= (3, 9) or TYPE_CHECKING:
     _bufferingIterator_Base = collections.abc.Iterator[T]
 else:
-    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # Python 3.5 - 3.8 compat - we are not allowed to subscript the abc.Iterator
     # - use this little hack to work around it
     class _bufferingIterator_Base(collections.abc.Iterator, Generic[T], ABC):
         pass
