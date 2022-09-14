@@ -942,6 +942,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
         # Non-ambiguous fields are fine
         self.assertEqual("foo", as_dict['Source'])
         self.assertEqual("1.2.3", as_dict['Standards-Version'])
+        # Contains doesn't raise a AmbiguousDeb822FieldKeyError
+        self.assertIn('Rules-Requires-Root', as_dict)
         with self.assertRaises(AmbiguousDeb822FieldKeyError):
             v = as_dict['Rules-Requires-Root']
         as_dict_auto_resolve = source_paragraph.configured_view(auto_resolve_ambiguous_fields=True)

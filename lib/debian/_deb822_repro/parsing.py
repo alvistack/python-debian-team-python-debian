@@ -2480,7 +2480,10 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         if not isinstance(item, (str, tuple, Deb822FieldNameToken)):
             return False
         item = cast('ParagraphKey', item)
-        return self.get_kvpair_element(item, use_get=True) is not None
+        try:
+            return self.get_kvpair_element(item, use_get=True) is not None
+        except AmbiguousDeb822FieldKeyError:
+            return True
 
     def set_kvpair_element(self, key, value):
         # type: (ParagraphKey, Deb822KeyValuePairElement) -> None
