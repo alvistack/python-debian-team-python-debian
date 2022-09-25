@@ -2605,13 +2605,13 @@ class _AutoDecoder(object):
                                'the true encoding', self.encoding)
                 result = chardet.detect(value)
                 try:
-                    return value.decode(result['encoding'])
-                except UnicodeDecodeError:
-                    raise e
-                else:
+                    decoded = value.decode(result['encoding'])
                     # Assume the rest of the paragraph is in this encoding as
                     # well (there's no sense in repeating this exercise for
                     # every field).
                     self.encoding = result['encoding']
+                    return decoded
+                except UnicodeDecodeError:
+                    raise e
         else:
             return value
