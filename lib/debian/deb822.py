@@ -764,7 +764,7 @@ class Deb822(Deb822Dict):
 
     @staticmethod
     def _skip_useless_lines(sequence):
-        # type: (IterableInputDataType) -> Union[Iterator[bytes]]
+        # type: (IterableInputDataType) -> Iterator[bytes]
         """Yields only lines that do not begin with '#'.
 
         Also skips any blank lines at the beginning of the input.
@@ -814,7 +814,7 @@ class Deb822(Deb822Dict):
         curkey = None
         content = ""
 
-        for linebytes in self.gpg_stripped_paragraph(
+        for linebytes in self._gpg_stripped_paragraph(
                 self._skip_useless_lines(sequence), strict):
             line = self.decoder.decode_bytes(linebytes)
 
@@ -1103,6 +1103,18 @@ class Deb822(Deb822Dict):
             Control over the strictness of the parser. See the :class:`Deb822`
             class documentation for details.
         """
+        # Some consumers of this method require bytes (encoding
+        # detection and signature checking).  However, we might have
+        # been given a file opened in text mode, in which case it's
+        # simplest to encode to bytes.
+        _encoded_sequence = (x.encode() if isinstance(x, str) else x for x in sequence)
+        return Deb822._split_gpg_and_payload(_encoded_sequence, strict=strict)
+
+    @staticmethod
+    def _split_gpg_and_payload(sequence,  # type: Iterator[bytes]
+                               strict=None,  # type: Optional[Dict[str, bool]]
+                               ):
+        # type: (...) -> Tuple[List[bytes], List[bytes], List[bytes]]
         # pylint: disable=too-many-branches
 
         if not strict:
@@ -1118,16 +1130,7 @@ class Deb822(Deb822Dict):
         accept_empty_or_whitespace = strict.get('whitespace-separates-paragraphs', True)
         first_line = True
 
-        for line_ in sequence:
-            # Some consumers of this method require bytes (encoding
-            # detection and signature checking).  However, we might have
-            # been given a file opened in text mode, in which case it's
-            # simplest to encode to bytes.
-            if isinstance(line_, str):
-                line = line_.encode()
-            else:
-                line = line_
-
+        for line in sequence:
             line = line.strip(b'\r\n')
 
             # skip initial blank lines, if any
@@ -1176,9 +1179,9 @@ class Deb822(Deb822Dict):
         raise EOFError('only blank lines found in input')
 
     @classmethod
-    def gpg_stripped_paragraph(cls, sequence, strict=None):
-        # type: (Union[Iterator[bytes], Iterator[str]], Optional[Dict[str, bool]]) -> List[bytes]
-        return cls.split_gpg_and_payload(sequence, strict)[1]
+    def _gpg_stripped_paragraph(cls, sequence, strict=None):
+        # type: (Iterator[bytes], Optional[Dict[str, bool]]) -> List[bytes]
+        return cls._split_gpg_and_payload(sequence, strict)[1]
 
     def get_gpg_info(self, keyrings=None):
         # type: (Optional[Iterable[str]]) -> GpgInfo
