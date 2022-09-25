@@ -816,7 +816,7 @@ class Deb822(Deb822Dict):
 
         for linebytes in self.gpg_stripped_paragraph(
                 self._skip_useless_lines(sequence), strict):
-            line = self.decoder.decode(linebytes)
+            line = self.decoder.decode_bytes(linebytes)
 
             m = self._new_field_re.match(line)
             if m:
@@ -2596,22 +2596,25 @@ class _AutoDecoder(object):
         # type: (Union[str, bytes]) -> str
         """If value is not already Unicode, decode it intelligently."""
         if isinstance(value, bytes):
+            return self.decode_bytes(value)
+        return value
+
+    def decode_bytes(self, value):
+        # type: (bytes) -> str
+        try:
+            return value.decode(self.encoding)
+        except UnicodeDecodeError as e:
+            # Evidently, the value wasn't encoded with the encoding the
+            # user specified.  Try detecting it.
+            logger.warning('decoding from %s failed; attempting to detect '
+                           'the true encoding', self.encoding)
+            result = chardet.detect(value)
             try:
-                return value.decode(self.encoding)
-            except UnicodeDecodeError as e:
-                # Evidently, the value wasn't encoded with the encoding the
-                # user specified.  Try detecting it.
-                logger.warning('decoding from %s failed; attempting to detect '
-                               'the true encoding', self.encoding)
-                result = chardet.detect(value)
-                try:
-                    decoded = value.decode(result['encoding'])
-                    # Assume the rest of the paragraph is in this encoding as
-                    # well (there's no sense in repeating this exercise for
-                    # every field).
-                    self.encoding = result['encoding']
-                    return decoded
-                except UnicodeDecodeError:
-                    raise e
-        else:
-            return value
+                decoded = value.decode(result['encoding'])
+                # Assume the rest of the paragraph is in this encoding as
+                # well (there's no sense in repeating this exercise for
+                # every field).
+                self.encoding = result['encoding']
+                return decoded
+            except UnicodeDecodeError:
+                raise e
