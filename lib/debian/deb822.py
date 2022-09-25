@@ -1217,13 +1217,13 @@ class Deb822(Deb822Dict):
         """
         # FIXME: key is not validated, contrary to docstring
 
+        if '\n' not in value:
+            return
+
         # The value cannot end in a newline (if it did, dumping the object
         # would result in multiple stanzas)
         if value.endswith('\n'):
             raise ValueError("value must not end in '\\n'")
-
-        if '\n' not in value:
-            return
 
         # Make sure there are no blank lines (actually, the first one is
         # allowed to be blank, but no others), and each subsequent line starts
