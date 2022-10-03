@@ -4,7 +4,10 @@ python-debian (0.1.48) UNRELEASED; urgency=medium
   * Fix version bound for subscripting abc.Iterator, abc.MutableMapping.
     Closes: #1018822
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 31 Aug 2022 11:56:03 +0100
+  [ Jelmer Vernooĳ ]
+  * Don't raise AmbiguousDeb822FieldKeyError in __contains__.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 03 Oct 2022 04:31:17 +0100
 
 python-debian (0.1.47) unstable; urgency=medium
 
