@@ -1468,9 +1468,9 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
         )
 
     def _interpret_value(self, key, value):
-        # type: (ParagraphKey, Deb822KeyValuePairElement) -> T
+        # type: (ParagraphKey, Deb822KeyValuePairElement) -> str
         # mypy is a bit dense and cannot see that T == str
-        return cast('T', self._convert_value_to_str(value))
+        return self._convert_value_to_str(value)
 
 
 class AbstractDeb822ParagraphWrapper(AutoResolvingMixin[T], ABC):
