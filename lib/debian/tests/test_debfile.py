@@ -60,6 +60,21 @@ except ImportError:
         TypeVar = lambda t: None
 
 
+# Only run tests that rely on ar to make archives if it installed.
+_ar_path = shutil.which('ar') or ""
+
+
+# Deterministic tests are good; automatically skipping tests because optional
+# dependencies are not available is a way of accidentally missing problems.
+# Here, we control whether missing dependencies result in skipping tests
+# or if instead, missing dependencies cause test failures.
+#
+# FORBID_MISSING_AR:
+#   any non-empty value for the environment variable FORBID_MISSING_AR
+#   will mean that tests fail if ar (from binutils) can't be found
+FORBID_MISSING_AR = os.environ.get("FORBID_MISSING_AR", None)
+
+
 CONTROL_FILE = r"""\
 Package: hello
 Version: 2.10-2
@@ -97,13 +112,25 @@ def not_none(obj):
     return obj
 
 
+class TestArToolsInstalled(unittest.TestCase):
+    def test_ar_installed(self):
+        # type: () -> None
+        """ test that ar is available from binutils (e.g. /usr/bin/ar) """
+        # If test suite is running in FORBID_MISSING_AR mode where
+        # having ar is mandatory, explicitly include a failing test to
+        # highlight this problem.
+        if FORBID_MISSING_AR and not _ar_path:
+            self.fail("Required ar executable is not installed (tests run in FORBID_MISSING_AR mode)")
+
+
+@unittest.skipUnless(_ar_path, "ar not installed")
 class TestArFile(unittest.TestCase):
 
     def setUp(self):
         # type: () -> None
         subprocess.check_call(
             [
-                "ar",
+                _ar_path,
                 "rU",
                 "test.ar",
                 find_test_file("test_debfile.py"),
@@ -185,7 +212,7 @@ class TestArFile(unittest.TestCase):
             m.close()
             f.close()
 
-
+@unittest.skipUnless(_ar_path, "ar not installed")
 class TestArFileFileObj(TestArFile):
 
     def setUp(self):
@@ -225,6 +252,7 @@ def _make_archive(dir_path, compression):
     return archive
 
 
+@unittest.skipUnless(_ar_path, "ar not installed")
 class TestDebFile(unittest.TestCase):
 
     compressions = ["gztar", "bztar", "xztar", "tar", "zsttar"]
@@ -329,7 +357,7 @@ class TestDebFile(unittest.TestCase):
 
             # Build the .deb file using `ar`
             make_deb_command = [
-                "ar", "rU", tempdeb,
+                _ar_path, "rU", tempdeb,
                 info_member,
                 control_member,
                 data_member,
@@ -359,7 +387,7 @@ class TestDebFile(unittest.TestCase):
             with self.temp_deb() as debname:
                 # break the .deb by deleting a required member
                 subprocess.check_call(
-                    ['ar', 'd', debname, part],
+                    [_ar_path, 'd', debname, part],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
