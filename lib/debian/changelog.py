@@ -50,7 +50,7 @@ If you are only interested in the most recent version of the package then pass
 
     >>> import gzip
     >>> from debian.changelog import Changelog
-    >>> with gzip.open('/usr/share/doc/dpkg/changelog.Debian.gz') as fh:
+    >>> with gzip.open('/usr/share/doc/dpkg/changelog.Debian.gz') as fh:  # doctest: +SKIP
     ...     ch = Changelog(fh, max_blocks=1)
     >>> print('''
     ...     Package: %s
