@@ -49,6 +49,7 @@ try:
         KVPNode = None
 except ImportError:
     if not TYPE_CHECKING:
+        # pylint: disable=unnecessary-lambda-assignment
         cast = lambda t, v: v
         overload = lambda f: None
 

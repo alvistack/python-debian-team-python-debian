@@ -49,7 +49,11 @@ try:
     )
 except ImportError:
     # Missing types aren't important at runtime
+    TYPE_CHECKING = False
+
     if not TYPE_CHECKING:
+        # this block also hides the definition from mypy
+        # pylint: disable=unnecessary-lambda-assignment
         overload = lambda f: None
 
 

@@ -911,7 +911,7 @@ be uploaded."""
         Write the changelog out to the filehandle passed. The file argument
         must be an open file object.
         """
-        filehandle.write(self.__str__())
+        filehandle.write(str(self))
 
 
 def get_maintainer():

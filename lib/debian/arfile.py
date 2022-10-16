@@ -377,7 +377,6 @@ class ArMember(object):
 
     def seekable(self):
         # type: () -> bool
-        # pylint: disable=no-self-use
         return True
 
     def close(self):

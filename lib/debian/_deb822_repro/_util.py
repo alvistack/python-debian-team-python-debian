@@ -18,6 +18,7 @@ try:
         Iterable[Union[TokenOrElement, R]]
     ]
 except ImportError:
+    # pylint: disable=unnecessary-lambda-assignment
     TYPE_CHECKING = False
     cast = lambda t, v: v
 
