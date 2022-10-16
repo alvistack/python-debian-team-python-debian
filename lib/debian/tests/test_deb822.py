@@ -1089,7 +1089,8 @@ Description: python modules to work with Debian-related data formats
             d3['Some-Test-Key'] = 'some value'
         self.assertEqual(d3.dump(), "Some-Test-Key: some value\n")
 
-    def test_unicode_values(self):
+    @unittest.skipUnless(_have_apt_pkg, "apt_pkg is not available")
+    def test_unicode_values_apt_pkg(self):
         # type: () -> None
         """Deb822 objects should contain only unicode values
 
@@ -1098,11 +1099,7 @@ Description: python modules to work with Debian-related data formats
         resulting object should have only unicode values.)
         """
 
-        objects = []
-        objects.append(deb822.Deb822(UNPARSED_PACKAGE))
-        objects.append(deb822.Deb822(CHANGES_FILE))
-        with open_utf8(find_test_file('test_Packages')) as f:
-            objects.extend(deb822.Deb822.iter_paragraphs(f))
+        objects = []  # type: List[deb822.Deb822]
         with open_utf8(find_test_file('test_Packages')) as f:
             objects.extend(deb822.Packages.iter_paragraphs(f))
         with open_utf8(find_test_file('test_Sources')) as f:
@@ -1117,11 +1114,39 @@ Description: python modules to work with Debian-related data formats
         # The same should be true for Sources and Changes except for their
         # _multivalued fields
         multi = []   # type: List[Union[deb822.Changes, deb822.Sources]]
+        with open_utf8(find_test_file('test_Sources')) as f:
+            multi.extend(deb822.Sources.iter_paragraphs(f))
+        for d in multi:
+            for key, value in d.items():
+                if key.lower() not in d.__class__._multivalued_fields:
+                    self.assertTrue(isinstance(value, str))
+
+    def test_unicode_values(self):
+        # type: () -> None
+        """Deb822 objects should contain only unicode values
+
+        (Technically, they are allowed to contain any type of object, but when
+        parsed from files, and when only string-type objects are added, the
+        resulting object should have only unicode values.)
+        """
+
+        objects = []
+        objects.append(deb822.Deb822(UNPARSED_PACKAGE))
+        objects.append(deb822.Deb822(CHANGES_FILE))
+        with open_utf8(find_test_file('test_Packages')) as f:
+            objects.extend(deb822.Deb822.iter_paragraphs(f))
+        with open_utf8(find_test_file('test_Sources')) as f:
+            objects.extend(deb822.Deb822.iter_paragraphs(f))
+        for d in objects:
+            for value in d.values():
+                self.assertTrue(isinstance(value, str))
+
+        # The same should be true for Sources and Changes except for their
+        # _multivalued fields
+        multi = []   # type: List[Union[deb822.Changes, deb822.Sources]]
         multi.append(deb822.Changes(CHANGES_FILE))
         multi.append(deb822.Changes(SIGNED_CHECKSUM_CHANGES_FILE
                                     % CHECKSUM_CHANGES_FILE))
-        with open_utf8(find_test_file('test_Sources')) as f:
-            multi.extend(deb822.Sources.iter_paragraphs(f))
         for d in multi:
             for key, value in d.items():
                 if key.lower() not in d.__class__._multivalued_fields:
