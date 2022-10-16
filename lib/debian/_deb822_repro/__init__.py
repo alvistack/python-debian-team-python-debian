@@ -170,10 +170,12 @@ from debian._deb822_repro.parsing import (
     Interpretation as Interpretation,
     # Primarily for documentation purposes / help()
     Deb822FileElement as Deb822FileElement,
+    Deb822NoDuplicateFieldsParagraphElement,
     Deb822ParagraphElement as Deb822ParagraphElement,
 )
 from debian._deb822_repro.types import (
-    AmbiguousDeb822FieldKeyError as AmbiguousDeb822FieldKeyError
+    AmbiguousDeb822FieldKeyError as AmbiguousDeb822FieldKeyError,
+    SyntaxOrParseError,
 )
 
 __all__ = [
@@ -183,5 +185,7 @@ __all__ = [
     'LIST_COMMA_SEPARATED_INTERPRETATION',
     'Interpretation',
     'Deb822FileElement',
+    'Deb822NoDuplicateFieldsParagraphElement',
     'Deb822ParagraphElement',
+    'SyntaxOrParseError',
 ]

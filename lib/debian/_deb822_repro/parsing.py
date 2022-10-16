@@ -22,7 +22,7 @@ from debian._deb822_repro.tokens import (
     Deb822FieldNameToken, Deb822FieldSeparatorToken, Deb822ErrorToken,
     tokenize_deb822_file, comma_split_tokenizer, whitespace_split_tokenizer,
 )
-from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError
+from debian._deb822_repro.types import AmbiguousDeb822FieldKeyError, SyntaxOrParseError
 from debian._util import (
     resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
 )
@@ -49,6 +49,7 @@ try:
         KVPNode = None
 except ImportError:
     if not TYPE_CHECKING:
+        # pylint: disable=unnecessary-lambda-assignment
         cast = lambda t, v: v
         overload = lambda f: None
 
@@ -133,10 +134,10 @@ class ValueReference(Generic[TE]):
         self._node = None
 
 
-if sys.version_info >= (3, 8) or TYPE_CHECKING:
+if sys.version_info >= (3, 9) or TYPE_CHECKING:
     _Deb822ParsedTokenList_ContextManager = contextlib.AbstractContextManager[T]
 else:
-    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # Python 3.5 - 3.8 compat - we are not allowed to subscript the abc.Iterator
     # - use this little hack to work around it
     # Note that Python 3.5 is so old that it does not have AbstractContextManager,
     # so we re-implement it here.
@@ -1305,10 +1306,10 @@ def _convert_value_lines_to_lines(value_lines,  # type: Iterable[Deb822ValueLine
                           if not x.is_comment)
 
 
-if sys.version_info >= (3, 8) or TYPE_CHECKING:
+if sys.version_info >= (3, 9) or TYPE_CHECKING:
     _ParagraphMapping_Base = collections.abc.Mapping[ParagraphKey, T]
 else:
-    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.Iterator
+    # Python 3.5 - 3.8 compat - we are not allowed to subscript the abc.Iterator
     # - use this little hack to work around it
     class _ParagraphMapping_Base(collections.abc.Mapping, Generic[T], ABC):
         pass
@@ -1467,9 +1468,9 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
         )
 
     def _interpret_value(self, key, value):
-        # type: (ParagraphKey, Deb822KeyValuePairElement) -> T
+        # type: (ParagraphKey, Deb822KeyValuePairElement) -> str
         # mypy is a bit dense and cannot see that T == str
-        return cast('T', self._convert_value_to_str(value))
+        return self._convert_value_to_str(value)
 
 
 class AbstractDeb822ParagraphWrapper(AutoResolvingMixin[T], ABC):
@@ -2480,7 +2481,10 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         if not isinstance(item, (str, tuple, Deb822FieldNameToken)):
             return False
         item = cast('ParagraphKey', item)
-        return self.get_kvpair_element(item, use_get=True) is not None
+        try:
+            return self.get_kvpair_element(item, use_get=True) is not None
+        except AmbiguousDeb822FieldKeyError:
+            return True
 
     def set_kvpair_element(self, key, value):
         # type: (ParagraphKey, Deb822KeyValuePairElement) -> None
@@ -2767,29 +2771,26 @@ class Deb822FileElement(Deb822Element):
         if tail_element and not isinstance(tail_element, Deb822WhitespaceToken):
             self._token_and_elements.append(self._set_parent(Deb822WhitespaceToken('\n')))
         self._token_and_elements.append(self._set_parent(paragraph))
-        paragraph.parent_element = self
 
     def remove(self, paragraph):
         # type: (Deb822ParagraphElement) -> None
         if paragraph.parent_element is not self:
             raise ValueError("Paragraph is part of a different file")
-        it = self._token_and_elements.iter_nodes()
-        previous_node = None
-        for node in it:
+        node = None
+        for node in self._token_and_elements.iter_nodes():
             if node.value is paragraph:
                 break
-            previous_node = node
-        else:
+        if node is None:
             raise RuntimeError("unable to find paragraph")
-        self._token_and_elements.remove_node(node)  # pylint: disable=undefined-loop-variable
-        try:
-            next_node = next(it)
-        except StopIteration:
+        previous_node = node.previous_node
+        next_node = node.next_node
+        self._token_and_elements.remove_node(node)
+        if next_node is None:
             if previous_node and isinstance(previous_node.value, Deb822WhitespaceToken):
-                previous_node.remove()
+                self._token_and_elements.remove_node(previous_node)
         else:
             if isinstance(next_node.value, Deb822WhitespaceToken):
-                next_node.remove()
+                self._token_and_elements.remove_node(next_node)
         paragraph.parent_element = None
 
     def _set_parent(self, t):
@@ -3027,9 +3028,9 @@ def _abort_on_error_tokens(sequence):
         # We are always called while the sequence consists entirely of tokens
         if isinstance(token, Deb822ErrorToken):
             error_as_text = token.text.replace('\n', '\\n')
-            raise ValueError('Syntax or Parse error on the line: "{error_as_text}"'.format(
-                error_as_text=error_as_text
-            ))
+            raise SyntaxOrParseError(
+                'Syntax or Parse error on the line: "{error_as_text}"'.format(
+                    error_as_text=error_as_text))
         yield token
 
 

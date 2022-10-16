@@ -116,11 +116,11 @@ class Substvar:
         return self.resolve() == other.resolve()
 
 
-if sys.version_info >= (3, 8) or TYPE_CHECKING:
+if sys.version_info >= (3, 9) or TYPE_CHECKING:
     class _Substvars_Base(contextlib.AbstractContextManager[T], MutableMapping[str, str], ABC):
         pass
 else:
-    # Python 3.5 - 3.7 compat - we are not allowed to subscript the abc.MutableMapping
+    # Python 3.5 - 3.8 compat - we are not allowed to subscript the abc.MutableMapping
     # - use this little hack to work around it
     # Note that Python 3.5 is so old that it does not have AbstractContextManager,
     # so we re-implement it here as well.

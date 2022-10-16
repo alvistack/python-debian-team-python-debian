@@ -853,6 +853,22 @@ class FormatPreservingDeb822ParserTests(TestCase):
                          "Mutation should have worked while preserving "
                          "comments")
 
+        # Verify that we can add another paragraph.
+        deb822_file.append(Deb822ParagraphElement.from_dict({'Package': 'bloe'}))
+
+        expected = textwrap.dedent('''\
+          Source: foo
+          # Comment for RRR
+          Rules-Requires-Root: no
+
+          Package: bloe
+          ''')
+
+        self.assertEqual(expected, deb822_file.convert_to_text(),
+                         "Adding new paragraph should have worked")
+
+        deb822_file.remove(list(deb822_file)[1])
+
         source_paragraph = list(deb822_file)[0]
         self.assertEqual('foo', source_paragraph['Source'])
 
@@ -926,6 +942,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
         # Non-ambiguous fields are fine
         self.assertEqual("foo", as_dict['Source'])
         self.assertEqual("1.2.3", as_dict['Standards-Version'])
+        # Contains doesn't raise a AmbiguousDeb822FieldKeyError
+        self.assertIn('Rules-Requires-Root', as_dict)
         with self.assertRaises(AmbiguousDeb822FieldKeyError):
             v = as_dict['Rules-Requires-Root']
         as_dict_auto_resolve = source_paragraph.configured_view(auto_resolve_ambiguous_fields=True)

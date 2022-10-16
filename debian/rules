@@ -60,7 +60,7 @@ test:
 qa: lib/debian/_version.py
 	@echo "Running both pylint and mypy"
 	@echo "----------- pylint -----------"
-	@pylint --rcfile .pylintrc lib; \
+	@pylint --rcfile .pylintrc $$(find lib/debian -name \*py | grep -v test | sort); \
 	  pylinterr=$$?; \
 	  echo "----------- mypy -----------"; \
 	  mypy --strict lib; \

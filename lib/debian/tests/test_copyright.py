@@ -132,6 +132,44 @@ License: 123
  [123 TEXT]
 """
 
+DUPLICATE_FIELD = """\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: X Solitaire
+
+Files: *
+Copyright: Copyright 1998 John Doe <johndoe@example.com>
+Copyright: Copyright 1999 Jane Doe <janedoe@example.com>
+License: GPL-2+
+ This program is free software; you can redistribute it
+ and/or modify it under the terms of the GNU General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later
+ version.
+ .
+ This program is distributed in the hope that it will be
+ useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ PURPOSE.  See the GNU General Public License for more
+ details.
+ .
+ You should have received a copy of the GNU General Public
+ License along with this package; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ Boston, MA  02110-1301 USA
+ .
+ On Debian systems, the full text of the GNU General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/GPL-2'.
+"""
+
+
+NOT_MACHINE_READABLE = """\
+This is the Debian GNU prepackaged version of the FSF's GNU hello
+
+Originally packaged by Joe Example <joe@example.com>
+"""
+
+
 FORMAT = 'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'
 
 
@@ -437,6 +475,16 @@ class CopyrightTest(unittest.TestCase):
         dumped = c.dump()
         self.assertEqual(SIMPLE, dumped)
 
+    def test_duplicate_field(self):
+        # type: () -> None
+        c = copyright.Copyright(
+            sequence=DUPLICATE_FIELD.splitlines(True), strict=False)
+        dumped = c.dump()
+        self.assertEqual(DUPLICATE_FIELD, dumped)
+        self.assertRaises(
+            ValueError, copyright.Copyright,
+            sequence=DUPLICATE_FIELD.splitlines(True), strict=True)
+
     def test_all_paragraphs(self):
         # type: () -> None
         c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
@@ -476,10 +524,23 @@ class CopyrightTest(unittest.TestCase):
             ['bar/*'], 'CompanyB', copyright.License('Apache'))
         c.add_files_paragraph(files1)
         c.add_files_paragraph(files2)
-        self.assertIs(files1, c.find_files_paragraph('foo/bar.cc'))
-        self.assertIs(files2, c.find_files_paragraph('bar/baz.cc'))
+        paragraphs = list(c.all_files_paragraphs())
+        self.assertIs(paragraphs[0], c.find_files_paragraph('foo/bar.cc'))
+        self.assertIs(paragraphs[1], c.find_files_paragraph('bar/baz.cc'))
         self.assertIsNone(c.find_files_paragraph('baz/quux.cc'))
         self.assertIsNone(c.find_files_paragraph('Makefile'))
+
+        self.assertEqual("""\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+Files: foo/*
+Copyright: CompanyA
+License: ISC
+
+Files: bar/*
+Copyright: CompanyB
+License: Apache
+""", c.dump())
 
     def test_all_license_paragraphs(self):
         # type: () -> None
@@ -514,6 +575,11 @@ class CopyrightTest(unittest.TestCase):
         with self.assertRaises(copyright.MachineReadableFormatError) as cm:
             # missing Copyright field from 1st Files stanza
             c = copyright.Copyright(sequence=(lic[0:10] + lic[11:11]))
+
+    def test_not_machine_readable(self):
+        # type: () -> None
+        with self.assertRaises(copyright.NotMachineReadableError):
+            copyright.Copyright(sequence=NOT_MACHINE_READABLE.splitlines(True))
 
 
 class MultlineTest(unittest.TestCase):

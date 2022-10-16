@@ -295,6 +295,8 @@ except ImportError:
 
     # Fake some definitions
     if not TYPE_CHECKING:
+        # this block also hides the definitions from mypy
+        # pylint: disable=unnecessary-lambda-assignment
         overload = lambda f: None
         cast = lambda t, v: v
         IO = {
@@ -1204,7 +1206,7 @@ class Deb822(Deb822Dict):
 
     def validate_input(self, key, value):
         # type: (str, str) -> None
-        # pylint: disable=no-self-use,unused-argument
+        # pylint: disable=unused-argument
         """Raise ValueError if value is not a valid value for key
 
         Subclasses that do interesting things for different keys may wish to
