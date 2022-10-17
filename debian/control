@@ -1,50 +1,39 @@
 Source: python-debian
 Section: python
 Priority: optional
-Maintainer: Debian python-debian Maintainers <pkg-python-debian-maint@lists.alioth.debian.org>
-Uploaders:
- Enrico Zini <enrico@debian.org>,
- James Westby <jw+debian@jameswestby.net>,
- Reinhard Tartler <siretart@tauware.de>,
- Stefano Zacchiroli <zack@debian.org>,
- John Wright <jsw@debian.org>,
- Stuart Prescott <stuart@debian.org>,
- Jelmer Vernooĳ <jelmer@debian.org>
+Standards-Version: 4.5.0
+Maintainer: Wong Hoi Sing Edison <hswong3i@gmail.com>
+Homepage: https://salsa.debian.org/python-debian-team/python-debian/-/tags
+Vcs-Browser: https://github.com/alvistack/python-debian-team-python-debian
+Vcs-Git: https://github.com/alvistack/python-debian-team-python-debian.git
 Build-Depends:
- binutils <!nocheck>,
- debhelper-compat (= 13),
+ debhelper,
+ debhelper-compat (= 10),
  dh-python,
- python3-all,
- python3-apt,
+ binutils,
+ python3-dev (>= 3.1.2-8~),
+ python3-apt (>> 1.1~),
  python3-chardet,
- python3-pytest <!nocheck>,
  python3-setuptools,
- zstd <!nocheck>,
-Standards-Version: 4.6.1
-Vcs-Browser: https://salsa.debian.org/python-debian-team/python-debian
-Vcs-Git: https://salsa.debian.org/python-debian-team/python-debian.git
-Homepage: https://salsa.debian.org/python-debian-team/python-debian
-Rules-Requires-Root: no
 
 Package: python3-debian
 Architecture: all
+Description: Python 3 modules to work with Debian-related data formats
+ This package provides Python 3 modules that abstract many formats of
+ Debian related files. Currently handled are:
+   - Debtags information (debian.debtags module)
+   - debian/changelog (debian.changelog module)
+   - Packages files, pdiffs (debian.debian\_support module)
+   - Control files of single or multiple RFC822-style paragraphs, e.g.
+     debian/control, .changes, .dsc, Packages, Sources, Release, etc.
+     (debian.deb822 module)
+   - Raw .deb and .ar files, with (read-only) access to contained files
+     and meta-information
 Depends:
- python3-chardet,
  ${misc:Depends},
- ${python3:Depends}
+ ${python3:Depends},
+ python3-chardet,
 Recommends:
  python3-apt,
- zstd,
 Suggests:
- gpgv
-Description: Python 3 modules to work with Debian-related data formats
- This package provides Python 3 modules that abstract many formats of Debian
- related files. Currently handled are:
-  * Debtags information (debian.debtags module)
-  * debian/changelog (debian.changelog module)
-  * Packages files, pdiffs (debian.debian_support module)
-  * Control files of single or multiple RFC822-style paragraphs, e.g.
-    debian/control, .changes, .dsc, Packages, Sources, Release, etc.
-    (debian.deb822 module)
-  * Raw .deb and .ar files, with (read-only) access to contained
-    files and meta-information
+ gpgv,
