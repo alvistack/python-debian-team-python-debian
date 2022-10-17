@@ -580,6 +580,7 @@ def list_releases():
             ("bullseye", "11"),
             ("bookworm", "12"),
             ("trixie", "13"),
+            ("forky", "14"),
             ("sid", ""))
     for idx, rel in enumerate(rels):
         name, version = rel
