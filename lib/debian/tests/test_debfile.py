@@ -148,7 +148,8 @@ class TestArFile(unittest.TestCase):
 
     def tearDown(self):
         # type: () -> None
-        self.fp.close()
+        if hasattr(self, 'fp'):
+            self.fp.close()
         if os.path.exists('test.ar'):
             os.unlink('test.ar')
 
