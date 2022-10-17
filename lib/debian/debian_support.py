@@ -735,24 +735,13 @@ def download_gunzip_lines(remote):
     """Downloads a file from a remote location and gunzips it.
 
     Returns the lines in the file."""
-
-    # The implementation is rather crude, but it seems that the gzip
-    # module needs a real file for input.
-
     # pylint: disable=import-outside-toplevel
     import gzip
-    import tempfile
-    from urllib.request import urlretrieve
+    from urllib.request import urlopen
 
-    (handle, fname) = tempfile.mkstemp()
-    try:
-        os.close(handle)
-        (filename, _) = urlretrieve(remote, fname)
-        with gzip.open(filename, 'rt') as gfile:
-            lines = gfile.readlines()
-    finally:
-        os.unlink(fname)
-    return lines
+    with urlopen(remote) as zfd:
+        with gzip.open(zfd, mode="rt") as gfd:
+            return gfd.readlines()   # type: ignore
 
 
 downloadGunzipLines = function_deprecated_by(download_gunzip_lines)
