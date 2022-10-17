@@ -721,7 +721,7 @@ def replace_file(lines, local, encoding="UTF-8"):
         with open(local_new, 'w+', encoding=encoding) as new_file:
             for l in lines:
                 new_file.write(l)
-        os.rename(local_new, local)
+        os.replace(local_new, local)
     finally:
         if os.path.exists(local_new):
             os.unlink(local_new)
