@@ -93,14 +93,14 @@ the round-trip safe API. Given the following source text::
     ...  more deskription with a misspelling
     ... '''.lstrip()  # To remove the leading newline
     >>> # A few definitions to emulate file I/O (would be different in the program)
-    >>> import contextlib
+    >>> import contextlib, os
     >>> @contextlib.contextmanager
     ... def open_input():
     ...     # Works with and without keepends=True.
     ...     # Keep the ends here to truly emulate an open file.
     ...     yield dctrl_input.splitlines(keepends=True)
     >>> def open_output():
-    ...    return open('/dev/null', 'wb')
+    ...    return open(os.devnull, 'wb')
 
 With debian.deb822, your code might look like this::
 
