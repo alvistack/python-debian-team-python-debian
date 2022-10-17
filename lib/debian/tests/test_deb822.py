@@ -466,7 +466,7 @@ class TestDeb822(unittest.TestCase):
         env = os.environ.copy()
 
         env['PYTHONHASHSEED'] = 'random'
-        env['PYTHONPATH'] = ":".join(sys.path)
+        env['PYTHONPATH'] = os.pathsep.join(sys.path)
         args = [
             sys.executable,
             '-c',
