@@ -130,6 +130,21 @@ unit-tests-alpine:
   - .depends-pip
   - .unit-tests-generic
 
+unit-tests-wine:
+  before_script:
+  - apt-get update
+  - apt-get -y install python3-pip wine
+  - PATH=~/.local/bin/:$PATH
+  - pip install --user wenv
+  - wenv init
+  - rm ~/.local/share/wenv/win64/drive_c/*/python*._pth
+  - wenv python -m pip install chardet setuptools pytest
+  - rm -f /usr/bin/ar /usr/bin/gpgv
+  script:
+  - wenv python -m pytest --doctest-modules --verbose lib/
+  variables:
+    WENV_ARCH: win64
+
 unit-tests-windows:
   tags:
   - shared-windows
