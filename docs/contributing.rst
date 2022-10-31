@@ -12,10 +12,12 @@ new code is as painless as possible.
 General principles
 ------------------
 
-`python3-debian` gets installed by the Debian Installer as part of the "standard"
+In Debian, `python3-debian` gets installed by the Debian Installer as part of the "standard"
 task (reportbug depends on python3-reportbug depends on python3-debian). It is
 also pulled in to many desktop installations through tools such as
 `gdebi <http://packages.debian.org/sid/gdebi>`_.
+The `python-debian` codebase is also widely used outside Debian, hence
+portability of the code is important too.
 Given how widely deployed these packages are:
 
  - Be very conservative in adding new dependencies. If a package is not
@@ -30,6 +32,11 @@ Given how widely deployed these packages are:
    Debian, including parts of Debian's infrastructure and scripts developed by
    users. There is no real way of finding those users and notifying them of
    API changes. Backwards compatibility is very important.
+
+- The non-Debian and non-Linux users of `python-debian` are also important.
+  The code is used to track Debian from other operating systems, with
+  projects extracting data from `debian/copyright` files or looking at the packages that are in Debian and derivatives. Portability of code and
+  tests is, therefore, valued.
 
 In general, code in `python-debian` should be reasonably generous in what it
 accepts and quite strictly correct in its output.

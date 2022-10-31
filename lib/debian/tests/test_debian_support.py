@@ -21,9 +21,11 @@
 import gzip
 import os
 import os.path
+from pathlib import Path
+import re
 import sys
 import tempfile
-import re
+import urllib.parse
 
 import unittest
 
@@ -252,7 +254,8 @@ class PdiffTests(unittest.TestCase):
     def test_download_gunzip_lines(self):
         # type: () -> None
         filename = find_test_file('test_Packages.diff/test_Packages.1.gz')
-        lines = download_gunzip_lines("file://" + filename)
+        filename_uri = Path(filename).as_uri()
+        lines = download_gunzip_lines(filename_uri)
         self.assertTrue(len(lines))
 
     def test_update_file(self):
@@ -261,6 +264,7 @@ class PdiffTests(unittest.TestCase):
         original = find_test_file('test_Packages')
         # The 'remote' location from which the update will be made
         remote = find_test_file('test_Packages')
+        remote_uri = Path(remote).as_uri()
         # A correctly updated file for comparison
         updated = find_test_file('test_Packages_pdiff_updated')
 
@@ -273,7 +277,7 @@ class PdiffTests(unittest.TestCase):
             fp.close()
 
             # run the update
-            update_file("file://" + remote, copy, verbose=False)
+            update_file(remote_uri, copy, verbose=False)
 
             # check that the updated copy is the same as the known-good file
             with open(copy) as oh, open(updated) as uh:

@@ -1,0 +1,3 @@
+# force all text files to be LF terminated
+# this is especially important for the test data
+* text=auto eol=lf
