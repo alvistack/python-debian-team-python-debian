@@ -62,6 +62,10 @@ except ImportError:
 
 # Only run tests that rely on ar to make archives if it installed.
 _ar_path = shutil.which('ar') or ""
+# Only run tests that rely on zstd to make archives if it installed.
+_zstd_path = shutil.which('zstd') or ""
+# Only run tests that rely on dpkg-deb to make archives if it installed.
+_dpkg_deb_path = shutil.which('dpkg-deb') or ""
 
 
 # Deterministic tests are good; automatically skipping tests because optional
@@ -73,6 +77,16 @@ _ar_path = shutil.which('ar') or ""
 #   any non-empty value for the environment variable FORBID_MISSING_AR
 #   will mean that tests fail if ar (from binutils) can't be found
 FORBID_MISSING_AR = os.environ.get("FORBID_MISSING_AR", None)
+#
+# FORBID_MISSING_ZSTD:
+#   any non-empty value for the environment variable FORBID_MISSING_AR
+#   will mean that tests fail if zstd (from zstd) can't be found
+FORBID_MISSING_ZSTD = os.environ.get("FORBID_MISSING_ZSTD", None)
+#
+# FORBID_MISSING_DPKG_DEB:
+#   any non-empty value for the environment variable FORBID_MISSING_DPKG_DEB
+#   will mean that tests fail if dpkg-deb (from dpkg) can't be found
+FORBID_MISSING_DPKG_DEB = os.environ.get("FORBID_MISSING_DPKG_DEB", None)
 
 
 CONTROL_FILE = r"""\
@@ -112,7 +126,8 @@ def not_none(obj):
     return obj
 
 
-class TestArToolsInstalled(unittest.TestCase):
+class TestToolsInstalled(unittest.TestCase):
+
     def test_ar_installed(self):
         # type: () -> None
         """ test that ar is available from binutils (e.g. /usr/bin/ar) """
@@ -122,6 +137,24 @@ class TestArToolsInstalled(unittest.TestCase):
         if FORBID_MISSING_AR and not _ar_path:
             self.fail("Required ar executable is not installed (tests run in FORBID_MISSING_AR mode)")
 
+    def test_dpkg_deb_installed(self):
+        # type: () -> None
+        """ test that dpkg-deb is available from dpkg (e.g. /usr/bin/dpkg-deb) """
+        # If test suite is running in FORBID_MISSING_DPKG_DEB mode where
+        # having dpkg-deb is mandatory, explicitly include a failing test to
+        # highlight this problem.
+        if FORBID_MISSING_DPKG_DEB and not _dpkg_deb_path:
+            self.fail("Required dpkg-deb executable is not installed (tests run in FORBID_MISSING_DPKG_DEB mode)")
+
+
+    def test_zstd_installed(self):
+        # type: () -> None
+        """ test that zstd is available from zstd (e.g. /usr/bin/zstd) """
+        # If test suite is running in FORBID_MISSING_ZSTD mode where
+        # having zstd is mandatory, explicitly include a failing test to
+        # highlight this problem.
+        if FORBID_MISSING_ZSTD and not _zstd_path:
+            self.fail("Required zstd executable is not installed (tests run in FORBID_MISSING_ZSTD mode)")
 
 @unittest.skipUnless(_ar_path, "ar not installed")
 class TestArFile(unittest.TestCase):
@@ -254,6 +287,7 @@ def _make_archive(dir_path, compression):
 
 
 @unittest.skipUnless(_ar_path, "ar not installed")
+@unittest.skipUnless(_zstd_path, "zstd not installed")
 class TestDebFile(unittest.TestCase):
 
     compressions = ["gztar", "bztar", "xztar", "tar", "zsttar"]
@@ -429,6 +463,7 @@ class TestDebFile(unittest.TestCase):
                         "Control part failed on compression %s" % compression
                     )
 
+    @unittest.skipUnless(_dpkg_deb_path, "dpkg-deb not installed")
     def test_data_names(self):
         # type: () -> None
         """ test for file list equality """
@@ -569,6 +604,7 @@ class TestDebFile(unittest.TestCase):
                     self._test_file_contents(debname, linkname, targetdata, follow_symlinks=False)
                 self._test_file_contents(debname, cleanlinkname, targetdata, follow_symlinks=True)
 
+    @unittest.skipUnless(_dpkg_deb_path, "dpkg-deb not installed")
     def test_control(self):
         # type: () -> None
         """ test for control contents equality """
