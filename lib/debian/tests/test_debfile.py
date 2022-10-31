@@ -274,7 +274,7 @@ def _make_archive(dir_path, compression):
         )
         archive = uncompressed_archive + ".zst"
         with open(uncompressed_archive) as input:
-            proc =subprocess.Popen(["zstd", "-o", archive], stdin=input)
+            proc =subprocess.Popen(["zstd", "-q", "-o", archive], stdin=input)
             assert(proc.wait() == 0)
         os.remove(uncompressed_archive)
     else:
