@@ -14,6 +14,8 @@ export PYBUILD_NAME=debian
 export FORBID_MISSING_APT_PKG ?= 1
 export FORBID_MISSING_GPGV ?= 1
 export FORBID_MISSING_AR ?= 1
+export FORBID_MISSING_DPKG_DEB ?= 1
+export FORBID_MISSING_ZSTD ?= 1
 
 %:
 	dh $@ --with python3 --buildsystem pybuild

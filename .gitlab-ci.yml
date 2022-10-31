@@ -44,6 +44,8 @@ variables:
     FORBID_MISSING_APT_PKG: ""
     FORBID_MISSING_GPGV: ""
     FORBID_MISSING_AR: ""
+    FORBID_MISSING_DPKG_DEB: ""
+    FORBID_MISSING_ZSTD: ""
 
 .unit-tests-debian:
   extends:
@@ -71,6 +73,8 @@ unit-tests:
     FORBID_MISSING_APT_PKG: "1"
     FORBID_MISSING_GPGV: "1"
     FORBID_MISSING_AR: "1"
+    FORBID_MISSING_DPKG_DEB: "1"
+    FORBID_MISSING_ZSTD: "1"
   artifacts:
     paths:
       - htmlcov
