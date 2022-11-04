@@ -1570,12 +1570,12 @@ class TestPkgRelations:
                             src_rel))
         with caplog.at_level(logging.WARNING):
             deb822.PkgRelation.parse_relations("foo bar")
-            assert 'WARNING' in caplog.text
-            assert 'debian.deb822' in caplog.text
-            assert (
-                'cannot parse package relationship '
-                '"foo bar", returning it raw'
-            ) in caplog.text
+        assert caplog.record_tuples == [(
+            "debian.deb822",
+            logging.WARNING,
+            'cannot parse package relationship '
+            '"foo bar", returning it raw'
+        )]
 
     def test_sources(self):
         # type: () -> None
