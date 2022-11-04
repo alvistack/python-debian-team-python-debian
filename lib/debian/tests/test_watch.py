@@ -17,10 +17,7 @@
 
 """Tests for debian.watch."""
 
-import unittest
-
 import pytest
-
 
 try:
     from StringIO import StringIO  # type: ignore
@@ -57,7 +54,7 @@ def not_none(obj):
     return obj
 
 
-class ParseWatchFileTests(unittest.TestCase):
+class TestParseWatchFile:
 
     def test_parse_empty(self):
         # type: () -> None
@@ -224,7 +221,7 @@ https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
             expand(wf.entries[0].url, 'blah')
 
 
-class DumpWatchFileTests(unittest.TestCase):
+class TestDumpWatchFile:
 
     def test_empty(self):
         # type: () -> None
@@ -276,7 +273,7 @@ https://salsa.debian.org/python-team/blah-(.*).tar.gz
 """
 
 
-class ExpandTests(unittest.TestCase):
+class TestExpand:
 
     def test_expand_package(self):
         # type: () -> None
