@@ -28,6 +28,7 @@ import tempfile
 import urllib.parse
 
 import unittest
+import pytest
 
 from debian import debian_support
 from debian.debian_support import *
@@ -65,13 +66,13 @@ class VersionTests(unittest.TestCase):
         # type: (str, Optional[str], str, Optional[str]) -> None
         for cls in self.test_classes:
             v = cls(full_version)
-            self.assertEqual(v.full_version, full_version,
-                             "%s: full_version broken" % cls)
-            self.assertEqual(v.epoch, epoch, "%s: epoch broken" % cls)
-            self.assertEqual(v.upstream_version, upstream,
-                             "%s: upstream_version broken" % cls)
-            self.assertEqual(v.debian_revision, debian,
-                             "%s: debian_revision broken" % cls)
+            assert v.full_version == full_version, \
+                             "%s: full_version broken" % cls
+            assert v.epoch == epoch, "%s: epoch broken" % cls
+            assert v.upstream_version == upstream, \
+                             "%s: upstream_version broken" % cls
+            assert v.debian_revision == debian, \
+                             "%s: debian_revision broken" % cls
 
     def testversions(self):
         # type: () -> None
@@ -101,8 +102,8 @@ class VersionTests(unittest.TestCase):
                            '1ubuntu1')
         self._test_version('2:1.0.4~rc2-1', '2', '1.0.4~rc2', '1')
         for cls in self.test_classes:
-            self.assertRaises(
-                ValueError, cls, 'a1:1.8.8-070403-1~priv1')
+            with pytest.raises(ValueError):
+                cls('a1:1.8.8-070403-1~priv1')
 
     def test_version_updating(self):
         # type: () -> None
@@ -110,24 +111,24 @@ class VersionTests(unittest.TestCase):
             v = cls('1:1.4.1-1')
 
             v.debian_version = '2'
-            self.assertEqual(v.debian_version, '2')
-            self.assertEqual(v.full_version, '1:1.4.1-2')
+            assert v.debian_version == '2'
+            assert v.full_version == '1:1.4.1-2'
 
             v.upstream_version = '1.4.2'
-            self.assertEqual(v.upstream_version, '1.4.2')
-            self.assertEqual(v.full_version, '1:1.4.2-2')
+            assert v.upstream_version == '1.4.2'
+            assert v.full_version == '1:1.4.2-2'
 
             v.epoch = '2'
-            self.assertEqual(v.epoch, '2')
-            self.assertEqual(v.full_version, '2:1.4.2-2')
+            assert v.epoch == '2'
+            assert v.full_version == '2:1.4.2-2'
 
-            self.assertEqual(str(v), v.full_version)
+            assert str(v) == v.full_version
 
             v.full_version = '1:1.4.1-1'
-            self.assertEqual(v.full_version, '1:1.4.1-1')
-            self.assertEqual(v.epoch, '1')
-            self.assertEqual(v.upstream_version, '1.4.1')
-            self.assertEqual(v.debian_version, '1')
+            assert v.full_version == '1:1.4.1-1'
+            assert v.epoch == '1'
+            assert v.upstream_version == '1.4.1'
+            assert v.debian_version == '1'
 
     @staticmethod
     def _get_truth_fn(cmp_oper):
@@ -171,8 +172,8 @@ class VersionTests(unittest.TestCase):
             v1 = cls1(v1_str)
             v2 = cls2(v2_str)
             truth_fn = self._get_truth_fn(cmp_oper)
-            self.assertTrue(truth_fn(v1, v2) == True,
-                            "%r %s %r != True" % (v1, cmp_oper, v2))
+            assert truth_fn(v1, v2) == True, \
+                            "%r %s %r != True" % (v1, cmp_oper, v2)
 
     def test_comparisons(self):
         # type: () -> None
@@ -206,9 +207,9 @@ class ReleaseTests(unittest.TestCase):
 
     def test_comparison(self):
         # type: () -> None
-        self.assertLess(intern_release('buzz'), intern_release('hamm'))
-        self.assertLess(intern_release('sarge'), intern_release('etch'))
-        self.assertLess(intern_release('lenny'), intern_release('squeeze'))
+        assert intern_release('buzz') < intern_release('hamm')
+        assert intern_release('sarge') < intern_release('etch')
+        assert intern_release('lenny') < intern_release('squeeze')
 
 
 class HelperRoutineTests(unittest.TestCase):
@@ -217,10 +218,10 @@ class HelperRoutineTests(unittest.TestCase):
     def test_read_lines_sha1(self):
         # type: () -> None
         empty = []  # type: List[bytes]
-        self.assertEqual(read_lines_sha1(empty),
-                         'da39a3ee5e6b4b0d3255bfef95601890afd80709')
-        self.assertEqual(read_lines_sha1(['1\n', '23\n']),
-                         '14293c9bd646a15dc656eaf8fba95124020dfada')
+        assert read_lines_sha1(empty) == \
+                         'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+        assert read_lines_sha1(['1\n', '23\n']) == \
+                         '14293c9bd646a15dc656eaf8fba95124020dfada'
 
     def test_patch_lines(self):
         # type: () -> None
@@ -232,7 +233,7 @@ class HelperRoutineTests(unittest.TestCase):
                  '9,10d\n', '6d\n', '2,3c\n', '<2>\n', '<3>\n', '.\n', '0a\n',
                  '0\n', '.\n']
         patch_lines(file_a, patches_from_ed_script(patch))
-        self.assertEqual(''.join(file_b), ''.join(file_a))
+        assert ''.join(file_b) == ''.join(file_a)
 
     def test_patch_lines_bytes(self):
         # type: () -> None
@@ -245,7 +246,7 @@ class HelperRoutineTests(unittest.TestCase):
                  b'0\n', b'.\n']
         patch_re_bytes = re.compile(b"^(\\d+)(?:,(\\d+))?([acd])$")
         patch_lines(file_a, patches_from_ed_script(patch, re_cmd=patch_re_bytes))
-        self.assertEqual(b''.join(file_b), b''.join(file_a))
+        assert b''.join(file_b) == b''.join(file_a)
 
 
 class PdiffTests(unittest.TestCase):
@@ -256,7 +257,7 @@ class PdiffTests(unittest.TestCase):
         filename = find_test_file('test_Packages.diff/test_Packages.1.gz')
         filename_uri = Path(filename).as_uri()
         lines = download_gunzip_lines(filename_uri)
-        self.assertTrue(len(lines))
+        assert len(lines)
 
     def test_update_file(self):
         # type: () -> None
@@ -281,7 +282,7 @@ class PdiffTests(unittest.TestCase):
 
             # check that the updated copy is the same as the known-good file
             with open(copy) as oh, open(updated) as uh:
-                self.assertEqual(oh.read(), uh.read())
+                assert oh.read() == uh.read()
 
         finally:
             os.remove(copy)
@@ -294,7 +295,7 @@ class PackageFileTests(unittest.TestCase):
         # type: (Any, Any) -> None
         """Check that the type is as expected
         """
-        self.assertTrue(isinstance(var_, type_))
+        assert isinstance(var_, type_)
 
     def test_read_file(self):
         # type: () -> None
@@ -302,7 +303,7 @@ class PackageFileTests(unittest.TestCase):
         packfile = find_test_file('test_Packages')
         pf = debian_support.PackageFile(packfile)
         pflist = list(pf)
-        self.assertEqual(len(pflist), 3)
+        assert len(pflist) == 3
         pf.file.close()
 
         # test_Sources is UTF-8
@@ -310,7 +311,7 @@ class PackageFileTests(unittest.TestCase):
         packfile = find_test_file('test_Sources')
         pf = debian_support.PackageFile(packfile)
         pflist = list(pf)
-        self.assertEqual(len(pflist), 4)
+        assert len(pflist) == 4
         pf.file.close()
 
     def test_read_fileobj(self):
@@ -319,12 +320,12 @@ class PackageFileTests(unittest.TestCase):
         with open(packfile, 'rb') as fhbin:
             pf = debian_support.PackageFile('ignored', file_obj=fhbin)
             pflist = list(pf)
-            self.assertEqual(len(pflist), 3)
+            assert len(pflist) == 3
             self.assertType(pflist[0][0][1], str)
         with open(packfile, 'rt') as fhtext:
             pf = debian_support.PackageFile('ignored', file_obj=fhtext)
             pflist = list(pf)
-            self.assertEqual(len(pflist), 3)
+            assert len(pflist) == 3
             self.assertType(pflist[0][0][1], str)
 
 
