@@ -951,9 +951,11 @@ class TestHeader:
         data['Format'] = "http%s" % FORMAT[5:]
         with caplog.at_level(logging.WARNING):
             h = copyright.Header(data=data)
-            assert 'WARNING' in caplog.text
-            assert 'debian.copyright' in caplog.text
-            assert 'Fixing Format URL' in caplog.text
+        assert caplog.record_tuples == [(
+            "debian.copyright",
+            logging.WARNING,
+            'Fixing Format URL'
+        )]
         assert FORMAT == h.format  # type: ignore
 
     @no_type_check
