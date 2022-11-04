@@ -128,12 +128,12 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
 """
         with caplog.at_level(logging.WARNING):
             cl = changelog.Changelog(cl_text)
-        assert 'WARNING' in caplog.text
-        assert 'debian.changelog' in caplog.text
-        assert (
+        assert caplog.record_tuples == [(
+            "debian.changelog",
+            logging.WARNING,
             'Unexpected line while looking for first heading: '
             'THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED'
-        ) in caplog.text
+        )]
 
         assert cl_text == bytes(cl)
 
@@ -308,12 +308,14 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         # In non-strict mode, warnings should be emitted by the malformed entry
         with caplog.at_level(logging.WARNING):
             c = changelog.Changelog(c_text, strict=False)
-            assert len(c) == 1
-            assert 'WARNING' in caplog.text
-            assert 'debian.changelog' in caplog.text
-            assert ('Badly formatted trailer line:  '
-                    '-- John Smith <john.smith@example.com> '
-                    'Tue, 27 Sep 2016 14:08:04 -0600') in caplog.text
+        assert len(c) == 1
+        assert caplog.record_tuples == [(
+            "debian.changelog",
+            logging.WARNING,
+            'Badly formatted trailer line:  '
+            '-- John Smith <john.smith@example.com> '
+            'Tue, 27 Sep 2016 14:08:04 -0600'
+        )]
 
     def test_block_iterator(self):
         # type: () -> None
