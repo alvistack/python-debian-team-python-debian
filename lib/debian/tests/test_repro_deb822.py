@@ -23,7 +23,6 @@ import contextlib
 import logging
 import textwrap
 from debian.deb822 import Deb822
-from unittest import TestCase
 
 import pytest
 
@@ -196,7 +195,7 @@ ROUND_TRIP_CASES = [
 
 
 
-class FormatPreservingDeb822ParserTests(TestCase):
+class TestFormatPreservingDeb822Parser:
 
     def test_round_trip_cases(self):
         # type: () -> None
