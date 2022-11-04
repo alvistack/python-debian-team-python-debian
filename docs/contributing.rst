@@ -35,7 +35,8 @@ Given how widely deployed these packages are:
 
 - The non-Debian and non-Linux users of `python-debian` are also important.
   The code is used to track Debian from other operating systems, with
-  projects extracting data from `debian/copyright` files or looking at the packages that are in Debian and derivatives. Portability of code and
+  projects extracting data from `debian/copyright` files or looking
+  at the packages that are in Debian and derivatives. Portability of code and
   tests is, therefore, valued.
 
 In general, code in `python-debian` should be reasonably generous in what it
@@ -113,19 +114,19 @@ test suite) is the preferred method for bug fixing. Please reference the bug
 number and describe the problem and solution in the comments for the bug so
 that those who come after you can understand both 'what' and 'why'.
 
-The tests use absolute imports and do not alter sys.path so that they can be
+The tests use absolute imports and do not alter `sys.path` so that they can be
 used to test either the installed package or the current working tree. Tests
 can be run either from the top-level directory or from the lib/ directory:
 
 Run all tests from the top most directory of the source package::
 
-    $ py.test -v -rsx --doctest-modules lib/
+    $ python3 -m pytest -v -rsx --doctest-modules lib/
 
 Or just run some selected tests::
 
-    $ py.test -v -rsx --doctest-modules lib/debian/tests/test_deb822.py::TestDeb822::test_buildinfo
+    $ python3 -m pytest -v -rsx --doctest-modules lib/debian/tests/test_deb822.py::TestDeb822::test_buildinfo
 
-    $ py.test -v -rsx --doctest-modules debian/tests/test_deb822.py
+    $ python3 -m pytest -v -rsx --doctest-modules debian/tests/test_deb822.py
 
 For simplicity all the tests can also be run as::
 
@@ -136,6 +137,10 @@ salsa.debian.org. Tests will be run against merge requests automatically.
 Running the tests with different encodings specified in the environment
 (using LC_ALL) is a good way of catching errors in handling the encoding
 of files.
+
+The tests make use of `pytest` features such as `caplog` for testing logging,
+`pytest.raises` for testing that exceptions are raised, and custom fixtures
+to provide test data.
 
 
 Debian Bug Tracking System
