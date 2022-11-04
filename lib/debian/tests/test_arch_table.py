@@ -16,9 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
 import os.path
-import unittest
-from unittest import skipIf
+
+import pytest
 
 from debian.debian_support import DpkgArchTable
 from .stubbed_arch_table import StubbedDpkgArchTable
@@ -30,7 +31,7 @@ else:
     HAS_REAL_DATA = False
 
 
-class TestDpkgArchTable(unittest.TestCase):
+class TestDpkgArchTable:
     
     def test_matches_architecture(self):
         # type: () -> None
@@ -113,7 +114,7 @@ class TestDpkgArchTable(unittest.TestCase):
         # Compatibility with the dpkg version of the function.
         assert arch_table.is_wildcard("unknown-any")
 
-    @skipIf(not HAS_REAL_DATA, "Missing real data")
+    @pytest.mark.skipif(not HAS_REAL_DATA, reason="Missing real data")
     def test_has_real_data(self):
         # type: () -> None
         arch_table = DpkgArchTable.load_arch_table()
