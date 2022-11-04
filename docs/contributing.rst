@@ -194,6 +194,7 @@ upload it.
 
  *   pkern
  *   stuart
+ *   jelmer
 
 The upload procedure is::
 
