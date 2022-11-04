@@ -17,9 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import logging
 import re
-import unittest
-import warnings
 
 import pytest
 
@@ -32,10 +31,12 @@ try:
     # pylint: disable=unused-import
     from typing import (
         Any,
+        Generator,
         List,
         Pattern,
         Sequence,
         Text,
+        no_type_check,
         TYPE_CHECKING,
     )
 except ImportError:
@@ -175,7 +176,7 @@ Originally packaged by Joe Example <joe@example.com>
 FORMAT = 'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'
 
 
-class RestrictedWrapperTest(unittest.TestCase):
+class TestRestrictedWrapper:
     class Wrapper(copyright._RestrictedWrapper):
         restricted_field = deb822.RestrictedField('Restricted-Field')
         required_field = deb822.RestrictedField('Required-Field', allow_none=False)
@@ -206,7 +207,8 @@ class RestrictedWrapperTest(unittest.TestCase):
         assert expected_data.keys() == data.keys()
         assert expected_data == data
 
-    def test_trivially_restricted_get_and_set(self):   # type: ignore
+    @no_type_check
+    def test_trivially_restricted_get_and_set(self):
         # mypy can't cope with the metaprogramming here
         data = Deb822ParagraphElement.new_empty_paragraph()
         data['Required-Field'] = 'some value'
@@ -236,49 +238,50 @@ class RestrictedWrapperTest(unittest.TestCase):
             del wrapper['restricted-field']
 
         with pytest.raises(TypeError):
-            wrapper.required_field = None           # type: ignore
+            wrapper.required_field = None
 
-        wrapper.restricted_field = 'special value'  # type: ignore
+        wrapper.restricted_field = 'special value'
         assert 'special value' == data['Restricted-Field']
-        wrapper.restricted_field = None             # type: ignore
+        wrapper.restricted_field = None
         assert not ('Restricted-Field' in data)
         assert wrapper.restricted_field is None
 
-        wrapper.required_field = 'another value'    # type: ignore
+        wrapper.required_field = 'another value'
         assert 'another value' == data['Required-Field']
 
-    def test_set_already_none_to_none(self):   # type: ignore
+    @no_type_check
+    def test_set_already_none_to_none(self):
         # mypy can't cope with the metaprogramming here
         data = Deb822ParagraphElement.new_empty_paragraph()
         wrapper = self.Wrapper(data)
-        wrapper.restricted_field = 'Foo'   # type: ignore
-        wrapper.restricted_field = None    # type: ignore
+        wrapper.restricted_field = 'Foo'
+        wrapper.restricted_field = None
         assert not ('restricted-field' in data)
-        wrapper.restricted_field = None    # type: ignore
+        wrapper.restricted_field = None
         assert not ('restricted-field' in data)
 
-    def test_processed_get_and_set(self):   # type: ignore
+    @no_type_check
+    def test_processed_get_and_set(self):
         # mypy can't cope with the metaprogramming here
         data = Deb822ParagraphElement.new_empty_paragraph()
         data['Space-Separated'] = 'foo bar baz'
 
         wrapper = self.Wrapper(data)
         assert ('foo', 'bar', 'baz') == wrapper.space_separated
-        wrapper.space_separated = ['bar', 'baz', 'quux']     # type: ignore
+        wrapper.space_separated = ['bar', 'baz', 'quux']
         assert 'bar baz quux' == data['space-separated']
         assert 'bar baz quux' == wrapper['space-separated']
         assert ('bar', 'baz', 'quux') == wrapper.space_separated
 
         with pytest.raises(ValueError, match="whitespace not allowed"):
-            wrapper.space_separated = ('foo', 'bar baz')    # type: ignore
-        #assert ('whitespace not allowed',) == cm.exception.args
+            wrapper.space_separated = ('foo', 'bar baz')
 
-        wrapper.space_separated = None     # type: ignore
+        wrapper.space_separated = None
         assert () == wrapper.space_separated
         assert not ('space-separated' in data)
         assert not ('Space-Separated' in data)
 
-        wrapper.space_separated = ()     # type: ignore
+        wrapper.space_separated = ()
         assert () == wrapper.space_separated
         assert not ('space-separated' in data)
         assert not ('Space-Separated' in data)
@@ -300,13 +303,11 @@ class RestrictedWrapperTest(unittest.TestCase):
         assert data.dump() == wrapper.dump()
 
 
-class LineBasedTest(unittest.TestCase):
+class TestLineBased:
     """Test for _LineBased.{to,from}_str"""
 
-    def setUp(self):
-        # type: () -> None
-        # Alias for less typing.
-        self.lb = copyright._LineBased
+    # Alias for less typing.
+    lb = copyright._LineBased
 
     def test_from_str_none(self):
         # type: () -> None
@@ -381,13 +382,11 @@ class LineBasedTest(unittest.TestCase):
                 ['bar', ' Foo Bar <foo@bar.com>\n http://bar.com/foo  '])
 
 
-class SpaceSeparatedTest(unittest.TestCase):
+class TestSpaceSeparated:
     """Tests for _SpaceSeparated.{to,from}_str."""
 
-    def setUp(self):
-        # type: () -> None
-        # Alias for less typing.
-        self.ss = copyright._SpaceSeparated
+    # Alias for less typing.
+    ss = copyright._SpaceSeparated
 
     def test_from_str_none(self):
         # type: () -> None
@@ -437,8 +436,9 @@ class SpaceSeparatedTest(unittest.TestCase):
             self.ss.to_str(['foo', ' baz quux '])
 
 
-class CopyrightTest(unittest.TestCase):
+class TestCopyright:
 
+    @no_type_check
     def test_basic_parse_success(self):
         # type: () -> None
         c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
@@ -477,6 +477,7 @@ class CopyrightTest(unittest.TestCase):
         assert expected == list(c.all_paragraphs())
         assert expected == list(c)
 
+    @no_type_check
     def test_all_files_paragraphs(self):
         # type: () -> None
         c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
@@ -523,6 +524,7 @@ Copyright: CompanyB
 License: Apache
 """ == c.dump()
 
+    @no_type_check
     def test_all_license_paragraphs(self):
         # type: () -> None
         c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
@@ -561,35 +563,37 @@ License: Apache
             copyright.Copyright(sequence=NOT_MACHINE_READABLE.splitlines(True))
 
 
-class MultlineTest(unittest.TestCase):
+class TestMultline:
     """Test cases for format_multiline{,_lines} and parse_multline{,_as_lines}.
     """
 
-    def setUp(self):
-        # type: () -> None
+    @pytest.fixture(autouse=True)
+    def data(self):
+        # type: () -> Generator[None, None, None]
         paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
         self.formatted = paragraphs[1]['License']
         self.parsed = 'GPL-2+\n' + GPL_TWO_PLUS_TEXT
         self.parsed_lines = self.parsed.splitlines()
+        yield
 
-    def test_format_multiline(self):
-        # type: () -> None
+    def test_format_multiline(self, data):
+        # type: (None) -> None
         assert None == copyright.format_multiline(None)
         assert 'Foo' == copyright.format_multiline('Foo')
         assert 'Foo\n Bar baz\n .\n Quux.' == \
             copyright.format_multiline('Foo\nBar baz\n\nQuux.')
         assert self.formatted == copyright.format_multiline(self.parsed)
 
-    def test_parse_multiline(self):
-        # type: () -> None
+    def test_parse_multiline(self, data):
+        # type: (None) -> None
         assert None == copyright.parse_multiline(None)
         assert 'Foo' == copyright.parse_multiline('Foo')
         assert 'Foo\nBar baz\n\nQuux.' == \
             copyright.parse_multiline('Foo\n Bar baz\n .\n Quux.')
         assert self.parsed == copyright.parse_multiline(self.formatted)
 
-    def test_format_multiline_lines(self):
-        # type: () -> None
+    def test_format_multiline_lines(self, data):
+        # type: (None) -> None
         assert '' == copyright.format_multiline_lines([])
         assert 'Foo' == copyright.format_multiline_lines(['Foo'])
         assert 'Foo\n Bar baz\n .\n Quux.' == \
@@ -598,8 +602,8 @@ class MultlineTest(unittest.TestCase):
         assert self.formatted == \
             copyright.format_multiline_lines(self.parsed_lines)
 
-    def test_parse_multiline_as_lines(self):
-        # type: () -> None
+    def test_parse_multiline_as_lines(self, data):
+        # type: (None) -> None
         assert [] == copyright.parse_multiline_as_lines('')
         assert ['Foo'] == copyright.parse_multiline_as_lines('Foo')
         assert ['Foo', 'Bar baz', '', 'Quux.'] == \
@@ -608,8 +612,8 @@ class MultlineTest(unittest.TestCase):
         assert self.parsed_lines == \
             copyright.parse_multiline_as_lines(self.formatted)
 
-    def test_parse_format_inverses(self):
-        # type: () -> None
+    def test_parse_format_inverses(self, data):
+        # type: (None) -> None
         assert self.formatted == \
             copyright.format_multiline(
                 copyright.parse_multiline(self.formatted))
@@ -627,7 +631,7 @@ class MultlineTest(unittest.TestCase):
                 copyright.format_multiline_lines(self.parsed_lines))
 
 
-class LicenseTest(unittest.TestCase):
+class TestLicense:
 
     def test_empty_text(self):
         # type: () -> None
@@ -676,8 +680,9 @@ class LicenseTest(unittest.TestCase):
             assert l is not None
 
 
-class LicenseParagraphTest(unittest.TestCase):
+class TestLicenseParagraphTest:
 
+    @no_type_check
     def test_properties(self):
         # type: () -> None
         d = Deb822ParagraphElement.new_empty_paragraph()
@@ -686,16 +691,16 @@ class LicenseParagraphTest(unittest.TestCase):
         assert 'GPL-2' == lp['License']
         assert copyright.License('GPL-2') == lp.license
         assert lp.comment is None
-        lp.comment = "Some comment."  # type: ignore
+        lp.comment = "Some comment."
         assert "Some comment." == lp.comment
         assert "Some comment." == lp['comment']
 
-        lp.license = copyright.License('GPL-2+', '[LICENSE TEXT]')  # type: ignore
+        lp.license = copyright.License('GPL-2+', '[LICENSE TEXT]')
         assert copyright.License('GPL-2+', '[LICENSE TEXT]') == lp.license
         assert 'GPL-2+\n [LICENSE TEXT]' == lp['license']
 
         with pytest.raises(TypeError, match='value must not be None'):
-            lp.license = None   # type: ignore
+            lp.license = None
 
     def test_no_license(self):
         # type: () -> None
@@ -721,11 +726,9 @@ class LicenseParagraphTest(unittest.TestCase):
             lp['Files'] = 'foo/*'
 
 
-class GlobsToReTest(unittest.TestCase):
+class TestGlobsToRe:
 
-    def setUp(self):
-        # type: () -> None
-        self.flags = re.MULTILINE | re.DOTALL
+    flags = re.MULTILINE | re.DOTALL
 
     def assertReEqual(self, a, b):
         # type: (Pattern[Text], Pattern[Text]) -> None
@@ -827,6 +830,7 @@ class GlobsToReTest(unittest.TestCase):
         assert not pat.match('bar/quux')
         assert pat.match('bar/quux\\')
 
+    @no_type_check
     def test_illegal_backslash(self):
         # type: () -> None
         with pytest.raises(ValueError) as cm:
@@ -840,48 +844,52 @@ class GlobsToReTest(unittest.TestCase):
                              cm.exception.args
 
 
-class FilesParagraphTest(unittest.TestCase):
+class TestFilesParagraph:
 
-    def setUp(self):
-        # type: () -> None
+    @pytest.fixture(autouse=True)
+    def data(self):
+        # type: () -> Generator[None, None, None]
         self.prototype = Deb822ParagraphElement.new_empty_paragraph()
         self.prototype['Files'] = '*'
         self.prototype['Copyright'] = 'Foo'
         self.prototype['License'] = 'ISC'
+        yield
 
-    def test_files_property(self):
-        # type: () -> None
+    @no_type_check
+    def test_files_property(self, data):
+        # type: (None) -> None
         fp = copyright.FilesParagraph(self.prototype)
         assert ('*',) == fp.files
 
-        fp.files = ['debian/*']   # type: ignore
+        fp.files = ['debian/*']
         assert ('debian/*',) == fp.files
         assert 'debian/*' == fp['files']
 
-        fp.files = ['src/foo/*', 'src/bar/*']   # type: ignore
+        fp.files = ['src/foo/*', 'src/bar/*']
         assert ('src/foo/*', 'src/bar/*') == fp.files
         assert 'src/foo/* src/bar/*' == fp['files']
 
         with pytest.raises(TypeError):
-            fp.files = None   # type: ignore
+            fp.files = None
 
         self.prototype['Files'] = 'foo/*\tbar/*\n\tbaz/*\n quux/*'
         fp = copyright.FilesParagraph(self.prototype)
         assert ('foo/*', 'bar/*', 'baz/*', 'quux/*') == fp.files
 
-    def test_license_property(self):
-        # type: () -> None
+    @no_type_check
+    def test_license_property(self, data):
+        # type: (None) -> None
         fp = copyright.FilesParagraph(self.prototype)
         assert copyright.License('ISC') == fp.license
-        fp.license = copyright.License('ISC', '[LICENSE TEXT]')  # type: ignore
+        fp.license = copyright.License('ISC', '[LICENSE TEXT]')
         assert copyright.License('ISC', '[LICENSE TEXT]') == fp.license
         assert 'ISC\n [LICENSE TEXT]' == fp['license']
 
         with pytest.raises(TypeError):
-            fp.license = None   # type: ignore
+            fp.license = None
 
-    def test_matches(self):
-        # type: () -> None
+    def test_matches(self, data):
+        # type: (None) -> None
         fp = copyright.FilesParagraph(self.prototype)
         assert fp.matches('foo/bar.cc')
         assert fp.matches('Makefile')
@@ -897,6 +905,7 @@ class FilesParagraphTest(unittest.TestCase):
         assert fp.matches('Makefile')
         assert not fp.matches('debian/rules')
 
+    @no_type_check
     def test_create(self):
         # type: () -> None
         fp = copyright.FilesParagraph.create(
@@ -920,14 +929,15 @@ class FilesParagraphTest(unittest.TestCase):
                 files=None, copyright='foo', license=copyright.License('ISC'))
 
 
-class HeaderTest(unittest.TestCase):
+class TestHeader:
 
+    @no_type_check
     def test_format_not_none(self):
         # type: () -> None
         h = copyright.Header()
         assert FORMAT == h.format
         with pytest.raises(TypeError, match='value must not be None'):
-            h.format = None   # type: ignore
+            h.format = None
 
     def test_format_upgrade_no_header(self):
         # type: () -> None
@@ -935,25 +945,25 @@ class HeaderTest(unittest.TestCase):
         with pytest.raises(copyright.NotMachineReadableError):
             copyright.Header(data=data)
 
-    def test_format_https_upgrade(self):
-        # type: () -> None
+    def test_format_https_upgrade(self, caplog):
+        # type: (pytest.LogCaptureFixture) -> None
         data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = "http%s" % FORMAT[5:]
-        with self.assertLogs('debian.copyright', level='WARNING') as cm:
-            assert cm is not None
-            # CRUFT: mypy doesn't understand that cm is already not None.
-            assert cm is not None
+        with caplog.at_level(logging.WARNING):
             h = copyright.Header(data=data)
-            assert cm.output == ['WARNING:debian.copyright:Fixing Format URL']
-        assert FORMAT == h.format
+            assert 'WARNING' in caplog.text
+            assert 'debian.copyright' in caplog.text
+            assert 'Fixing Format URL' in caplog.text
+        assert FORMAT == h.format  # type: ignore
 
+    @no_type_check
     def test_upstream_name_single_line(self):
         # type: () -> None
         h = copyright.Header()
-        h.upstream_name = 'Foo Bar'    # type: ignore
+        h.upstream_name = 'Foo Bar'
         assert 'Foo Bar' == h.upstream_name
         with pytest.raises(ValueError, match='must be single line'):
-            h.upstream_name = 'Foo Bar\n Baz'   # type: ignore
+            h.upstream_name = 'Foo Bar\n Baz'
 
     def test_upstream_contact_single_read(self):
         # type: () -> None
@@ -961,7 +971,7 @@ class HeaderTest(unittest.TestCase):
         data['Format'] = FORMAT
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>'
         h = copyright.Header(data=data)
-        assert ('Foo Bar <foo@bar.com>',) == h.upstream_contact
+        assert ('Foo Bar <foo@bar.com>',) == h.upstream_contact  # type: ignore
 
     def test_upstream_contact_multi1_read(self):
         # type: () -> None
@@ -970,7 +980,7 @@ class HeaderTest(unittest.TestCase):
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>\n http://bar.com/foo'
         h = copyright.Header(data=data)
         assert ('Foo Bar <foo@bar.com>', 'http://bar.com/foo') == \
-            h.upstream_contact
+            h.upstream_contact   # type: ignore
 
     def test_upstream_contact_multi2_read(self):
         # type: () -> None
@@ -980,13 +990,13 @@ class HeaderTest(unittest.TestCase):
             '\n Foo Bar <foo@bar.com>\n http://bar.com/foo')
         h = copyright.Header(data=data)
         assert ('Foo Bar <foo@bar.com>', 'http://bar.com/foo') == \
-            h.upstream_contact
+            h.upstream_contact  # type: ignore
 
     def test_upstream_contact_single_write(self):
         # type: () -> None
         h = copyright.Header()
         h.upstream_contact = ['Foo Bar <foo@bar.com>']   # type: ignore
-        assert ('Foo Bar <foo@bar.com>',) == h.upstream_contact
+        assert ('Foo Bar <foo@bar.com>',) == h.upstream_contact  # type: ignore
         assert 'Foo Bar <foo@bar.com>' == h['Upstream-Contact']
 
     def test_upstream_contact_multi_write(self):
@@ -994,7 +1004,7 @@ class HeaderTest(unittest.TestCase):
         h = copyright.Header()
         h.upstream_contact = ['Foo Bar <foo@bar.com>', 'http://bar.com/foo']   # type: ignore
         assert ('Foo Bar <foo@bar.com>', 'http://bar.com/foo') == \
-            h.upstream_contact
+            h.upstream_contact  # type: ignore
         assert '\n Foo Bar <foo@bar.com>\n http://bar.com/foo' == \
             h['upstream-contact']
 
@@ -1003,13 +1013,13 @@ class HeaderTest(unittest.TestCase):
         h = copyright.Header()
         assert h.license is None
         l = copyright.License('GPL-2+')
-        h.license = l    # type: ignore
+        h.license = l
         assert l == h.license
         assert 'GPL-2+' == h['license']
 
-        h.license = None   # type: ignore
+        h.license = None
         assert h.license is None
-        assert not ('license' in h)   # type: ignore
+        assert not ('license' in h)
 
 
 def _no_space(s):
@@ -1018,7 +1028,3 @@ def _no_space(s):
     if re.search(r'\s', s):
         raise ValueError('whitespace not allowed')
     return s
-
-
-if __name__ == '__main__':
-    unittest.main()
