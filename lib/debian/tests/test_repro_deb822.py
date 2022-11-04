@@ -25,6 +25,8 @@ import textwrap
 from debian.deb822 import Deb822
 from unittest import TestCase
 
+import pytest
+
 from debian._deb822_repro import (parse_deb822_file,
                                   AmbiguousDeb822FieldKeyError,
                                   LIST_SPACE_SEPARATED_INTERPRETATION,
@@ -193,6 +195,7 @@ ROUND_TRIP_CASES = [
 ]
 
 
+
 class FormatPreservingDeb822ParserTests(TestCase):
 
     def test_round_trip_cases(self):
@@ -215,7 +218,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                     error_element_count += 1
 
             if parse_case.error_element_count > 0 or parse_case.duplicate_fields:
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError):
                     # By default, we would reject this file.
                     parse_deb822_file(case_input.splitlines(keepends=True))
             else:
@@ -230,15 +233,15 @@ class FormatPreservingDeb822ParserTests(TestCase):
             #   logging.info(f" ---  CASE {i} --- ")
             #   _print_ast(deb822_file)
             #   logging.info(f" ---  END CASE {i} --- ")
-            self.assertEqual(parse_case.error_element_count, error_element_count,
-                             "Correct number of error tokens for case " + c)
-            self.assertEqual(parse_case.paragraph_count, paragraph_count,
-                             "Correct number of paragraphs parsed for case " + c)
-            self.assertEqual(parse_case.is_valid_file, deb822_file.is_valid_file,
-                             "Verify deb822_file correctly determines whether the field is invalid"
-                             " for case " + c)
-            self.assertEqual(case_input, deb822_file.convert_to_text(),
-                             "Input of case " + c + " is round trip safe")
+            assert parse_case.error_element_count == error_element_count, \
+                             "Correct number of error tokens for case " + c
+            assert parse_case.paragraph_count == paragraph_count, \
+                             "Correct number of paragraphs parsed for case " + c
+            assert parse_case.is_valid_file == deb822_file.is_valid_file, \
+                             "Verify deb822_file correctly determines whether the field is invalid" \
+                             " for case " + c
+            assert case_input == deb822_file.convert_to_text(), \
+                             "Input of case " + c + " is round trip safe"
 
             newline_normalized_by_omission = parse_deb822_file(
                 case_input.splitlines(),
@@ -248,10 +251,10 @@ class FormatPreservingDeb822ParserTests(TestCase):
             case_input_newline_normalized = case_input.replace("\r", "")
             if not case_input_newline_normalized.endswith("\n") and len(case_input_newline_normalized.splitlines()) > 1:
                 case_input_newline_normalized += "\n"
-            self.assertEqual(case_input_newline_normalized,
-                             newline_normalized_by_omission.convert_to_text(),
-                             "Input of case " + c + " is newline normalized round trip safe"
-                                                    " with newlines omitted")
+            assert case_input_newline_normalized == \
+                             newline_normalized_by_omission.convert_to_text(), \
+                             "Input of case " + c + " is newline normalized round trip safe" \
+                                                    " with newlines omitted"
             logging.info("Successfully passed case " + c)
 
     def test_deb822_emulation(self):
@@ -270,13 +273,13 @@ class FormatPreservingDeb822ParserTests(TestCase):
             deb822_paragraphs = list(Deb822.iter_paragraphs(case_input.splitlines()))
 
             for repro_paragraph, deb822_paragraph in zip(deb822_file, deb822_paragraphs):
-                self.assertEqual(list(repro_paragraph), list(deb822_paragraph),
-                                 "Ensure keys are the same and in the correct order, case " + c)
+                assert list(repro_paragraph) == list(deb822_paragraph), \
+                                 "Ensure keys are the same and in the correct order, case " + c
                 # Use the key from Deb822 as it is compatible with the round safe version
                 # (the reverse is not true typing wise)
                 for k, ev in deb822_paragraph.items():
                     av = repro_paragraph[k]
-                    self.assertEqual(av, ev, "Ensure value for " + k + " is the same, case " + c)
+                    assert av == ev, "Ensure value for " + k + " is the same, case " + c
 
     def test_regular_fields(self):
         # type: () -> None
@@ -291,9 +294,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
 
         source_paragraph = next(iter(deb822_file))
-        self.assertEqual("foo", source_paragraph['Source'])
-        self.assertEqual("1.2.3", source_paragraph['Standards-Version'])
-        self.assertEqual("no", source_paragraph['Rules-Requires-Root'])
+        assert "foo" == source_paragraph['Source']
+        assert "1.2.3" == source_paragraph['Standards-Version']
+        assert "no" == source_paragraph['Rules-Requires-Root']
 
         # Test setter and deletion while we are at it
         source_paragraph["Rules-Requires-Root"] = "binary-targets"
@@ -307,8 +310,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           New-Field: value
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving comments"
 
         # As an alternative, we can also fix the problem if we discard comments
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
@@ -327,8 +330,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           New-Field: value
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while but discarded comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while but discarded comments"
 
         source_paragraph['Multi-Line-Field-Space'] = textwrap.dedent('''\
         foo
@@ -347,8 +350,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Multi-Line-Field-Tab: foo
           \tbar
           ''')
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving space + tab")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving space + tab"
 
     def test_empty_fields(self):
         # type: () -> None
@@ -360,17 +363,17 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
 
         source_paragraph = next(iter(deb822_file))
-        self.assertEqual("", source_paragraph['Empty-Field'])
+        assert "" == source_paragraph['Empty-Field']
         source_paragraph['Another-Empty-Field'] = ""
-        self.assertEqual("", source_paragraph['Another-Empty-Field'])
+        assert "" == source_paragraph['Another-Empty-Field']
         list_view = source_paragraph.as_interpreted_dict_view(LIST_SPACE_SEPARATED_INTERPRETATION)
         with list_view['Empty-Field'] as empty_field:
-            self.assertFalse(bool(empty_field))
+            assert not bool(empty_field)
 
         with list_view['Field'] as field:
-            self.assertTrue(bool(field))
+            assert bool(field)
             field.clear()
-            self.assertFalse(bool(field))
+            assert not bool(field)
 
         expected = textwrap.dedent('''\
           Source: foo
@@ -378,8 +381,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Empty-Field:
           Another-Empty-Field:
           ''')
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked and generate a valid file")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked and generate a valid file"
 
     def test_empty_fields_reorder(self):
         # type: () -> None
@@ -395,8 +398,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Empty-Field:
           Field: foo
           ''')
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked and generate a valid file")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked and generate a valid file"
         # Re-parse
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
@@ -406,8 +409,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Source: foo
           Field: foo
           ''')
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked and generate a valid file")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked and generate a valid file"
 
     def test_case_preservation(self):
         # type: () -> None
@@ -422,9 +425,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
 
         source_paragraph = next(iter(deb822_file))
-        self.assertEqual("foo", source_paragraph['Source'])
-        self.assertEqual("1.2.3", source_paragraph['Standards-Version'])
-        self.assertEqual("no", source_paragraph['Rules-Requires-Root'])
+        assert "foo" == source_paragraph['Source']
+        assert "1.2.3" == source_paragraph['Standards-Version']
+        assert "no" == source_paragraph['Rules-Requires-Root']
 
         # Test setter and deletion while we are at it
         source_paragraph["Rules-Requires-Root"] = "binary-targets"
@@ -438,8 +441,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           New-field: value
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving case")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving case"
 
         # Repeat with duplicated fields
         original = textwrap.dedent('''\
@@ -457,9 +460,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
                                         )
 
         source_paragraph = next(iter(deb822_file))
-        self.assertEqual("foo", source_paragraph['Source'])
-        self.assertEqual("1.2.3", source_paragraph['Standards-Version'])
-        self.assertEqual("no", source_paragraph['Rules-Requires-Root'])
+        assert "foo" == source_paragraph['Source']
+        assert "1.2.3" == source_paragraph['Standards-Version']
+        assert "no" == source_paragraph['Rules-Requires-Root']
 
         # Test setter and deletion while we are at it
         source_paragraph["Rules-Requires-Root"] = "binary-targets"
@@ -474,8 +477,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           New-field: value
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving case")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving case"
 
     def test_preserve_field_order_on_mutation(self):
         # type: () -> None
@@ -491,7 +494,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
 
         source_paragraph = next(iter(deb822_file))
-        self.assertEqual("foo", source_paragraph['Source'])
+        assert "foo" == source_paragraph['Source']
 
         source_paragraph["Rules-Requires-Root"] = "binary-targets"
         source_paragraph["section"] = "devel"
@@ -506,8 +509,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Build-Depends: debhelper-compat (= 10)
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving field order")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving field order"
 
         # Again - this time with a paragraph containing duplicate fields
         original = textwrap.dedent('''\
@@ -526,7 +529,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                                         )
 
         source_paragraph = next(iter(deb822_file))
-        self.assertEqual("foo", source_paragraph['Source'])
+        assert "foo" == source_paragraph['Source']
 
         source_paragraph["Rules-Requires-Root"] = "binary-targets"
         source_paragraph["section"] = "devel"
@@ -542,8 +545,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Build-Depends: debhelper-compat (= 10)
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving field order")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving field order"
 
     def test_preserve_field_case_on_iter(self):
         # type: () -> None
@@ -568,8 +571,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
         }
         actual_keys = set(source_paragraph.keys())
 
-        self.assertEqual(expected_keys, actual_keys,
-                         "Keys returned by iterations should have original case")
+        assert expected_keys == actual_keys, \
+                         "Keys returned by iterations should have original case"
 
     def test_append_paragraph(self):
         # type: () -> None
@@ -596,9 +599,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Description: Binary package bar
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_append_paragraph_existing_trailing_newline(self):
         # type: () -> None
@@ -626,9 +629,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Description: Binary package bar
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_append_empty_paragraph(self):
         # type: () -> None
@@ -651,9 +654,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
 
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_append_tailing_comment(self):
         # type: () -> None
@@ -682,9 +685,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Description: Binary package bar
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_insert_paragraph(self):
         # type: () -> None
@@ -711,9 +714,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Rules-Requires-Root: no
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
         # Insert after the existing paragraphs
 
@@ -735,9 +738,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Description: Binary package blah
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_insert_paragraph_with_comments(self):
         # type: () -> None
@@ -775,9 +778,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           # Comment
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
         # Insert after the existing paragraphs
 
@@ -802,9 +805,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Description: Binary package blah
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_insert_paragraph_in_empty_file(self):
         # type: () -> None
@@ -822,9 +825,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Description: Binary package bar
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_remove_paragraph(self):
         # type: () -> None
@@ -839,7 +842,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
 
         binary_paragraph = list(deb822_file)[1]
-        self.assertEqual('bar', binary_paragraph['Package'])
+        assert 'bar' == binary_paragraph['Package']
 
         deb822_file.remove(binary_paragraph)
 
@@ -849,9 +852,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Rules-Requires-Root: no
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
         # Verify that we can add another paragraph.
         deb822_file.append(Deb822ParagraphElement.from_dict({'Package': 'bloe'}))
@@ -864,22 +867,22 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Package: bloe
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Adding new paragraph should have worked")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Adding new paragraph should have worked"
 
         deb822_file.remove(list(deb822_file)[1])
 
         source_paragraph = list(deb822_file)[0]
-        self.assertEqual('foo', source_paragraph['Source'])
+        assert 'foo' == source_paragraph['Source']
 
         deb822_file.remove(source_paragraph)
 
         expected = textwrap.dedent('''\
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
         original = textwrap.dedent('''\
           Source: foo
@@ -896,7 +899,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
 
         binary_paragraph = list(deb822_file)[1]
-        self.assertEqual('bar', binary_paragraph['Package'])
+        assert 'bar' == binary_paragraph['Package']
 
         deb822_file.remove(binary_paragraph)
 
@@ -910,9 +913,9 @@ class FormatPreservingDeb822ParserTests(TestCase):
           Package: la
           ''')
 
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Mutation should have worked while preserving "
-                         "comments")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Mutation should have worked while preserving " \
+                         "comments"
 
     def test_duplicate_fields(self):
         # type: () -> None
@@ -930,7 +933,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                                         accept_files_with_duplicated_fields=True,
                                         )
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # But the parser should raise an error if explicitly requested
             parse_deb822_file(original.splitlines(keepends=True),
                               accept_files_with_error_tokens=True,
@@ -940,23 +943,23 @@ class FormatPreservingDeb822ParserTests(TestCase):
         source_paragraph = next(iter(deb822_file))
         as_dict = source_paragraph.configured_view(auto_resolve_ambiguous_fields=False)
         # Non-ambiguous fields are fine
-        self.assertEqual("foo", as_dict['Source'])
-        self.assertEqual("1.2.3", as_dict['Standards-Version'])
+        assert "foo" == as_dict['Source']
+        assert "1.2.3" == as_dict['Standards-Version']
         # Contains doesn't raise a AmbiguousDeb822FieldKeyError
-        self.assertIn('Rules-Requires-Root', as_dict)
-        with self.assertRaises(AmbiguousDeb822FieldKeyError):
+        assert 'Rules-Requires-Root' in as_dict
+        with pytest.raises(AmbiguousDeb822FieldKeyError):
             v = as_dict['Rules-Requires-Root']
         as_dict_auto_resolve = source_paragraph.configured_view(auto_resolve_ambiguous_fields=True)
-        self.assertEqual("foo", as_dict_auto_resolve['Source'])
-        self.assertEqual("1.2.3", as_dict_auto_resolve['Standards-Version'])
+        assert "foo" == as_dict_auto_resolve['Source']
+        assert "1.2.3" == as_dict_auto_resolve['Standards-Version']
         # Auto-resolution always takes the first field value
-        self.assertEqual("no", as_dict_auto_resolve['Rules-Requires-Root'])
+        assert "no" == as_dict_auto_resolve['Rules-Requires-Root']
         # It should be possible to "fix" the duplicate field by setting the field explicitly
         as_dict_auto_resolve['Rules-Requires-Root'] = as_dict_auto_resolve['Rules-Requires-Root']
 
         expected_fixed = original.replace('Rules-Requires-Root: binary-targets\n', '')
-        self.assertEqual(expected_fixed, deb822_file.convert_to_text(),
-                         "Fixed version should only have one Rules-Requires-Root field")
+        assert expected_fixed == deb822_file.convert_to_text(), \
+                         "Fixed version should only have one Rules-Requires-Root field"
 
         # As an alternative, we can also fix the problem if we discard comments
         deb822_file = parse_deb822_file(original.splitlines(keepends=True),
@@ -968,7 +971,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             auto_resolve_ambiguous_fields=False,
         )
         # First, ensure the reset succeeded
-        with self.assertRaises(AmbiguousDeb822FieldKeyError):
+        with pytest.raises(AmbiguousDeb822FieldKeyError):
             v = as_dict_discard_comments['Rules-Requires-Root']
         as_dict_discard_comments["Rules-Requires-Root"] = "no"
         # Test setter and deletion while we are at it
@@ -980,8 +983,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
         Rules-Requires-Root: no
         New-Field: value
         ''')
-        self.assertEqual(expected, deb822_file.convert_to_text(),
-                         "Fixed version should only have one Rules-Requires-Root field")
+        assert expected == deb822_file.convert_to_text(), \
+                         "Fixed version should only have one Rules-Requires-Root field"
 
     def test_sorting(self):
         # type: () -> None
@@ -1058,8 +1061,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
         for paragraph in deb822_file_nodups:
             paragraph.sort_fields(key=key_func)
 
-        self.assertEqual(sorted_nodups, deb822_file_nodups.convert_to_text(),
-                         "Sorting without duplicated fields work")
+        assert sorted_nodups == deb822_file_nodups.convert_to_text(), \
+                         "Sorting without duplicated fields work"
         deb822_file_with_dups = parse_deb822_file(original_with_dups.splitlines(keepends=True),
                                                   accept_files_with_duplicated_fields=True,
                                                   )
@@ -1067,8 +1070,8 @@ class FormatPreservingDeb822ParserTests(TestCase):
         for paragraph in deb822_file_with_dups:
             paragraph.sort_fields(key=key_func)
 
-        self.assertEqual(sorted_with_dups, deb822_file_with_dups.convert_to_text(),
-                         "Sorting with duplicated fields work")
+        assert sorted_with_dups == deb822_file_with_dups.convert_to_text(), \
+                         "Sorting with duplicated fields work"
 
     def test_reorder_nodups(self):
         # type: () -> None
@@ -1083,47 +1086,40 @@ class FormatPreservingDeb822ParserTests(TestCase):
         paragraph = next(iter(deb822_file))
 
         # Verify the starting state
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
-                         )
         # no op
         paragraph.order_last('Recommends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
-                         )
         # no op
         paragraph.order_first('Depends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
-                         )
 
         paragraph.order_first('Package')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Depends', 'Description', 'Architecture', 'Recommends']
-                         )
 
         paragraph.order_last('Description')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Depends', 'Architecture', 'Recommends', 'Description']
-                         )
 
         paragraph.order_after('Recommends', 'Depends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Depends', 'Recommends', 'Architecture', 'Description']
-                         )
 
         paragraph.order_before('Architecture', 'Depends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
-                         )
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             paragraph.order_after('Architecture', 'Architecture')
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             paragraph.order_before('Architecture', 'Architecture')
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             paragraph.order_before('Unknown-Field', 'Architecture')
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             paragraph.order_before('Architecture', 'Unknown-Field')
 
     def test_reorder_dups(self):
@@ -1142,155 +1138,140 @@ class FormatPreservingDeb822ParserTests(TestCase):
                                         )
         paragraph = next(iter(deb822_file))
         # Verify the starting state
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Depends', 'Description', 'Description', 'Architecture', 'Package',
                           'Package', 'Recommends']
-                         )
         # no op
         paragraph.order_last('Recommends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Depends', 'Description', 'Description', 'Architecture', 'Package',
                           'Package', 'Recommends']
-                         )
         # no op
         paragraph.order_first('Depends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Depends', 'Description', 'Description', 'Architecture', 'Package',
                           'Package', 'Recommends']
-                         )
 
         paragraph.order_first('Package')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package','Depends', 'Description', 'Description',
                           'Architecture', 'Recommends']
-                         )
 
         # Relative order must be preserved in this case.
-        self.assertEqual(paragraph["Package"], "foo")
-        self.assertEqual(paragraph[("Package", 0)], "foo")
-        self.assertEqual(paragraph[("Package", 1)], "foo2")
+        assert paragraph["Package"] == "foo"
+        assert paragraph[("Package", 0)] == "foo"
+        assert paragraph[("Package", 1)] == "foo2"
 
         # Repeating order_first should be a noop
         paragraph.order_first('Package')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Depends', 'Description', 'Description',
                           'Architecture', 'Recommends']
-                         )
 
         # Relative order must be preserved in this case.
-        self.assertEqual(paragraph["Package"], "foo")
-        self.assertEqual(paragraph[("Package", 0)], "foo")
-        self.assertEqual(paragraph[("Package", 1)], "foo2")
+        assert paragraph["Package"] == "foo"
+        assert paragraph[("Package", 0)] == "foo"
+        assert paragraph[("Package", 1)] == "foo2"
 
         paragraph.order_last('Description')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
                           'Description', 'Description']
-                         )
         # Relative order must be preserved in this case.
-        self.assertEqual(paragraph["Description"], "some-text")
-        self.assertEqual(paragraph[("Description", 0)], "some-text")
-        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+        assert paragraph["Description"] == "some-text"
+        assert paragraph[("Description", 0)] == "some-text"
+        assert paragraph[("Description", 1)] == "some-more-text"
 
         # Repeating order_first should be a noop
         paragraph.order_last('Description')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
                           'Description', 'Description']
-                         )
         # Relative order must be preserved in this case.
-        self.assertEqual(paragraph["Description"], "some-text")
-        self.assertEqual(paragraph[("Description", 0)], "some-text")
-        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+        assert paragraph["Description"] == "some-text"
+        assert paragraph[("Description", 0)] == "some-text"
+        assert paragraph[("Description", 1)] == "some-more-text"
 
         paragraph.order_after('Recommends', 'Depends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Depends', 'Recommends', 'Architecture',
                           'Description', 'Description', ]
-                         )
 
         paragraph.order_before('Architecture', 'Depends')
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
                           'Description', 'Description', ]
-                         )
 
         # And now, for some "fun stuff"
 
         # Lets move the last Description field in front of the first.
         paragraph.order_before(('Description', 1), ('Description', 0))
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
                           'Description', 'Description', ]
-                         )
         # Verify the relocation was successful
-        self.assertEqual(paragraph["Description"], "some-more-text")
-        self.assertEqual(paragraph[("Description", 0)], "some-more-text")
-        self.assertEqual(paragraph[("Description", 1)], "some-text")
+        assert paragraph["Description"] == "some-more-text"
+        assert paragraph[("Description", 0)] == "some-more-text"
+        assert paragraph[("Description", 1)] == "some-text"
 
         # And swap their relative positions again
         paragraph.order_after(('Description', 0), ('Description', 1))
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
                           'Description', 'Description', ]
-                         )
         # Verify the relocation was successful
-        self.assertEqual(paragraph["Description"], "some-text")
-        self.assertEqual(paragraph[("Description", 0)], "some-text")
-        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+        assert paragraph["Description"] == "some-text"
+        assert paragraph[("Description", 0)] == "some-text"
+        assert paragraph[("Description", 1)] == "some-more-text"
 
         # This should be a no-op
         paragraph.order_last(('Description', 1))
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
                           'Description', 'Description', ]
-                         )
-        self.assertEqual(paragraph["Description"], "some-text")
-        self.assertEqual(paragraph[("Description", 0)], "some-text")
-        self.assertEqual(paragraph[("Description", 1)], "some-more-text")
+        assert paragraph["Description"] == "some-text"
+        assert paragraph[("Description", 0)] == "some-text"
+        assert paragraph[("Description", 1)] == "some-more-text"
 
         # This should cause them to swap order
         paragraph.order_last(('Description', 0))
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
                           'Description', 'Description', ]
-                         )
         # Verify the relocation was successful
-        self.assertEqual(paragraph["Description"], "some-more-text")
-        self.assertEqual(paragraph[("Description", 0)], "some-more-text")
-        self.assertEqual(paragraph[("Description", 1)], "some-text")
+        assert paragraph["Description"] == "some-more-text"
+        assert paragraph[("Description", 0)] == "some-more-text"
+        assert paragraph[("Description", 1)] == "some-text"
 
         # This should be a no-op
         paragraph.order_first(('Package', 0))
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
                           'Description', 'Description', ]
-                         )
 
         # Relative order must be preserved in this case.
-        self.assertEqual(paragraph["Package"], "foo")
-        self.assertEqual(paragraph[("Package", 0)], "foo")
-        self.assertEqual(paragraph[("Package", 1)], "foo2")
+        assert paragraph["Package"] == "foo"
+        assert paragraph[("Package", 0)] == "foo"
+        assert paragraph[("Package", 1)] == "foo2"
 
         # This should cause them to swap order
         paragraph.order_first(('Package', 1))
-        self.assertEqual(list(paragraph.keys()),
+        assert list(paragraph.keys()) == \
                          ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
                           'Description', 'Description', ]
-                         )
 
         # Verify the relocation was successful
-        self.assertEqual(paragraph["Package"], "foo2")
-        self.assertEqual(paragraph[("Package", 0)], "foo2")
-        self.assertEqual(paragraph[("Package", 1)], "foo")
+        assert paragraph["Package"] == "foo2"
+        assert paragraph[("Package", 0)] == "foo2"
+        assert paragraph[("Package", 1)] == "foo"
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             paragraph.order_after('Architecture', 'Architecture')
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             paragraph.order_before('Architecture', 'Architecture')
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             paragraph.order_before('Unknown-Field', 'Architecture')
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             paragraph.order_before('Architecture', 'Unknown-Field')
 
     def test_interpretation(self):
@@ -1342,7 +1323,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             # We always match without the field comment to keep things simple.
             actual = kvpair.field_name + ":" + kvpair.value_element.convert_to_text()
             try:
-                self.assertEqual(expected_output, actual)
+                assert expected_output == actual
             except AssertionError:
                 logging.info(" -- Debugging aid - START of AST for generated value --")
                 print_ast(kvpair)
@@ -1350,7 +1331,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 raise
             # Reset of value
             kvpair.value_element = original_value_element
-            self.assertEqual(original, deb822_file.convert_to_text())
+            assert original == deb822_file.convert_to_text()
 
         arch_kvpair = source_paragraph.get_kvpair_element('Architecture')
         comma_list_kvpair = source_paragraph.get_kvpair_element('Some-Comma-List')
@@ -1362,10 +1343,10 @@ class FormatPreservingDeb822ParserTests(TestCase):
         comma_list_misread = comma_list_kvpair.interpret_as(
             LIST_SPACE_SEPARATED_INTERPRETATION
         )
-        self.assertEqual(['amd64', 'i386', 'kfreebsd-amd64', 'kfreebsd-i386'],
-                         list(archs))
-        self.assertEqual([',', 'a,', 'b', ',', 'c', 'd,', 'e'],
-                         list(comma_list_misread))
+        assert ['amd64', 'i386', 'kfreebsd-amd64', 'kfreebsd-i386'] == \
+                         list(archs)
+        assert [',', 'a,', 'b', ',', 'c', 'd,', 'e'] == \
+                         list(comma_list_misread)
 
         comma_list_correctly_read = comma_list_kvpair.interpret_as(
             LIST_COMMA_SEPARATED_INTERPRETATION
@@ -1385,40 +1366,36 @@ class FormatPreservingDeb822ParserTests(TestCase):
             discard_comments_on_read=False
         )
 
-        self.assertEqual(['a', 'b', 'c d', 'e'], list(comma_list_correctly_read))
+        assert ['a', 'b', 'c d', 'e'] == list(comma_list_correctly_read)
 
-        self.assertEqual(["some",
+        assert ["some",
                           "fun",
                           "with\n  multi-line\n  values",
                           "separated by",
-                          "commas\n     >:)"],
-                         list(ml_comma_list))
-        self.assertEqual(["some",
+                          "commas\n     >:)"] == \
+                         list(ml_comma_list)
+        assert ["some",
                           "fun",
                           "with\n  multi-line\n# With a comment inside it for added fun\n  values",
                           "separated by",
-                          "commas\n# Comments in final value\n     >:)"],
-                         list(ml_comma_list_w_comments))
+                          "commas\n# Comments in final value\n     >:)"] == \
+                         list(ml_comma_list_w_comments)
 
-        self.assertEqual(
-            [
+        assert [
                 "Someone <nobody@example.org>",
                 "Margrete, I, Ruler <1@margrete.dk>",
                 "Margrete, II, Queen\n  <2@margrete.dk>",
-            ],
+            ] == \
             list(uploaders_list)
-        )
-        self.assertEqual(
-            [
+        assert [
                 "Someone <nobody@example.org>",
                 "Margrete, I, Ruler <1@margrete.dk>",
                 "Margrete, II, Queen\n# We could list additional names here\n  <2@margrete.dk>",
-            ],
+            ] == \
             list(uploaders_list_with_comments)
-        )
 
         # Interpretation must not change the content
-        self.assertEqual(original, deb822_file.convert_to_text())
+        assert original == deb822_file.convert_to_text()
 
         # But we can choose to modify the content
         expected_result = 'Some-Comma-List: , a,  b , c d, e, f,g,\n'
@@ -1549,15 +1526,15 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 if value_ref.value in ('amd64', 'kfreebsd-i386'):
                     value_ref.remove()
                     # Ensure that a second call fails
-                    with self.assertRaises(RuntimeError):
+                    with pytest.raises(RuntimeError):
                         value_ref.remove()
 
                     # As does attempting to fetch the value
-                    with self.assertRaises(RuntimeError):
+                    with pytest.raises(RuntimeError):
                         _ = value_ref.value
 
                     # As does attempting to mutate the value
-                    with self.assertRaises(RuntimeError):
+                    with pytest.raises(RuntimeError):
                         value_ref.value = "foo"
 
         expected_result = textwrap.dedent('''\
@@ -1717,7 +1694,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
             # We always match without the field comment to keep things simple.
             actual = kvpair.field_name + ":" + kvpair.value_element.convert_to_text()
             try:
-                self.assertEqual(expected_output, actual)
+                assert expected_output == actual
             except AssertionError:
                 logging.info(" -- Debugging aid - START of AST for generated value --")
                 print_ast(kvpair)
@@ -1725,7 +1702,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
                 raise
             # Reset of value
             kvpair.value_element = original_value_element
-            self.assertEqual(original, deb822_file.convert_to_text())
+            assert original == deb822_file.convert_to_text()
 
         # With reformatting - should use space
         expected_result = textwrap.dedent('''\
@@ -1792,7 +1769,7 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
         source_paragraph['Build-Depends'] = source_paragraph['Build-Depends']
-        self.assertEqual(original, deb822_file.convert_to_text())
+        assert original == deb822_file.convert_to_text()
 
         original = textwrap.dedent('''\
         Package: foo
@@ -1803,4 +1780,4 @@ class FormatPreservingDeb822ParserTests(TestCase):
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
         source_paragraph['Build-Depends'] = ' \n debhelper-compat (= 11),\n uuid-dev'
-        self.assertEqual(original, deb822_file.convert_to_text())
+        assert original == deb822_file.convert_to_text()
