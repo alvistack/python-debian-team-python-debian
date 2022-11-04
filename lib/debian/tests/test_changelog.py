@@ -24,13 +24,13 @@
 # Copyright 2005 Frank Lichtenheld <frank@lichtenheld.de>
 # and licensed under the same license as above.
 
+import logging
 import os.path
-import unittest
-import warnings
+
+import pytest
 
 from debian import changelog
 from debian import debian_support
-import pytest
 
 
 try:
@@ -58,7 +58,7 @@ def open_utf8(filename, mode='r'):
     return open(filename, mode=mode, encoding='UTF-8')
 
 
-class ChangelogTests(unittest.TestCase):
+class TestChangelog:
 
     def test_create_changelog(self):
         # type: () -> None
@@ -116,8 +116,8 @@ class ChangelogTests(unittest.TestCase):
             assert clines[i] == cslines[i]
         assert len(clines) == len(cslines), "Different lengths"
 
-    def test_preserve_initial_lines(self):
-        # type: () -> None
+    def test_preserve_initial_lines(self, caplog):
+        # type: (pytest.LogCaptureFixture) -> None
         cl_text = b"""
 THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED
 haskell-src-exts (1.8.2-3) unstable; urgency=low
@@ -126,12 +126,14 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
 
  -- Somebody <nobody@debian.org>  Wed, 05 May 2010 18:01:53 -0300
 """
-        with self.assertLogs('debian.changelog', level='WARNING') as cm:
+        with caplog.at_level(logging.WARNING):
             cl = changelog.Changelog(cl_text)
-            assert cm.output == [
-                    'WARNING:debian.changelog:Unexpected line while '
-                    'looking for first heading: '
-                    'THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED']
+        assert 'WARNING' in caplog.text
+        assert 'debian.changelog' in caplog.text
+        assert (
+            'Unexpected line while looking for first heading: '
+            'THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED'
+        ) in caplog.text
 
         assert cl_text == bytes(cl)
 
@@ -292,8 +294,8 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
             assert bytes(block) == \
                              str(block).encode('latin1')
 
-    def test_malformed_date(self):
-        # type: () -> None
+    def test_malformed_date(self, caplog):
+        # type: (pytest.LogCaptureFixture) -> None
         c_text = """package (1.0-1) codename; urgency=medium
 
   * minimal example reproducer of malformed date line
@@ -304,13 +306,14 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         with pytest.raises(changelog.ChangelogParseError):
             c = changelog.Changelog(c_text, strict=True)
         # In non-strict mode, warnings should be emitted by the malformed entry
-        with self.assertLogs('debian.changelog', level='WARNING') as cm:
+        with caplog.at_level(logging.WARNING):
             c = changelog.Changelog(c_text, strict=False)
             assert len(c) == 1
-            assert cm.output == [
-                    'WARNING:debian.changelog:Badly formatted trailer line:  '
+            assert 'WARNING' in caplog.text
+            assert 'debian.changelog' in caplog.text
+            assert ('Badly formatted trailer line:  '
                     '-- John Smith <john.smith@example.com> '
-                    'Tue, 27 Sep 2016 14:08:04 -0600']
+                    'Tue, 27 Sep 2016 14:08:04 -0600') in caplog.text
 
     def test_block_iterator(self):
         # type: () -> None
@@ -336,8 +339,3 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         with open(find_test_file('test_changelog')) as f:
             c = changelog.Changelog(f)
         assert len(c._blocks) == len(c)
-
-
-
-if __name__ == '__main__':
-    unittest.main()
