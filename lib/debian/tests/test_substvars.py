@@ -1,13 +1,12 @@
 import os
 from tempfile import TemporaryDirectory
-import unittest
 
 import pytest
 
 from debian.substvars import Substvars, Substvar
 
 
-class SubstvarsTests(unittest.TestCase):
+class TestSubstvars:
 
     def test_substvars(self):
         # type: () -> None
