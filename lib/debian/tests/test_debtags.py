@@ -17,10 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os.path
-import sys
-import unittest
+
+import pytest
 
 from debian import debtags
+
+from typing import (
+    Generator
+)
 
 
 def find_test_file(filename):
@@ -29,13 +33,15 @@ def find_test_file(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
 
-class TestDebtags(unittest.TestCase):
-    def mkdb(self):
-        # type: () -> debtags.DB
+class TestDebtags:
+
+    @pytest.fixture(autouse=True)
+    def debtagsdb(self):
+        # type: () -> Generator[debtags.DB, None, None]
         db = debtags.DB()
         with open(find_test_file("test_tagdb"), "r") as f:
             db.read(f)
-        return db
+        yield db
 
     def test_insert(self):
         # type: () -> None
@@ -70,15 +76,10 @@ class TestDebtags(unittest.TestCase):
         assert db.package_count() == 2
         assert db.tag_count() == 1
 
-    def test_read(self):
-        # type: () -> None
-        db = self.mkdb()
+    def test_read(self, debtagsdb):
+        # type: (debtags.DB) -> None
+        db = debtagsdb
         assert db.tags_of_package("polygen") == set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text"))
         assert "polygen" in db.packages_of_tag("interface::commandline")
         assert db.package_count() == 144
         assert db.tag_count() == 94
-
-if __name__ == '__main__':
-    unittest.main()
-
-# vim:set ts=4 sw=4 expandtab:
