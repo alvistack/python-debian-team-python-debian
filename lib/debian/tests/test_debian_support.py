@@ -27,7 +27,6 @@ import sys
 import tempfile
 import urllib.parse
 
-import unittest
 import pytest
 
 from debian import debian_support
@@ -52,15 +51,13 @@ def find_test_file(filename):
     return os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
 
 
-class VersionTests(unittest.TestCase):
+class TestVersion:
     """Tests for AptPkgVersion and NativeVersion classes in debian_support"""
 
-    def setUp(self):
-        # type: () -> None
-        if debian_support._have_apt_pkg:
-            self.test_classes = [AptPkgVersion, NativeVersion]
-        else:
-            self.test_classes = [NativeVersion]
+    if debian_support._have_apt_pkg:
+        test_classes = [AptPkgVersion, NativeVersion]
+    else:
+        test_classes = [NativeVersion]
 
     def _test_version(self, full_version, epoch, upstream, debian):
         # type: (str, Optional[str], str, Optional[str]) -> None
@@ -202,7 +199,7 @@ class VersionTests(unittest.TestCase):
         self._test_comparison('1.5~rc1', '>', '1.5~dev0')
 
 
-class ReleaseTests(unittest.TestCase):
+class TestRelease:
     """Tests for debian_support.Release"""
 
     def test_comparison(self):
@@ -212,7 +209,7 @@ class ReleaseTests(unittest.TestCase):
         assert intern_release('lenny') < intern_release('squeeze')
 
 
-class HelperRoutineTests(unittest.TestCase):
+class TestHelperRoutine:
     """Tests for various debian_support helper routines"""
 
     def test_read_lines_sha1(self):
@@ -249,7 +246,7 @@ class HelperRoutineTests(unittest.TestCase):
         assert b''.join(file_b) == b''.join(file_a)
 
 
-class PdiffTests(unittest.TestCase):
+class TestPdiff:
     """ Tests for functions dealing with pdiffs """
 
     def test_download_gunzip_lines(self):
@@ -288,7 +285,7 @@ class PdiffTests(unittest.TestCase):
             os.remove(copy)
 
 
-class PackageFileTests(unittest.TestCase):
+class TestPackageFile:
     """ Tests for functions dealing with Packages and Sources """
 
     def assertType(self, var_, type_):
@@ -327,7 +324,3 @@ class PackageFileTests(unittest.TestCase):
             pflist = list(pf)
             assert len(pflist) == 3
             self.assertType(pflist[0][0][1], str)
-
-
-if __name__ == "__main__":
-    unittest.main()
