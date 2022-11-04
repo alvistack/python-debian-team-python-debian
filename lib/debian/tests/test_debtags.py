@@ -47,11 +47,11 @@ class TestDebtags(unittest.TestCase):
         assert db.has_tag("a")
         assert db.has_tag("b")
         assert not db.has_tag("test")
-        self.assertEqual(db.tags_of_package("test"), set(("a", "b")))
-        self.assertEqual(db.packages_of_tag("a"), set(("test")))
-        self.assertEqual(db.packages_of_tag("b"), set(("test")))
-        self.assertEqual(db.package_count(), 1)
-        self.assertEqual(db.tag_count(), 2)
+        assert db.tags_of_package("test") == set(("a", "b"))
+        assert db.packages_of_tag("a") == set(("test"))
+        assert db.packages_of_tag("b") == set(("test"))
+        assert db.package_count() == 1
+        assert db.tag_count() == 2
 
     def test_reverse(self):
         # type: () -> None
@@ -64,19 +64,19 @@ class TestDebtags(unittest.TestCase):
         assert db.has_tag("test")
         assert not db.has_tag("a")
         assert not db.has_tag("b")
-        self.assertEqual(db.packages_of_tag("test"), set(("a", "b")))
-        self.assertEqual(db.tags_of_package("a"), set(("test")))
-        self.assertEqual(db.tags_of_package("b"), set(("test")))
-        self.assertEqual(db.package_count(), 2)
-        self.assertEqual(db.tag_count(), 1)
+        assert db.packages_of_tag("test") == set(("a", "b"))
+        assert db.tags_of_package("a") == set(("test"))
+        assert db.tags_of_package("b") == set(("test"))
+        assert db.package_count() == 2
+        assert db.tag_count() == 1
 
     def test_read(self):
         # type: () -> None
         db = self.mkdb()
-        self.assertEqual(db.tags_of_package("polygen"), set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text")))
+        assert db.tags_of_package("polygen") == set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text"))
         assert "polygen" in db.packages_of_tag("interface::commandline")
-        self.assertEqual(db.package_count(), 144)
-        self.assertEqual(db.tag_count(), 94)
+        assert db.package_count() == 144
+        assert db.tag_count() == 94
 
 if __name__ == '__main__':
     unittest.main()
