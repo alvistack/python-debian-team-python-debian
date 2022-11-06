@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+from collections import namedtuple
 import email.utils
 import io
 import logging
@@ -1724,12 +1725,18 @@ class TestVersionAccessor:
 @pytest.mark.skipif(not _have_gpgv, reason="gpgv not installed")
 class TestGpgInfo:
 
-    @pytest.fixture(autouse=True)
+    SampleData = namedtuple('SampleData', [
+        'datastr',
+        'data',
+        'valid',
+    ])
+
+    @pytest.fixture()
     def sampledata(self):
-        # type: () -> Generator[None, None, None]
-        self.datastr = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
-        self.data = self.datastr.encode()
-        self.valid = {
+        # type: () -> Generator[TestGpgInfo.SampleData, None, None]
+        datastr = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
+        data = datastr.encode()
+        valid = {
             'GOODSIG':
                 ['D14219877A786561', 'John Wright <john.wright@hp.com>'],
             'VALIDSIG':
@@ -1739,41 +1746,45 @@ class TestGpgInfo:
             'SIG_ID':
                 ['j3UjSpdky92fcQISbm8W5PlwC/g', '2008-05-01', '1209623566'],
         }
-        yield
+        yield TestGpgInfo.SampleData(
+            datastr,
+            data,
+            valid,
+        )
 
-    def _validate_gpg_info(self, gpg_info):
-        # type: (deb822.GpgInfo) -> None
+    def _validate_gpg_info(self, gpg_info, sampledata):
+        # type: (deb822.GpgInfo, TestGpgInfo.SampleData) -> None
         # The second part of the GOODSIG field could change if the primary
         # uid changes, so avoid checking that.  Also, the first part of the
         # SIG_ID field has undergone at least one algorithm change in gpg,
         # so don't bother testing that either.
-        assert set(gpg_info.keys()) == set(self.valid.keys())
-        assert gpg_info['GOODSIG'][0] == self.valid['GOODSIG'][0]
-        assert gpg_info['VALIDSIG'] == self.valid['VALIDSIG']
-        assert gpg_info['SIG_ID'][1:] == self.valid['SIG_ID'][1:]
+        assert set(gpg_info.keys()) == set(sampledata.valid.keys())
+        assert gpg_info['GOODSIG'][0] == sampledata.valid['GOODSIG'][0]
+        assert gpg_info['VALIDSIG'] == sampledata.valid['VALIDSIG']
+        assert gpg_info['SIG_ID'][1:] == sampledata.valid['SIG_ID'][1:]
 
     def test_from_sequence_string(self, sampledata):
-        # type: (None) -> None
-        gpg_info = deb822.GpgInfo.from_sequence(self.data, keyrings=[KEYRING])
-        self._validate_gpg_info(gpg_info)
+        # type: (TestGpgInfo.SampleData) -> None
+        gpg_info = deb822.GpgInfo.from_sequence(sampledata.data, keyrings=[KEYRING])
+        self._validate_gpg_info(gpg_info, sampledata)
 
     def test_from_sequence_newline_terminated(self, sampledata):
-        # type: (None) -> None
-        sequence = io.BytesIO(self.data)
+        # type: (TestGpgInfo.SampleData) -> None
+        sequence = io.BytesIO(sampledata.data)
         gpg_info = deb822.GpgInfo.from_sequence(sequence, keyrings=[KEYRING])
-        self._validate_gpg_info(gpg_info)
+        self._validate_gpg_info(gpg_info, sampledata)
 
     def test_from_sequence_no_newlines(self, sampledata):
-        # type: (None) -> None
-        sequence = self.data.splitlines()
+        # type: (TestGpgInfo.SampleData) -> None
+        sequence = sampledata.data.splitlines()
         gpg_info = deb822.GpgInfo.from_sequence(sequence, keyrings=[KEYRING])
-        self._validate_gpg_info(gpg_info)
+        self._validate_gpg_info(gpg_info, sampledata)
 
     def test_from_file(self, sampledata):
-        # type: (None) -> None
+        # type: (TestGpgInfo.SampleData) -> None
         fd, filename = tempfile.mkstemp()
         fp = os.fdopen(fd, 'wb')
-        fp.write(self.data)
+        fp.write(sampledata.data)
         fp.close()
 
         try:
@@ -1781,4 +1792,4 @@ class TestGpgInfo:
         finally:
             os.remove(filename)
 
-        self._validate_gpg_info(gpg_info)
+        self._validate_gpg_info(gpg_info, sampledata)
