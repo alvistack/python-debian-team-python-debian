@@ -47,18 +47,11 @@ from debian.watch import (
     )
 
 
-T = TypeVar("T")
-def not_none(obj):
-    # type: (Optional[T]) -> T
-    assert obj is not None
-    return obj
-
-
 class TestParseWatchFile:
 
     def test_parse_empty(self):
         # type: () -> None
-        assert None is WatchFile.from_lines(StringIO(""))
+        assert WatchFile.from_lines(StringIO("")) is None
 
     def test_parse_no_version(self):
         # type: () -> None
@@ -73,10 +66,9 @@ class TestParseWatchFile:
 version = 3
 https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 3 == wf.version
-        assert [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')] == \
-            wf.entries
+        assert wf is not None
+        assert wf.version == 3
+        assert wf.entries == [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')]
 
     def test_parse_with_script(self):
         # type: () -> None
@@ -84,11 +76,11 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 version=4
 https://samba.org/~jelmer/ blah-(\\d+).tar.gz debian sh blah.sh
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz',
-                   'debian', 'sh blah.sh')] == \
-            wf.entries
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.entries == [
+            Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz', 'debian', 'sh blah.sh')
+        ]
 
     def test_parse_single(self):
         # type: () -> None
@@ -96,10 +88,9 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz debian sh blah.sh
 version=4
 https://samba.org/~jelmer/blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert [Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz')] == \
-            wf.entries
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.entries == [Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz')]
 
     def test_parse_simple(self):
         # type: () -> None
@@ -107,10 +98,9 @@ https://samba.org/~jelmer/blah-(\\d+).tar.gz
 version=4
 https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')] == \
-            wf.entries
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.entries == [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')]
 
     def test_parse_with_opts(self):
         # type: () -> None
@@ -118,12 +108,12 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 version=4
 opts=pgpmode=mangle https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert [] == wf.options
-        assert [Watch('https://samba.org/~jelmer/',
-                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])] == \
-            wf.entries
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.options == []
+        assert wf.entries == [
+            Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])
+        ]
 
     def test_parse_global_opts(self):
         # type: () -> None
@@ -132,12 +122,12 @@ version=4
 opts=pgpmode=mangle
 https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert ['pgpmode=mangle'] == wf.options
-        assert [
-            Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')] == \
-            wf.entries
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.options == ['pgpmode=mangle']
+        assert wf.entries == [
+            Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')
+        ]
 
     def test_parse_opt_quotes(self):
         # type: () -> None
@@ -145,11 +135,11 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz
 version=4
 opts="pgpmode=mangle" https://samba.org/~jelmer blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert wf.entries == \
-            [Watch('https://samba.org/~jelmer',
-                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])]
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.entries == [
+            Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])
+        ]
 
     def test_parse_continued_leading_spaces_4(self):
         # type: () -> None
@@ -158,11 +148,11 @@ version=4
 opts=pgpmode=mangle,\\
     foo=bar https://samba.org/~jelmer blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert wf.entries == \
-            [Watch('https://samba.org/~jelmer',
-                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', 'foo=bar'])]
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.entries == [
+            Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', 'foo=bar'])
+        ]
 
     def test_parse_continued_leading_spaces_3(self):
         # type: () -> None
@@ -171,11 +161,11 @@ version=3
 opts=pgpmode=mangle,\\
     foo=bar blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 3 == wf.version
-        assert wf.entries == \
-            [Watch('foo=bar',
-                   'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', ''])]
+        assert wf is not None
+        assert wf.version == 3
+        assert wf.entries == [
+            Watch('foo=bar', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', ''])
+        ]
 
     def test_pattern_included(self):
         # type: () -> None
@@ -183,10 +173,11 @@ opts=pgpmode=mangle,\\
 version=4
 https://pypi.debian.net/case/case-(.+).tar.gz debian
 """))
-        wf = not_none(wf)
-        assert 4 == wf.version
-        assert [Watch('https://pypi.debian.net/case', 'case-(.+).tar.gz',
-                   'debian')] == wf.entries
+        assert wf is not None
+        assert wf.version == 4
+        assert wf.entries == [
+            Watch('https://pypi.debian.net/case', 'case-(.+).tar.gz', 'debian')
+        ]
 
     def test_parse_weird_quotes(self):
         # type: () -> None
@@ -197,14 +188,16 @@ opts=repacksuffix=+dfsg",pgpsigurlmangle=s/$/.asc/ \\
 https://pypi.debian.net/case/case-(.+)\\.(?:zip|(?:tar\\.(?:gz|bz2|xz))) \\
 debian sh debian/repack.stub
 """))
-        wf = not_none(wf)
-        assert 3 == wf.version
-        assert [Watch(
-            'https://pypi.debian.net/case',
-            'case-(.+)\\.(?:zip|(?:tar\\.(?:gz|bz2|xz)))',
-            'debian', 'sh debian/repack.stub',
-            opts=['repacksuffix=+dfsg"', 'pgpsigurlmangle=s/$/.asc/'])] == \
-            wf.entries
+        assert wf is not None
+        assert wf.version == 3
+        assert wf.entries == [
+            Watch(
+                'https://pypi.debian.net/case',
+                'case-(.+)\\.(?:zip|(?:tar\\.(?:gz|bz2|xz)))',
+                'debian', 'sh debian/repack.stub',
+                opts=['repacksuffix=+dfsg"', 'pgpsigurlmangle=s/$/.asc/'])
+        ]
+
 
     def test_package_variable(self):
         # type: () -> None
@@ -212,13 +205,13 @@ debian sh debian/repack.stub
 version = 3
 https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
 """))
-        wf = not_none(wf)
-        assert 3 == wf.version
-        assert [Watch('https://samba.org/~jelmer/@PACKAGE@',
-                   'blah-(\\d+).tar.gz')] == \
-            wf.entries
-        assert 'https://samba.org/~jelmer/blah' == \
-            expand(wf.entries[0].url, 'blah')
+        assert wf is not None
+        assert wf.version == 3
+        assert wf.entries == [
+            Watch('https://samba.org/~jelmer/@PACKAGE@', 'blah-(\\d+).tar.gz')
+        ]
+
+        assert expand(wf.entries[0].url, 'blah') == 'https://samba.org/~jelmer/blah'
 
 
 class TestDumpWatchFile:
@@ -277,10 +270,8 @@ class TestExpand:
 
     def test_expand_package(self):
         # type: () -> None
-        assert 'foo-1.2.3.tar.gz' == \
-            expand('@PACKAGE@-1.2.3.tar.gz', 'foo')
+        assert 'foo-1.2.3.tar.gz' == expand('@PACKAGE@-1.2.3.tar.gz', 'foo')
 
     def test_static(self):
         # type: () -> None
-        assert r'foo-[-_]?(\d[\-+\.:\~\da-zA-Z]*)' == \
-            expand('foo-@ANY_VERSION@', 'foo')
+        assert r'foo-[-_]?(\d[\-+\.:\~\da-zA-Z]*)' == expand('foo-@ANY_VERSION@', 'foo')
