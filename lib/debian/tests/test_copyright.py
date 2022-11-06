@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+from collections import namedtuple
 import logging
 import re
 
@@ -567,68 +568,80 @@ class TestMultline:
     """Test cases for format_multiline{,_lines} and parse_multline{,_as_lines}.
     """
 
-    @pytest.fixture(autouse=True)
-    def data(self):
-        # type: () -> Generator[None, None, None]
-        paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
-        self.formatted = paragraphs[1]['License']
-        self.parsed = 'GPL-2+\n' + GPL_TWO_PLUS_TEXT
-        self.parsed_lines = self.parsed.splitlines()
-        yield
+    SampleData = namedtuple('SampleData', [
+        'formatted',
+        'parsed',
+        'parsed_lines',
+    ])
 
-    def test_format_multiline(self, data):
-        # type: (None) -> None
+    @pytest.fixture()
+    def sample_data(self):
+        # type: () -> Generator[TestMultline.SampleData, None, None]
+        paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
+
+        formatted = paragraphs[1]['License']
+        parsed = 'GPL-2+\n' + GPL_TWO_PLUS_TEXT
+        parsed_lines = parsed.splitlines()
+
+        yield TestMultline.SampleData(
+            formatted,
+            parsed,
+            parsed_lines,
+        )
+
+    def test_format_multiline(self, sample_data):
+        # type: (TestMultline.SampleData) -> None
         assert None == copyright.format_multiline(None)
         assert 'Foo' == copyright.format_multiline('Foo')
         assert 'Foo\n Bar baz\n .\n Quux.' == \
             copyright.format_multiline('Foo\nBar baz\n\nQuux.')
-        assert self.formatted == copyright.format_multiline(self.parsed)
+        assert sample_data.formatted == copyright.format_multiline(sample_data.parsed)
 
-    def test_parse_multiline(self, data):
-        # type: (None) -> None
+    def test_parse_multiline(self, sample_data):
+        # type: (TestMultline.SampleData) -> None
         assert None == copyright.parse_multiline(None)
         assert 'Foo' == copyright.parse_multiline('Foo')
         assert 'Foo\nBar baz\n\nQuux.' == \
             copyright.parse_multiline('Foo\n Bar baz\n .\n Quux.')
-        assert self.parsed == copyright.parse_multiline(self.formatted)
+        assert sample_data.parsed == copyright.parse_multiline(sample_data.formatted)
 
-    def test_format_multiline_lines(self, data):
-        # type: (None) -> None
+    def test_format_multiline_lines(self, sample_data):
+        # type: (TestMultline.SampleData) -> None
         assert '' == copyright.format_multiline_lines([])
         assert 'Foo' == copyright.format_multiline_lines(['Foo'])
         assert 'Foo\n Bar baz\n .\n Quux.' == \
             copyright.format_multiline_lines(
                 ['Foo', 'Bar baz', '', 'Quux.'])
-        assert self.formatted == \
-            copyright.format_multiline_lines(self.parsed_lines)
+        assert sample_data.formatted == \
+            copyright.format_multiline_lines(sample_data.parsed_lines)
 
-    def test_parse_multiline_as_lines(self, data):
-        # type: (None) -> None
+    def test_parse_multiline_as_lines(self, sample_data):
+        # type: (TestMultline.SampleData) -> None
         assert [] == copyright.parse_multiline_as_lines('')
         assert ['Foo'] == copyright.parse_multiline_as_lines('Foo')
         assert ['Foo', 'Bar baz', '', 'Quux.'] == \
             copyright.parse_multiline_as_lines(
                 'Foo\n Bar baz\n .\n Quux.')
-        assert self.parsed_lines == \
-            copyright.parse_multiline_as_lines(self.formatted)
+        assert sample_data.parsed_lines == \
+            copyright.parse_multiline_as_lines(sample_data.formatted)
 
-    def test_parse_format_inverses(self, data):
-        # type: (None) -> None
-        assert self.formatted == \
+    def test_parse_format_inverses(self, sample_data):
+        # type: (TestMultline.SampleData) -> None
+        assert sample_data.formatted == \
             copyright.format_multiline(
-                copyright.parse_multiline(self.formatted))
+                copyright.parse_multiline(sample_data.formatted))
 
-        assert self.formatted == \
+        assert sample_data.formatted == \
             copyright.format_multiline_lines(
-                copyright.parse_multiline_as_lines(self.formatted))
+                copyright.parse_multiline_as_lines(sample_data.formatted))
 
-        assert self.parsed == \
+        assert sample_data.parsed == \
             copyright.parse_multiline(
-                copyright.format_multiline(self.parsed))
+                copyright.format_multiline(sample_data.parsed))
 
-        assert self.parsed_lines == \
+        assert sample_data.parsed_lines == \
             copyright.parse_multiline_as_lines(
-                copyright.format_multiline_lines(self.parsed_lines))
+                copyright.format_multiline_lines(sample_data.parsed_lines))
 
 
 class TestLicense:
@@ -846,19 +859,19 @@ class TestGlobsToRe:
 
 class TestFilesParagraph:
 
-    @pytest.fixture(autouse=True)
-    def data(self):
-        # type: () -> Generator[None, None, None]
-        self.prototype = Deb822ParagraphElement.new_empty_paragraph()
-        self.prototype['Files'] = '*'
-        self.prototype['Copyright'] = 'Foo'
-        self.prototype['License'] = 'ISC'
-        yield
+    @pytest.fixture()
+    def prototype(self):
+        # type: () -> Generator[Deb822ParagraphElement, None, None]
+        p = Deb822ParagraphElement.new_empty_paragraph()
+        p['Files'] = '*'
+        p['Copyright'] = 'Foo'
+        p['License'] = 'ISC'
+        yield p
 
     @no_type_check
-    def test_files_property(self, data):
-        # type: (None) -> None
-        fp = copyright.FilesParagraph(self.prototype)
+    def test_files_property(self, prototype):
+        # type: (Deb822ParagraphElement) -> None
+        fp = copyright.FilesParagraph(prototype)
         assert ('*',) == fp.files
 
         fp.files = ['debian/*']
@@ -872,14 +885,14 @@ class TestFilesParagraph:
         with pytest.raises(TypeError):
             fp.files = None
 
-        self.prototype['Files'] = 'foo/*\tbar/*\n\tbaz/*\n quux/*'
-        fp = copyright.FilesParagraph(self.prototype)
+        prototype['Files'] = 'foo/*\tbar/*\n\tbaz/*\n quux/*'
+        fp = copyright.FilesParagraph(prototype)
         assert ('foo/*', 'bar/*', 'baz/*', 'quux/*') == fp.files
 
     @no_type_check
-    def test_license_property(self, data):
-        # type: (None) -> None
-        fp = copyright.FilesParagraph(self.prototype)
+    def test_license_property(self, prototype):
+        # type: (Deb822ParagraphElement) -> None
+        fp = copyright.FilesParagraph(prototype)
         assert copyright.License('ISC') == fp.license
         fp.license = copyright.License('ISC', '[LICENSE TEXT]')
         assert copyright.License('ISC', '[LICENSE TEXT]') == fp.license
@@ -888,9 +901,9 @@ class TestFilesParagraph:
         with pytest.raises(TypeError):
             fp.license = None
 
-    def test_matches(self, data):
-        # type: (None) -> None
-        fp = copyright.FilesParagraph(self.prototype)
+    def test_matches(self, prototype):
+        # type: (Deb822ParagraphElement) -> None
+        fp = copyright.FilesParagraph(prototype)
         assert fp.matches('foo/bar.cc')
         assert fp.matches('Makefile')
         assert fp.matches('debian/rules')
