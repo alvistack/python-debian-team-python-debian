@@ -342,13 +342,6 @@ def find_test_file(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
 
-T = TypeVar("T")
-def not_none(obj):
-    # type: (Optional[T]) -> T
-    assert obj is not None
-    return obj
-
-
 KEYRING = os.path.abspath(find_test_file('test-keyring.gpg'))
 
 
@@ -520,31 +513,31 @@ with open("test_deb822.pickle", "wb") as fh:
         paragraph = deb822.Deb822(content.splitlines())
         # Verify the starting state
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+            ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
         # no op
         paragraph.order_last('Recommends')
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+            ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
         # no op
         paragraph.order_first('Depends')
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+            ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
 
         paragraph.order_first('Package')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Depends', 'Description', 'Architecture', 'Recommends']
+            ['Package', 'Depends', 'Description', 'Architecture', 'Recommends']
 
         paragraph.order_last('Description')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Depends', 'Architecture', 'Recommends', 'Description']
+            ['Package', 'Depends', 'Architecture', 'Recommends', 'Description']
 
         paragraph.order_after('Recommends', 'Depends')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Depends', 'Recommends', 'Architecture', 'Description']
+            ['Package', 'Depends', 'Recommends', 'Architecture', 'Description']
 
         paragraph.order_before('Architecture', 'Depends')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
+            ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
 
         with pytest.raises(ValueError):
             paragraph.order_after('Architecture', 'Architecture')
@@ -567,12 +560,12 @@ with open("test_deb822.pickle", "wb") as fh:
         paragraph = deb822.Deb822(content.splitlines())
         # Initial state
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+            ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
 
         # Sorting defaults to using name
         paragraph.sort_fields()
         assert list(paragraph.keys()) == \
-                         ['Architecture', 'Depends', 'Description', 'Package', 'Recommends']
+            ['Architecture', 'Depends', 'Description', 'Package', 'Recommends']
 
         # Sorting using a key function
         order_table = {
@@ -586,7 +579,7 @@ with open("test_deb822.pickle", "wb") as fh:
         }
         paragraph.sort_fields(key=lambda x: order_table[x.lower()])
         assert list(paragraph.keys()) == \
-                         ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
+            ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
 
     def test_gpg_stripping(self):
         # type: () -> None
@@ -714,8 +707,7 @@ with open("test_deb822.pickle", "wb") as fh:
         # type: (str, Callable[..., Any], int, *Any, **Any) -> None
         with open_utf8(filename) as fh:
             count = len(list(cmd(fh, *args, **kwargs)))
-            assert expected == \
-                count, \
+            assert expected == count, \
                 "Wrong number paragraphs were found: expected {expected}, got {count}".format(
                     count=count,
                     expected=expected,
@@ -949,8 +941,7 @@ with open("test_deb822.pickle", "wb") as fh:
         # type: () -> None
         # PARSED_PACKAGE is a deb822.Deb822Dict object, so we can test
         # it directly
-        assert PARSED_PACKAGE['Architecture'] == \
-                         PARSED_PACKAGE['architecture']
+        assert PARSED_PACKAGE['Architecture'] == PARSED_PACKAGE['architecture']
 
         c_i_dict = deb822.Deb822Dict()
 
@@ -1357,7 +1348,7 @@ Description: python modules to work with Debian-related data formats
         assert benv['DEB_BUILD_OPTIONS'] == 'parallel=4'
 
         ch = buildinfo.get_changelog()
-        ch = not_none(ch)
+        assert ch is not None
         assert ch.version == '4.5.2-1+b1'
         assert ch.package == 'lxml'
         assert ch.urgency == 'low'
@@ -1425,10 +1416,9 @@ UTF-8"
             assert r.also_wnpp == [123456]
             r = next(removals)
             assert r.binaries[0]['architectures'] == \
-                             set(['amd64', 'armel', 'armhf', 'hurd-i386',
-                                  'i386', 'kfreebsd-amd64', 'kfreebsd-i386',
-                                  'mips', 'mipsel', 'powerpc', 's390x',
-                                  'sparc'])
+                set(['amd64', 'armel', 'armhf', 'hurd-i386', 'i386',
+                     'kfreebsd-amd64', 'kfreebsd-i386', 'mips', 'mipsel',
+                     'powerpc', 's390x', 'sparc'])
 
 
 class TestPkgRelations:
@@ -1439,8 +1429,7 @@ class TestPkgRelations:
         p2keys = sorted(actual.keys())
         assert p1keys == p2keys, "Different fields present in packages"
         for k in p1keys:
-            assert expected[k] == actual[k], \
-                            "Different for field '%s'" % k
+            assert expected[k] == actual[k], "Different for field '%s'" % k
 
     @staticmethod
     def rel(dict_):
@@ -1655,7 +1644,9 @@ class TestPkgRelations:
         """ test parsing of restriction formulas """
         r = "foo <cross>"
         # relation 0, alternative 0, restrictions set 0, condition 0
-        term = not_none(deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'])[0][0]
+        terms = deb822.PkgRelation.parse_relations(r)[0][0]['restrictions']
+        assert terms is not None
+        term  = terms[0][0]
         assert term.enabled == True
         assert term[0] == True
         assert term.profile == 'cross'
@@ -1663,14 +1654,18 @@ class TestPkgRelations:
 
         r = "foo <!stage1> <!stage2 !cross>"
         # relation 0, alternative 0, restrictions set 1, condition 0
-        term = not_none(deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'])[1][0]
+        terms = deb822.PkgRelation.parse_relations(r)[0][0]['restrictions']
+        assert terms is not None
+        term = terms[1][0]
         assert term.enabled == False
         assert term[0] == False
         assert term.profile == 'stage2'
         assert term[1] == 'stage2'
 
         # relation 0, alternative 0, restrictions set 1, condition 1
-        term = not_none(deb822.PkgRelation.parse_relations(r)[0][0]['restrictions'])[1][1]
+        terms = deb822.PkgRelation.parse_relations(r)[0][0]['restrictions']
+        assert terms is not None
+        term = terms[1][1]
         assert term.enabled == False
         assert term[0] == False
         assert term.profile == 'cross'
