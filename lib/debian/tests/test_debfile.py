@@ -621,7 +621,7 @@ class TestDebFile:
             ctrl = deb.control.get_content("control")
             assert ctrl is not None
             assert ctrl.decode("utf-8") == filecontrol
-            assert deb.control.get_content("control", encoding="utf-8") ==                 filecontrol
+            assert deb.control.get_content("control", encoding="utf-8") == filecontrol
 
     def test_md5sums(self, sample_deb):
         # type: (str) -> None
