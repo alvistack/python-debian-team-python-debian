@@ -288,12 +288,6 @@ class TestPdiff:
 class TestPackageFile:
     """ Tests for functions dealing with Packages and Sources """
 
-    def assertType(self, var_, type_):
-        # type: (Any, Any) -> None
-        """Check that the type is as expected
-        """
-        assert isinstance(var_, type_)
-
     def test_read_file(self):
         # type: () -> None
         # test_Packages is ASCII
@@ -318,9 +312,9 @@ class TestPackageFile:
             pf = debian_support.PackageFile('ignored', file_obj=fhbin)
             pflist = list(pf)
             assert len(pflist) == 3
-            self.assertType(pflist[0][0][1], str)
+            assert isinstance(pflist[0][0][1], str)
         with open(packfile, 'rt') as fhtext:
             pf = debian_support.PackageFile('ignored', file_obj=fhtext)
             pflist = list(pf)
             assert len(pflist) == 3
-            self.assertType(pflist[0][0][1], str)
+            assert isinstance(pflist[0][0][1], str)
