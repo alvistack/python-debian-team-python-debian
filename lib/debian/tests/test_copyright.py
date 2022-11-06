@@ -320,18 +320,16 @@ class TestLineBased:
 
     def test_from_str_single_line(self):
         # type: () -> None
-        assert ('Foo Bar <foo@bar.com>',) == \
-            self.lb.from_str('Foo Bar <foo@bar.com>')
+        assert self.lb.from_str('Foo Bar <foo@bar.com>') == ('Foo Bar <foo@bar.com>', )
 
     def test_from_str_single_value_after_newline(self):
         # type: () -> None
-        assert ('Foo Bar <foo@bar.com>',) == \
-            self.lb.from_str('\n Foo Bar <foo@bar.com>')
+        assert self.lb.from_str('\n Foo Bar <foo@bar.com>') == ('Foo Bar <foo@bar.com>', )
 
     def test_from_str_multiline(self):
         # type: () -> None
-        assert ('Foo Bar <foo@bar.com>', 'http://bar.com/foo') == \
-            self.lb.from_str('\n Foo Bar <foo@bar.com>\n http://bar.com/foo')
+        assert self.lb.from_str('\n Foo Bar <foo@bar.com>\n http://bar.com/foo') == \
+            ('Foo Bar <foo@bar.com>', 'http://bar.com/foo')
 
     def test_to_str_empty(self):
         # type: () -> None
@@ -340,20 +338,19 @@ class TestLineBased:
 
     def test_to_str_single(self):
         # type: () -> None
-        assert 'Foo Bar <foo@bar.com>' == \
-            self.lb.to_str(['Foo Bar <foo@bar.com>'])
+        assert self.lb.to_str(['Foo Bar <foo@bar.com>']) == 'Foo Bar <foo@bar.com>'
 
     def test_to_str_multi_list(self):
         # type: () -> None
-        assert '\n Foo Bar <foo@bar.com>\n http://bar.com/foo' == \
-            self.lb.to_str(
-                ['Foo Bar <foo@bar.com>', 'http://bar.com/foo'])
+        assert self.lb.to_str(
+                ['Foo Bar <foo@bar.com>', 'http://bar.com/foo']
+            ) == '\n Foo Bar <foo@bar.com>\n http://bar.com/foo'
 
     def test_to_str_multi_tuple(self):
         # type: () -> None
-        assert '\n Foo Bar <foo@bar.com>\n http://bar.com/foo' == \
-            self.lb.to_str(
-                ('Foo Bar <foo@bar.com>', 'http://bar.com/foo'))
+        assert self.lb.to_str(
+                ('Foo Bar <foo@bar.com>', 'http://bar.com/foo')
+            ) == '\n Foo Bar <foo@bar.com>\n http://bar.com/foo'
 
     def test_to_str_empty_value(self):
         # type: () -> None
@@ -367,9 +364,9 @@ class TestLineBased:
 
     def test_to_str_elements_stripped(self):
         # type: () -> None
-        assert '\n Foo Bar <foo@bar.com>\n http://bar.com/foo' == \
-            self.lb.to_str(
-                (' Foo Bar <foo@bar.com>\t', ' http://bar.com/foo  '))
+        assert self.lb.to_str(
+                (' Foo Bar <foo@bar.com>\t', ' http://bar.com/foo  ')
+            ) == '\n Foo Bar <foo@bar.com>\n http://bar.com/foo'
 
     def test_to_str_newlines_single(self):
         # type: () -> None
@@ -379,8 +376,7 @@ class TestLineBased:
     def test_to_str_newlines_multi(self):
         # type: () -> None
         with pytest.raises(ValueError, match='values must not contain newlines'):
-            self.lb.to_str(
-                ['bar', ' Foo Bar <foo@bar.com>\n http://bar.com/foo  '])
+            self.lb.to_str(['bar', ' Foo Bar <foo@bar.com>\n http://bar.com/foo  '])
 
 
 class TestSpaceSeparated:
@@ -513,7 +509,7 @@ class TestCopyright:
         assert c.find_files_paragraph('baz/quux.cc') is None
         assert c.find_files_paragraph('Makefile') is None
 
-        assert """\
+        assert  c.dump() == """\
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: foo/*
@@ -523,7 +519,7 @@ License: ISC
 Files: bar/*
 Copyright: CompanyB
 License: Apache
-""" == c.dump()
+"""
 
     @no_type_check
     def test_all_license_paragraphs(self):
@@ -532,16 +528,18 @@ License: Apache
         assert [] == list(c.all_license_paragraphs())
 
         c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
-        assert [copyright.License('ABC', '[ABC TEXT]'),
-             copyright.License('123', '[123 TEXT]')] == \
-            list(p.license for p in c.all_license_paragraphs())
+        assert list(p.license for p in c.all_license_paragraphs()) == [
+            copyright.License('ABC', '[ABC TEXT]'),
+            copyright.License('123', '[123 TEXT]')
+        ]
 
         c.add_license_paragraph(copyright.LicenseParagraph.create(
             copyright.License('Foo', '[FOO TEXT]')))
-        assert [copyright.License('ABC', '[ABC TEXT]'),
-             copyright.License('123', '[123 TEXT]'),
-             copyright.License('Foo', '[FOO TEXT]')] == \
-            list(p.license for p in c.all_license_paragraphs())
+        assert list(p.license for p in c.all_license_paragraphs()) == [
+            copyright.License('ABC', '[ABC TEXT]'),
+            copyright.License('123', '[123 TEXT]'),
+            copyright.License('Foo', '[FOO TEXT]')
+        ]
 
     def test_error_on_invalid(self):
         # type: () -> None
@@ -610,8 +608,7 @@ class TestMultline:
         assert '' == copyright.format_multiline_lines([])
         assert 'Foo' == copyright.format_multiline_lines(['Foo'])
         assert 'Foo\n Bar baz\n .\n Quux.' == \
-            copyright.format_multiline_lines(
-                ['Foo', 'Bar baz', '', 'Quux.'])
+            copyright.format_multiline_lines(['Foo', 'Bar baz', '', 'Quux.'])
         assert sample_data.formatted == \
             copyright.format_multiline_lines(sample_data.parsed_lines)
 
@@ -620,27 +617,22 @@ class TestMultline:
         assert [] == copyright.parse_multiline_as_lines('')
         assert ['Foo'] == copyright.parse_multiline_as_lines('Foo')
         assert ['Foo', 'Bar baz', '', 'Quux.'] == \
-            copyright.parse_multiline_as_lines(
-                'Foo\n Bar baz\n .\n Quux.')
+            copyright.parse_multiline_as_lines('Foo\n Bar baz\n .\n Quux.')
         assert sample_data.parsed_lines == \
             copyright.parse_multiline_as_lines(sample_data.formatted)
 
     def test_parse_format_inverses(self, sample_data):
         # type: (TestMultline.SampleData) -> None
-        assert sample_data.formatted == \
-            copyright.format_multiline(
+        assert sample_data.formatted == copyright.format_multiline(
                 copyright.parse_multiline(sample_data.formatted))
 
-        assert sample_data.formatted == \
-            copyright.format_multiline_lines(
+        assert sample_data.formatted == copyright.format_multiline_lines(
                 copyright.parse_multiline_as_lines(sample_data.formatted))
 
-        assert sample_data.parsed == \
-            copyright.parse_multiline(
+        assert sample_data.parsed == copyright.parse_multiline(
                 copyright.format_multiline(sample_data.parsed))
 
-        assert sample_data.parsed_lines == \
-            copyright.parse_multiline_as_lines(
+        assert sample_data.parsed_lines == copyright.parse_multiline_as_lines(
                 copyright.format_multiline_lines(sample_data.parsed_lines))
 
 
@@ -669,28 +661,25 @@ class TestLicense:
             'Bang and such.')
         l = copyright.License('GPL-2+', text=text)
         assert text == l.text
-        assert ('GPL-2+\n'
-             ' Foo bar.\n'
-             ' .\n'
-             ' Baz.\n'
-             ' Quux\n'
-             ' .\n'
-             ' Bang and such.') == \
-            l.to_str()
+        assert l.to_str() == (
+            'GPL-2+\n'
+            ' Foo bar.\n'
+            ' .\n'
+            ' Baz.\n'
+            ' Quux\n'
+            ' .\n'
+            ' Bang and such.'
+        )
 
     def test_typical(self):
         # type: () -> None
         paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
         p = paragraphs[1]
         l = copyright.License.from_str(p['license'])
-        if l is not None:
-            # CRUFT: conditional only needed for mypy
-            #
-            assert 'GPL-2+' == l.synopsis
-            assert GPL_TWO_PLUS_TEXT == l.text
-            assert p['license'] == l.to_str()
-        else:
-            assert l is not None
+        assert l is not None
+        assert 'GPL-2+' == l.synopsis
+        assert GPL_TWO_PLUS_TEXT == l.text
+        assert p['license'] == l.to_str()
 
 
 class TestLicenseParagraphTest:
@@ -731,7 +720,6 @@ class TestLicenseParagraphTest:
 
     def test_try_set_files(self):
         # type: () -> None
-
         d = Deb822ParagraphElement.new_empty_paragraph()
         d['License'] = 'GPL-2\n [LICENSE TEXT]'
         lp = copyright.LicenseParagraph(d)
@@ -848,13 +836,12 @@ class TestGlobsToRe:
         # type: () -> None
         with pytest.raises(ValueError) as cm:
             copyright.globs_to_re([r'foo/a\b.c'])
-            assert (r'invalid escape sequence: \b',) == \
-                             cm.exception.args
+            assert cm.exception.args == (r'invalid escape sequence: \b', )
 
         with pytest.raises(ValueError) as cm:
             copyright.globs_to_re('foo/bar\\')
-            assert ('single backslash not allowed at end',) == \
-                             cm.exception.args
+            assert cm.exception.args == ('single backslash not allowed at end', )
+
 
 
 class TestFilesParagraph:
@@ -986,7 +973,7 @@ class TestHeader:
         data['Format'] = FORMAT
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>'
         h = copyright.Header(data=data)
-        assert ('Foo Bar <foo@bar.com>',) == h.upstream_contact  # type: ignore
+        assert h.upstream_contact == ('Foo Bar <foo@bar.com>', )  # type: ignore
 
     def test_upstream_contact_multi1_read(self):
         # type: () -> None
@@ -994,8 +981,7 @@ class TestHeader:
         data['Format'] = FORMAT
         data['Upstream-Contact'] = 'Foo Bar <foo@bar.com>\n http://bar.com/foo'
         h = copyright.Header(data=data)
-        assert ('Foo Bar <foo@bar.com>', 'http://bar.com/foo') == \
-            h.upstream_contact   # type: ignore
+        assert h.upstream_contact == ('Foo Bar <foo@bar.com>', 'http://bar.com/foo')  # type: ignore
 
     def test_upstream_contact_multi2_read(self):
         # type: () -> None
@@ -1004,24 +990,22 @@ class TestHeader:
         data['Upstream-Contact'] = (
             '\n Foo Bar <foo@bar.com>\n http://bar.com/foo')
         h = copyright.Header(data=data)
-        assert ('Foo Bar <foo@bar.com>', 'http://bar.com/foo') == \
-            h.upstream_contact  # type: ignore
+        assert h.upstream_contact == ('Foo Bar <foo@bar.com>', 'http://bar.com/foo')  # type: ignore
 
     def test_upstream_contact_single_write(self):
         # type: () -> None
         h = copyright.Header()
         h.upstream_contact = ['Foo Bar <foo@bar.com>']   # type: ignore
-        assert ('Foo Bar <foo@bar.com>',) == h.upstream_contact  # type: ignore
-        assert 'Foo Bar <foo@bar.com>' == h['Upstream-Contact']
+        assert h.upstream_contact == ('Foo Bar <foo@bar.com>', )   # type: ignore
+        assert h['Upstream-Contact'] == 'Foo Bar <foo@bar.com>'
 
     def test_upstream_contact_multi_write(self):
         # type: () -> None
         h = copyright.Header()
         h.upstream_contact = ['Foo Bar <foo@bar.com>', 'http://bar.com/foo']   # type: ignore
-        assert ('Foo Bar <foo@bar.com>', 'http://bar.com/foo') == \
-            h.upstream_contact  # type: ignore
-        assert '\n Foo Bar <foo@bar.com>\n http://bar.com/foo' == \
-            h['upstream-contact']
+        assert h.upstream_contact == ('Foo Bar <foo@bar.com>', 'http://bar.com/foo')  # type: ignore
+        assert h['upstream-contact'] == '\n Foo Bar <foo@bar.com>\n http://bar.com/foo'
+
 
     def test_license(self):
         # type: () -> None
