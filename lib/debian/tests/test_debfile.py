@@ -155,7 +155,7 @@ class TestToolsInstalled:
 class TestArFile:
     fromfp = False
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture()
     def sample_archive(self):
         # type: () -> Generator[None, None, None]
         subprocess.check_call(
@@ -306,19 +306,19 @@ class TestDebFile:
         "/var/tests",
     ]
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture()
     def sample_deb_control(self, request):
         # type: (Any) -> Generator[str, None, None]
         control = getattr(request, "param", "gztar")
         yield from self._generate_deb(control=control)
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture()
     def sample_deb_data(self, request):
         # type: (Any) -> Generator[str, None, None]
         data = getattr(request, "param", "gztar")
         yield from self._generate_deb(data=data)
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture()
     def sample_deb(self, request):
         # type: (Any) -> Generator[str, None, None]
         compressions = getattr(request, "param", (None, None))
