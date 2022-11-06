@@ -233,12 +233,12 @@ class TestFormatPreservingDeb822Parser:
             #   _print_ast(deb822_file)
             #   logging.info(f" ---  END CASE {i} --- ")
             assert parse_case.error_element_count == error_element_count, \
-                             "Correct number of error tokens for case " + c
+                "Correct number of error tokens for case " + c
             assert parse_case.paragraph_count == paragraph_count, \
-                             "Correct number of paragraphs parsed for case " + c
+                "Correct number of paragraphs parsed for case " + c
             assert parse_case.is_valid_file == deb822_file.is_valid_file, \
-                             "Verify deb822_file correctly determines whether the field is invalid" \
-                             " for case " + c
+                "Verify deb822_file correctly determines whether the field is invalid" \
+                " for case " + c
             assert case_input == deb822_file.convert_to_text(), \
                              "Input of case " + c + " is round trip safe"
 
@@ -273,7 +273,7 @@ class TestFormatPreservingDeb822Parser:
 
             for repro_paragraph, deb822_paragraph in zip(deb822_file, deb822_paragraphs):
                 assert list(repro_paragraph) == list(deb822_paragraph), \
-                                 "Ensure keys are the same and in the correct order, case " + c
+                    "Ensure keys are the same and in the correct order, case " + c
                 # Use the key from Deb822 as it is compatible with the round safe version
                 # (the reverse is not true typing wise)
                 for k, ev in deb822_paragraph.items():
@@ -310,7 +310,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving comments"
+            "Mutation should have worked while preserving comments"
 
         # As an alternative, we can also fix the problem if we discard comments
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
@@ -330,7 +330,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while but discarded comments"
+            "Mutation should have worked while but discarded comments"
 
         source_paragraph['Multi-Line-Field-Space'] = textwrap.dedent('''\
         foo
@@ -350,7 +350,7 @@ class TestFormatPreservingDeb822Parser:
           \tbar
           ''')
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving space + tab"
+            "Mutation should have worked while preserving space + tab"
 
     def test_empty_fields(self):
         # type: () -> None
@@ -381,7 +381,7 @@ class TestFormatPreservingDeb822Parser:
           Another-Empty-Field:
           ''')
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked and generate a valid file"
+            "Mutation should have worked and generate a valid file"
 
     def test_empty_fields_reorder(self):
         # type: () -> None
@@ -398,7 +398,7 @@ class TestFormatPreservingDeb822Parser:
           Field: foo
           ''')
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked and generate a valid file"
+            "Mutation should have worked and generate a valid file"
         # Re-parse
         deb822_file = parse_deb822_file(original.splitlines(keepends=True))
         source_paragraph = next(iter(deb822_file))
@@ -409,7 +409,7 @@ class TestFormatPreservingDeb822Parser:
           Field: foo
           ''')
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked and generate a valid file"
+            "Mutation should have worked and generate a valid file"
 
     def test_case_preservation(self):
         # type: () -> None
@@ -441,7 +441,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving case"
+            "Mutation should have worked while preserving case"
 
         # Repeat with duplicated fields
         original = textwrap.dedent('''\
@@ -477,7 +477,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving case"
+            "Mutation should have worked while preserving case"
 
     def test_preserve_field_order_on_mutation(self):
         # type: () -> None
@@ -509,7 +509,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving field order"
+            "Mutation should have worked while preserving field order"
 
         # Again - this time with a paragraph containing duplicate fields
         original = textwrap.dedent('''\
@@ -545,7 +545,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving field order"
+            "Mutation should have worked while preserving field order"
 
     def test_preserve_field_case_on_iter(self):
         # type: () -> None
@@ -571,7 +571,7 @@ class TestFormatPreservingDeb822Parser:
         actual_keys = set(source_paragraph.keys())
 
         assert expected_keys == actual_keys, \
-                         "Keys returned by iterations should have original case"
+            "Keys returned by iterations should have original case"
 
     def test_append_paragraph(self):
         # type: () -> None
@@ -599,8 +599,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_append_paragraph_existing_trailing_newline(self):
         # type: () -> None
@@ -629,8 +628,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_append_empty_paragraph(self):
         # type: () -> None
@@ -654,8 +652,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_append_tailing_comment(self):
         # type: () -> None
@@ -685,8 +682,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_insert_paragraph(self):
         # type: () -> None
@@ -714,8 +710,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
         # Insert after the existing paragraphs
 
@@ -738,8 +733,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_insert_paragraph_with_comments(self):
         # type: () -> None
@@ -778,8 +772,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
         # Insert after the existing paragraphs
 
@@ -805,8 +798,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_insert_paragraph_in_empty_file(self):
         # type: () -> None
@@ -825,8 +817,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_remove_paragraph(self):
         # type: () -> None
@@ -852,8 +843,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
         # Verify that we can add another paragraph.
         deb822_file.append(Deb822ParagraphElement.from_dict({'Package': 'bloe'}))
@@ -867,7 +857,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Adding new paragraph should have worked"
+            "Adding new paragraph should have worked"
 
         deb822_file.remove(list(deb822_file)[1])
 
@@ -880,8 +870,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
         original = textwrap.dedent('''\
           Source: foo
@@ -913,8 +902,7 @@ class TestFormatPreservingDeb822Parser:
           ''')
 
         assert expected == deb822_file.convert_to_text(), \
-                         "Mutation should have worked while preserving " \
-                         "comments"
+            "Mutation should have worked while preserving comments"
 
     def test_duplicate_fields(self):
         # type: () -> None
@@ -958,7 +946,7 @@ class TestFormatPreservingDeb822Parser:
 
         expected_fixed = original.replace('Rules-Requires-Root: binary-targets\n', '')
         assert expected_fixed == deb822_file.convert_to_text(), \
-                         "Fixed version should only have one Rules-Requires-Root field"
+            "Fixed version should only have one Rules-Requires-Root field"
 
         # As an alternative, we can also fix the problem if we discard comments
         deb822_file = parse_deb822_file(original.splitlines(keepends=True),
@@ -983,7 +971,7 @@ class TestFormatPreservingDeb822Parser:
         New-Field: value
         ''')
         assert expected == deb822_file.convert_to_text(), \
-                         "Fixed version should only have one Rules-Requires-Root field"
+            "Fixed version should only have one Rules-Requires-Root field"
 
     def test_sorting(self):
         # type: () -> None
@@ -1061,7 +1049,7 @@ class TestFormatPreservingDeb822Parser:
             paragraph.sort_fields(key=key_func)
 
         assert sorted_nodups == deb822_file_nodups.convert_to_text(), \
-                         "Sorting without duplicated fields work"
+            "Sorting without duplicated fields work"
         deb822_file_with_dups = parse_deb822_file(original_with_dups.splitlines(keepends=True),
                                                   accept_files_with_duplicated_fields=True,
                                                   )
@@ -1070,7 +1058,7 @@ class TestFormatPreservingDeb822Parser:
             paragraph.sort_fields(key=key_func)
 
         assert sorted_with_dups == deb822_file_with_dups.convert_to_text(), \
-                         "Sorting with duplicated fields work"
+            "Sorting with duplicated fields work"
 
     def test_reorder_nodups(self):
         # type: () -> None
@@ -1365,33 +1353,36 @@ class TestFormatPreservingDeb822Parser:
             discard_comments_on_read=False
         )
 
-        assert ['a', 'b', 'c d', 'e'] == list(comma_list_correctly_read)
+        assert list(comma_list_correctly_read) == ['a', 'b', 'c d', 'e']
 
-        assert ["some",
-                          "fun",
-                          "with\n  multi-line\n  values",
-                          "separated by",
-                          "commas\n     >:)"] == \
-                         list(ml_comma_list)
-        assert ["some",
-                          "fun",
-                          "with\n  multi-line\n# With a comment inside it for added fun\n  values",
-                          "separated by",
-                          "commas\n# Comments in final value\n     >:)"] == \
-                         list(ml_comma_list_w_comments)
+        assert list(ml_comma_list) == [
+            "some",
+            "fun",
+            "with\n  multi-line\n  values",
+            "separated by",
+            "commas\n     >:)"
+        ]
 
-        assert [
-                "Someone <nobody@example.org>",
-                "Margrete, I, Ruler <1@margrete.dk>",
-                "Margrete, II, Queen\n  <2@margrete.dk>",
-            ] == \
-            list(uploaders_list)
-        assert [
-                "Someone <nobody@example.org>",
-                "Margrete, I, Ruler <1@margrete.dk>",
-                "Margrete, II, Queen\n# We could list additional names here\n  <2@margrete.dk>",
-            ] == \
-            list(uploaders_list_with_comments)
+        assert list(ml_comma_list_w_comments) == [
+            "some",
+            "fun",
+            "with\n  multi-line\n# With a comment inside it for added fun\n  values",
+            "separated by",
+            "commas\n# Comments in final value\n     >:)"
+        ]
+
+        assert list(uploaders_list) == [
+            "Someone <nobody@example.org>",
+            "Margrete, I, Ruler <1@margrete.dk>",
+            "Margrete, II, Queen\n  <2@margrete.dk>",
+        ]
+
+        assert list(uploaders_list_with_comments) == [
+            "Someone <nobody@example.org>",
+            "Margrete, I, Ruler <1@margrete.dk>",
+            "Margrete, II, Queen\n# We could list additional names here\n  <2@margrete.dk>",
+        ]
+
 
         # Interpretation must not change the content
         assert original == deb822_file.convert_to_text()
