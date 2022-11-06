@@ -79,7 +79,8 @@ class TestDebtags:
     def test_read(self, debtagsdb):
         # type: (debtags.DB) -> None
         db = debtagsdb
-        assert db.tags_of_package("polygen") == set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text"))
+        assert db.tags_of_package("polygen") == \
+            set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text"))
         assert "polygen" in db.packages_of_tag("interface::commandline")
         assert db.package_count() == 144
         assert db.tag_count() == 94
