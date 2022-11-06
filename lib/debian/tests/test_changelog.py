@@ -181,10 +181,10 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         c1.version = '1:2.3.5-2'
         c2.version = debian_support.Version('1:2.3.5-2')
         assert c1.version == c2.version
-        assert (c1.full_version, c1.epoch, c1.upstream_version,
-                          c1.debian_version) == \
-                         (c2.full_version, c2.epoch, c2.upstream_version,
-                          c2.debian_version)
+        assert c1.full_version == c2.full_version
+        assert c1.epoch == c2.epoch
+        assert c1.upstream_version == c2.upstream_version
+        assert c1.debian_version == c2.debian_version
 
     def test_changelog_no_author(self):
         # type: () -> None
@@ -291,8 +291,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         assert str(c) == c_unicode
         assert bytes(c) == c_latin1_str
         for block in c:
-            assert bytes(block) == \
-                             str(block).encode('latin1')
+            assert bytes(block) == str(block).encode('latin1')
 
     def test_malformed_date(self, caplog):
         # type: (pytest.LogCaptureFixture) -> None
