@@ -35,7 +35,7 @@ def find_test_file(filename):
 
 class TestDebtags:
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture()
     def debtagsdb(self):
         # type: () -> Generator[debtags.DB, None, None]
         db = debtags.DB()
