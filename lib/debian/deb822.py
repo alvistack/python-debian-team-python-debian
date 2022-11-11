@@ -461,7 +461,7 @@ class Deb822Dict(_Deb822Dict_base):
             if hasattr(_dict, 'items'):
                 items = _dict.items()  # type: ignore
             else:
-                items = list(_dict)    # type: ignore
+                items = list(_dict)
 
             try:
                 for k, v in items:
@@ -1202,7 +1202,7 @@ class Deb822(Deb822Dict):
         if self.gpg_info is None:
             # pylint: disable=no-member
             # (raw_text is checked above)
-            self.gpg_info = GpgInfo.from_sequence(self.raw_text,  # type: ignore
+            self.gpg_info = GpgInfo.from_sequence(self.raw_text,
                                                   keyrings=keyrings)
 
         return self.gpg_info
