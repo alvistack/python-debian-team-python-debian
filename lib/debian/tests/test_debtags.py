@@ -17,10 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os.path
-import sys
-import unittest
+
+import pytest
 
 from debian import debtags
+
+from typing import (
+    Generator
+)
 
 
 def find_test_file(filename):
@@ -29,13 +33,15 @@ def find_test_file(filename):
     return os.path.join(os.path.dirname(__file__), filename)
 
 
-class TestDebtags(unittest.TestCase):
-    def mkdb(self):
-        # type: () -> debtags.DB
+class TestDebtags:
+
+    @pytest.fixture()
+    def debtagsdb(self):
+        # type: () -> Generator[debtags.DB, None, None]
         db = debtags.DB()
         with open(find_test_file("test_tagdb"), "r") as f:
             db.read(f)
-        return db
+        yield db
 
     def test_insert(self):
         # type: () -> None
@@ -47,11 +53,11 @@ class TestDebtags(unittest.TestCase):
         assert db.has_tag("a")
         assert db.has_tag("b")
         assert not db.has_tag("test")
-        self.assertEqual(db.tags_of_package("test"), set(("a", "b")))
-        self.assertEqual(db.packages_of_tag("a"), set(("test")))
-        self.assertEqual(db.packages_of_tag("b"), set(("test")))
-        self.assertEqual(db.package_count(), 1)
-        self.assertEqual(db.tag_count(), 2)
+        assert db.tags_of_package("test") == set(("a", "b"))
+        assert db.packages_of_tag("a") == set(("test"))
+        assert db.packages_of_tag("b") == set(("test"))
+        assert db.package_count() == 1
+        assert db.tag_count() == 2
 
     def test_reverse(self):
         # type: () -> None
@@ -64,21 +70,17 @@ class TestDebtags(unittest.TestCase):
         assert db.has_tag("test")
         assert not db.has_tag("a")
         assert not db.has_tag("b")
-        self.assertEqual(db.packages_of_tag("test"), set(("a", "b")))
-        self.assertEqual(db.tags_of_package("a"), set(("test")))
-        self.assertEqual(db.tags_of_package("b"), set(("test")))
-        self.assertEqual(db.package_count(), 2)
-        self.assertEqual(db.tag_count(), 1)
+        assert db.packages_of_tag("test") == set(("a", "b"))
+        assert db.tags_of_package("a") == set(("test"))
+        assert db.tags_of_package("b") == set(("test"))
+        assert db.package_count() == 2
+        assert db.tag_count() == 1
 
-    def test_read(self):
-        # type: () -> None
-        db = self.mkdb()
-        self.assertEqual(db.tags_of_package("polygen"), set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text")))
+    def test_read(self, debtagsdb):
+        # type: (debtags.DB) -> None
+        db = debtagsdb
+        assert db.tags_of_package("polygen") == \
+            set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text"))
         assert "polygen" in db.packages_of_tag("interface::commandline")
-        self.assertEqual(db.package_count(), 144)
-        self.assertEqual(db.tag_count(), 94)
-
-if __name__ == '__main__':
-    unittest.main()
-
-# vim:set ts=4 sw=4 expandtab:
+        assert db.package_count() == 144
+        assert db.tag_count() == 94
