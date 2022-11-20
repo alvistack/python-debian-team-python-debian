@@ -1,8 +1,21 @@
-python-debian (0.1.49) UNRELEASED; urgency=medium
+python-debian (0.1.49) unstable; urgency=medium
 
+  [ Debian Janitor ]
   * Update lintian override info to new format on line 1.
 
- -- Debian Janitor <janitor@jelmer.uk>  Wed, 19 Oct 2022 20:09:24 -0000
+  [ Niels Thykier ]
+  * Fix whitespace handling of Copyright files (Closes: #960278)
+
+  [ Stuart Prescott ]
+  * Make python-debian (more) portable (Closes: #1011937)
+    - Tweak tests to be portable to other platforms
+    - Adapt tests so that skipping optional tests can be prevented if needed
+    - Add other platforms to CI to test portability
+  * Switch tests to use more pytest features.
+  * Updates for newer mypy and pylint.
+  * Add Debian 14 'forky' to the list of known releases.
+
+ -- Stuart Prescott <stuart@debian.org>  Sun, 20 Nov 2022 11:30:33 +1100
 
 python-debian (0.1.48) unstable; urgency=medium
 
