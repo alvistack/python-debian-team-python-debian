@@ -32,11 +32,10 @@ Depends:
  python3-chardet,
  ${misc:Depends},
  ${python3:Depends}
-Recommends:
+Suggests:
+ gpgv,
  python3-apt,
  zstd,
-Suggests:
- gpgv
 Description: Python 3 modules to work with Debian-related data formats
  This package provides Python 3 modules that abstract many formats of Debian
  related files. Currently handled are:
