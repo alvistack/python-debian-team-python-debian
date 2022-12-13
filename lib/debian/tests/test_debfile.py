@@ -290,7 +290,6 @@ compressions = ["gztar", "bztar", "xztar", "tar", "zsttar"]
 @pytest.mark.skipif(not _ar_path, reason="ar not installed")
 class TestDebFile:
 
-
     # from this source package that will be included in the sample .deb
     # that is used for testing
     example_data_dir = Path("usr/share/doc/examples")
@@ -326,7 +325,7 @@ class TestDebFile:
         data = compressions[1] or 'gztar'
         yield from self._generate_deb(control=control, data=data)
 
-    def _generate_deb(self, filename="test.ar", control="gztar", data="gztar"):
+    def _generate_deb(self, filename="test.deb", control="gztar", data="gztar"):
         # type: (str, str, str) -> Generator[str, None, None]
         """ Creates a test deb within a contextmanager for artefact cleanup
 
