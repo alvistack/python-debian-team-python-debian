@@ -141,7 +141,7 @@ class DebPart(object):
             extension = os.path.splitext(name)[1][1:]
             if extension in PART_EXTS or name == DATA_PART or name == CTRL_PART:
                 # Permit compressed members and also uncompressed data.tar
-                # tarfile has no zst support: https://bugs.python.org/issue37095
+                # tarfile has no zst support: https://github.com/python/cpython/issues/81276
                 if extension == 'zst':
                     buffer = _custom_decompress(['unzstd', '--stdout'])
                 else:
