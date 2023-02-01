@@ -21,7 +21,7 @@ export FORBID_MISSING_ZSTD ?= 1
 	dh $@ --with python3 --buildsystem pybuild
 
 %.py: %.py.in debian/changelog
-	sed -e 's/__CHANGELOG_VERSION__/$(DEB_VERSION)/' < $< > $@
+	sed -e 's/__CHANGELOG_VERSION__/$(shell debian/make_pep440_compliant "$(DEB_VERSION)")/' < $< > $@
 
 override_dh_auto_build: lib/debian/_version.py
 	dh_auto_build
