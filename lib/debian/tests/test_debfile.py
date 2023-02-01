@@ -81,7 +81,7 @@ _dpkg_deb_path = shutil.which('dpkg-deb') or ""
 FORBID_MISSING_AR = os.environ.get("FORBID_MISSING_AR", None)
 #
 # FORBID_MISSING_ZSTD:
-#   any non-empty value for the environment variable FORBID_MISSING_AR
+#   any non-empty value for the environment variable FORBID_MISSING_ZSTD
 #   will mean that tests fail if zstd (from zstd) can't be found
 FORBID_MISSING_ZSTD = os.environ.get("FORBID_MISSING_ZSTD", None)
 #
