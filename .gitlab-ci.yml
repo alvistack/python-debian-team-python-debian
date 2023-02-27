@@ -157,7 +157,6 @@ unit-tests-wine:
   - PATH=~/.local/bin/:$PATH
   - pip install --user wenv
   - wenv init
-  - rm ~/.local/share/wenv/win64/drive_c/*/python*._pth
   - wenv python -m pip install chardet setuptools pytest
   - rm -f /usr/bin/ar /usr/bin/gpgv
   script:
@@ -165,6 +164,7 @@ unit-tests-wine:
   variables:
     WENV_ARCH: win64
     WENV_WINE_BIN_WIN64: /usr/bin/wine
+    WENV_NO_PTH_FILE: 1
     PIP_BREAK_SYSTEM_PACKAGES: 1
 
 unit-tests-windows:
