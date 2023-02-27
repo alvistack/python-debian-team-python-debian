@@ -400,6 +400,6 @@ class DpkgArchTable:
             dpkg_arch = self._dpkg_wildcard_to_tuple(wildcard)
         except KeyError:
             return False
-        else:
-            # _dpkg_wildcard_to_tuple falls back to concrete architectures so this can be False
-            return dpkg_arch.is_wildcard
+
+        # _dpkg_wildcard_to_tuple falls back to concrete architectures so this can be False
+        return dpkg_arch.is_wildcard
