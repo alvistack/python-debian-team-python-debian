@@ -241,7 +241,7 @@ import warnings
 import chardet
 
 try:
-    # pylint: disable=unused-import
+    # pylint: disable=unused-import,deprecated-class
     from typing import (
         Any,
         Callable,

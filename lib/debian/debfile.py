@@ -29,7 +29,7 @@ import os.path
 from pathlib import Path
 
 try:
-    # pylint: disable=unused-import
+    # pylint: disable=unused-import,deprecated-class
     from typing import (
         Any,
         BinaryIO,

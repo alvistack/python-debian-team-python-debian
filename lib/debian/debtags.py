@@ -19,7 +19,7 @@ import pickle
 import re
 
 try:
-    # pylint: disable=unused-import
+    # pylint: disable=unused-import,deprecated-class
     from typing import (
         Callable,
         Dict,
