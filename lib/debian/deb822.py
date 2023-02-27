@@ -2193,7 +2193,7 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
                 continue
 
         if state != BuildInfo._EnvParserState.IGNORE_WHITESPACE:
-            ValueError(
+            raise ValueError(
                 "Improper quoting in Environment: "
                 "end quote not found"
             )
