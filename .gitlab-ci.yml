@@ -164,6 +164,7 @@ unit-tests-wine:
   - wenv python -m pytest --doctest-modules --verbose lib/
   variables:
     WENV_ARCH: win64
+    PIP_BREAK_SYSTEM_PACKAGES: 1
 
 unit-tests-windows:
   tags:
@@ -184,6 +185,7 @@ unit-tests-windows:
   - python -m pytest --doctest-modules --verbose lib/
   variables:
     PYTHON: python
+    PIP_BREAK_SYSTEM_PACKAGES: 1
 
 ### Coding style checks
 
