@@ -3,7 +3,7 @@ from weakref import ReferenceType
 
 try:
     from typing import (
-        Iterable, Optional, Generic, Dict, List, Iterator, TypeVar, TYPE_CHECKING, Any,
+        Iterable, Optional, Generic, Dict, Iterator, TypeVar, TYPE_CHECKING, Any,
         Callable,
     )
 
