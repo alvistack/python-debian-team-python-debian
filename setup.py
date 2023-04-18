@@ -41,7 +41,7 @@ setup(
     version=debian.__version__,
     description='Debian package related modules',
     long_description=description,
-    license='GPL-2+',
+    license='GPL-2.0-or-later',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
