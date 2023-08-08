@@ -45,8 +45,6 @@ except ImportError:
     # Lack of typing is not important at runtime
     pass
 
-from debian.deprecation import function_deprecated_by
-
 try:
     import apt_pkg
     try:
@@ -133,8 +131,6 @@ class ParseError(Exception):
         """Writes a machine-parsable error message to file."""
         file.write("%s:%d: %s\n" % (self.filename, self.lineno, self.msg))
         file.flush()
-
-    printOut = function_deprecated_by(print_out)
 
 
 class BaseVersion(object):
@@ -486,8 +482,6 @@ class PackageFile:
             lineno = self.lineno
         raise ParseError(self.name, lineno, msg)
 
-    raiseSyntaxError = function_deprecated_by(raise_syntax_error)
-
 
 class PseudoEnum:
     """A base class for types which resemble enumeration types."""
@@ -589,8 +583,6 @@ def list_releases():
     return releases
 
 
-listReleases = function_deprecated_by(list_releases)
-
 _release_list = list_releases()
 
 
@@ -601,10 +593,6 @@ def intern_release(name, releases=None):
     return releases.get(name)
 
 
-internRelease = function_deprecated_by(intern_release)
-
-
-del listReleases
 del list_releases
 
 
@@ -628,9 +616,6 @@ def read_lines_sha1(lines):
         else:
             m.update(l.encode("UTF-8"))
     return m.hexdigest()   # type: ignore
-
-
-readLinesSHA1 = function_deprecated_by(read_lines_sha1)
 
 
 _patch_re_raw = r'^(\d+)(?:,(\d+))?([acd])$'
@@ -697,8 +682,6 @@ def patches_from_ed_script(
             lines.append(c)
         yield (first, last, lines)
 
-patchesFromEdScript = function_deprecated_by(patches_from_ed_script)
-
 
 def patch_lines(
         lines,        # type: List[AnyStr]
@@ -708,9 +691,6 @@ def patch_lines(
     """Applies patches to lines.  Updates lines in place."""
     for (first, last, args) in patches:
         lines[first:last] = args
-
-
-patchLines = function_deprecated_by(patch_lines)
 
 
 def replace_file(lines, local, encoding="UTF-8"):
@@ -727,9 +707,6 @@ def replace_file(lines, local, encoding="UTF-8"):
             os.unlink(local_new)
 
 
-replaceFile = function_deprecated_by(replace_file)
-
-
 def download_gunzip_lines(remote):
     # type: (str) -> List[str]
     """Downloads a file from a remote location and gunzips it.
@@ -744,9 +721,6 @@ def download_gunzip_lines(remote):
             return gfd.readlines()   # type: ignore
 
 
-downloadGunzipLines = function_deprecated_by(download_gunzip_lines)
-
-
 def download_file(remote, local):
     # type: (str, str) -> List[str]
     """Copies a gzipped remote file to the local system.
@@ -758,9 +732,6 @@ def download_file(remote, local):
     lines = download_gunzip_lines(remote + '.gz')
     replace_file(lines, local)
     return lines
-
-
-downloadFile = function_deprecated_by(download_file)
 
 
 def update_file(remote, local, verbose=False):
@@ -873,9 +844,6 @@ def update_file(remote, local, verbose=False):
     return lines
 
 
-updateFile = function_deprecated_by(update_file)
-
-
 def merge_as_sets(*args):           # type: ignore
     """Create an order set (represented as a list) of the objects in
     the sequences passed as arguments."""
@@ -884,6 +852,3 @@ def merge_as_sets(*args):           # type: ignore
         for y in x:
             s[y] = True
     return sorted(s)
-
-
-mergeAsSets = function_deprecated_by(merge_as_sets)
