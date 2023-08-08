@@ -42,9 +42,6 @@ except ImportError:
     pass
 
 
-from debian.deprecation import function_deprecated_by
-
-
 def parse_tags(input_data):
     # type: (Iterator[Text]) -> Iterator[Tuple[Set[str], Set[str]]]
     lre = re.compile(r"^(.+?)(?::?\s*|:\s+(.+?)\s*)$")
@@ -63,9 +60,6 @@ def parse_tags(input_data):
         yield pkgs, tags
 
 
-parseTags = function_deprecated_by(parse_tags)
-
-
 def read_tag_database(input_data):
     # type: (Iterator[Text]) -> PkgTagDbType
     """Read the tag database, returning a pkg->tags dictionary"""
@@ -75,9 +69,6 @@ def read_tag_database(input_data):
         for p in pkgs:
             db[p] = tags.copy()
     return db
-
-
-readTagDatabase = function_deprecated_by(read_tag_database)
 
 
 def read_tag_database_reversed(input_data):
@@ -92,9 +83,6 @@ def read_tag_database_reversed(input_data):
             else:
                 db[tag] = pkgs.copy()
     return db
-
-
-readTagDatabaseReversed = function_deprecated_by(read_tag_database_reversed)
 
 
 def read_tag_database_both_ways(
@@ -119,9 +107,6 @@ def read_tag_database_both_ways(
             else:
                 dbr[tag] = pkgs.copy()
     return db, dbr
-
-
-readTagDatabaseBothWays = function_deprecated_by(read_tag_database_both_ways)
 
 
 def reverse(db):
@@ -181,9 +166,6 @@ def relevance_index_function(full, sub):   #type: ignore
     # (math.sin(float(full.card(tag))*3.1415/full.package_count())/4 + 0.75)
 
 
-relevanceIndexFunction = function_deprecated_by(relevance_index_function)
-
-
 class DB:
     """
     In-memory database mapping packages to tags and tags to packages.
@@ -237,8 +219,6 @@ class DB:
         # type: () -> None
         output(self.rdb)
 
-    dumpReverse = function_deprecated_by(dump_reverse)
-
     def reverse(self):
         # type: () -> DB
         "Return the reverse collection, sharing tagsets with this one"
@@ -259,8 +239,6 @@ class DB:
             ftags = {tofacet.sub(r"\1", t) for t in tags}
             fcoll.insert(pkg, ftags)
         return fcoll
-
-    facetCollection = function_deprecated_by(facet_collection)
 
     def copy(self):
         # type: () -> DB
@@ -284,8 +262,6 @@ class DB:
         res.rdb = self.db.copy()
         return res
 
-    reverseCopy = function_deprecated_by(reverse_copy)
-
     def choose_packages(self, package_iter):
         # type: (Iterable[str]) -> DB
         """
@@ -301,8 +277,6 @@ class DB:
         res.rdb = reverse(db)
         return res
 
-    choosePackages = function_deprecated_by(choose_packages)
-
     def choose_packages_copy(self, package_iter):
         # type: (Iterable[str]) -> DB
         """
@@ -316,8 +290,6 @@ class DB:
         res.db = db
         res.rdb = reverse(db)
         return res
-
-    choosePackagesCopy = function_deprecated_by(choose_packages_copy)
 
     def filter_packages(self, package_filter):
         # type: (PkgFilterType) -> DB
@@ -334,8 +306,6 @@ class DB:
         res.rdb = reverse(db)
         return res
 
-    filterPackages = function_deprecated_by(filter_packages)
-
     def filter_packages_copy(self, filter_data):
         # type: (PkgFilterType) -> DB
         """
@@ -350,8 +320,6 @@ class DB:
         res.db = db
         res.rdb = reverse(db)
         return res
-
-    filterPackagesCopy = function_deprecated_by(filter_packages_copy)
 
     def filter_packages_tags(self, package_tag_filter):
         # type: (PkgTagFilterType) -> DB
@@ -368,8 +336,6 @@ class DB:
         res.rdb = reverse(db)
         return res
 
-    filterPackagesTags = function_deprecated_by(filter_packages_tags)
-
     def filter_packages_tags_copy(self, package_tag_filter):
         # type: (PkgTagFilterType) -> DB
         """
@@ -384,8 +350,6 @@ class DB:
         res.db = db
         res.rdb = reverse(db)
         return res
-
-    filterPackagesTagsCopy = function_deprecated_by(filter_packages_tags_copy)
 
     def filter_tags(self, tag_filter):
         # type: (TagFilterType) -> DB
@@ -402,8 +366,6 @@ class DB:
         res.db = reverse(rdb)
         return res
 
-    filterTags = function_deprecated_by(filter_tags)
-
     def filter_tags_copy(self, tag_filter):
         # type: (TagFilterType) -> DB
         """
@@ -419,49 +381,35 @@ class DB:
         res.db = reverse(rdb)
         return res
 
-    filterTagsCopy = function_deprecated_by(filter_tags_copy)
-
     def has_package(self, pkg):
         # type: (str) -> bool
         """Check if the collection contains the given package"""
         return pkg in self.db
-
-    hasPackage = function_deprecated_by(has_package)
 
     def has_tag(self, tag):
         # type: (str) -> bool
         """Check if the collection contains packages tagged with tag"""
         return tag in self.rdb
 
-    hasTag = function_deprecated_by(has_tag)
-
     def tags_of_package(self, pkg):
         # type: (str) -> Set[str]
         """Return the tag set of a package"""
         return self.db[pkg] if pkg in self.db else set()
-
-    tagsOfPackage = function_deprecated_by(tags_of_package)
 
     def packages_of_tag(self, tag):
         # type: (str) -> Set[str]
         """Return the package set of a tag"""
         return self.rdb[tag] if tag in self.rdb else set()
 
-    packagesOfTag = function_deprecated_by(packages_of_tag)
-
     def tags_of_packages(self, pkgs):
         # type: (Iterable[str]) -> Set[str]
         """Return the set of tags that have all the packages in ``pkgs``"""
         return set.union(*(self.tags_of_package(p) for p in pkgs))
 
-    tagsOfPackages = function_deprecated_by(tags_of_packages)
-
     def packages_of_tags(self, tags):
         # type: (Iterable[str]) -> Set[str]
         """Return the set of packages that have all the tags in ``tags``"""
         return set.union(*(self.packages_of_tag(t) for t in tags))
-
-    packagesOfTags = function_deprecated_by(packages_of_tags)
 
     def card(self, tag):
         # type: (str) -> int
@@ -489,42 +437,30 @@ class DB:
         """Iterate over the packages"""
         return self.db.keys()
 
-    iterPackages = function_deprecated_by(iter_packages)
-
     def iter_tags(self):
         # type: () -> Iterable[str]
         """Iterate over the tags"""
         return self.rdb.keys()
-
-    iterTags = function_deprecated_by(iter_tags)
 
     def iter_packages_tags(self):
         # type: () -> Iterable[Tuple[str, Set[str]]]
         """Iterate over 2-tuples of (pkg, tags)"""
         return self.db.items()
 
-    iterPackagesTags = function_deprecated_by(iter_packages_tags)
-
     def iter_tags_packages(self):
         # type: () -> Iterable[Tuple[str, Set[str]]]
         """Iterate over 2-tuples of (tag, pkgs)"""
         return self.rdb.items()
-
-    iterTagsPackages = function_deprecated_by(iter_tags_packages)
 
     def package_count(self):
         # type: () -> int
         """Return the number of packages"""
         return len(self.db)
 
-    packageCount = function_deprecated_by(package_count)
-
     def tag_count(self):
         # type: () -> int
         """Return the number of tags"""
         return len(self.rdb)
-
-    tagCount = function_deprecated_by(tag_count)
 
     def ideal_tagset(self, tags):
         # type: (List[str]) -> Set[str]
@@ -561,8 +497,6 @@ class DB:
         if not tagset:
             return set(tags[:1])
         return tagset
-
-    idealTagset = function_deprecated_by(ideal_tagset)
 
     def correlations(self):
         # type: () -> Iterator[Tuple[str, str, float]]

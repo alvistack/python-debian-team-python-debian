@@ -314,7 +314,6 @@ from debian._util import (
     _CaseInsensitiveString, _strI,
     default_field_sort_key,
 )
-from debian.deprecation import function_deprecated_by
 import debian.debian_support
 import debian.changelog
 
@@ -994,14 +993,10 @@ class Deb822(Deb822Dict):
         # type: (str) -> bool
         return not s.count("\n")
 
-    isSingleLine = function_deprecated_by(is_single_line)
-
     @staticmethod
     def is_multi_line(s):
         # type: (str) -> bool
         return not Deb822.is_single_line(s)
-
-    isMultiLine = function_deprecated_by(is_multi_line)
 
     def _merge_fields(self,
                       s1,   # type: str
@@ -1042,8 +1037,6 @@ class Deb822(Deb822Dict):
 
         raise ValueError
 
-    _mergeFields = function_deprecated_by(_merge_fields)
-
     def merge_fields(self,
                      key,       # type: str
                      d1,        # type: Mapping[str, str]
@@ -1079,8 +1072,6 @@ class Deb822(Deb822Dict):
             return None
 
         return merged
-
-    mergeFields = function_deprecated_by(merge_fields)
 
     # regexps for finding the gpg header around signed data
     _gpgre = re.compile(br'^-----(?P<action>BEGIN|END) '
