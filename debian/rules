@@ -61,17 +61,17 @@ test:
 	  echo "----------------------------------------------"; \
 	  echo "Testing with $$py"; \
 	  echo "----------------------------------------------"; \
-	  LC_ALL=C $$py -m pytest --doctest-modules --verbose lib/; \
-	  LC_ALL=C.UTF-8 $$py -m pytest --doctest-modules --verbose lib/; \
+	  LC_ALL=C $$py -m pytest; \
+	  LC_ALL=C.UTF-8 $$py -m pytest; \
 	done
 
 qa: lib/debian/_version.py
 	@echo "Running both pylint and mypy"
 	@echo "----------- pylint -----------"
-	@pylint --rcfile .pylintrc $$(find lib/debian -name \*py | grep -v test | sort); \
+	@pylint $$(find lib/debian -name \*py | grep -v test | sort); \
 	  pylinterr=$$?; \
 	  echo "----------- mypy -----------"; \
-	  mypy --strict lib; \
+	  mypy; \
 	  mypyerr=$$? ; \
 	  [ $$pylinterr -eq 0 -a $$mypyerr -eq 0 ]
 
