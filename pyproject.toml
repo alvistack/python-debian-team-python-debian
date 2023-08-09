@@ -1,0 +1,165 @@
+# https://peps.python.org/pep-0517/
+[build-system]
+requires = [
+    "setuptools>=61",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+# https://peps.python.org/pep-0621/
+[project]
+name = "python-debian"
+dynamic = [
+    "version",
+]
+description = "Modules to read and manipulate many file formats related to Debian packages and repositories"
+readme = "README.rst"
+requires-python = ">=3.7"
+license = { text = "GPL-2.0-or-later" }
+authors = [
+    {name = "Debian python-debian Maintainers", email = "pkg-python-debian-maint@lists.alioth.debian.org"},
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Intended Audience :: Developers",
+  "License :: DFSG approved",
+  "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+  "Operating System :: POSIX",
+]
+keywords = ["debian", "linux", "metadata", "packages", "packaging"]
+dependencies = [
+    "chardet",
+]
+
+[project.urls]
+homepage = "https://salsa.debian.org/python-debian-team/python-debian"
+
+# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+[tool.setuptools]
+include-package-data = true
+platforms = [ "any" ]
+# packages = [
+#     "debian",
+#     "debian.tests",
+#     "debian._deb822_repro",
+# ]
+
+[tool.setuptools.packages.find]
+where = ["lib"]
+include = [
+    "debian*",
+]
+exclude = [
+    "debian/tests",
+]
+namespaces = false
+
+[tool.setuptools.package-data]
+"*" = [
+    "py.typed",
+    "*.pyi",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "debian._version.__version__" }
+
+
+
+# https://docs.pytest.org/en/6.2.x/customize.html
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--import-mode=importlib",
+    "--cov-report=term-missing",
+    "--cov=lib/debian",
+    "--cov=tests",
+    "--doctest-modules",
+    "-v",
+    "-rsx",
+]
+log_level = "DEBUG"
+filterwarnings = [
+]
+testpaths = [
+    "lib",
+    "tests",
+]
+pythonpath = "lib"
+
+
+# https://coverage.readthedocs.io/en/6.4/config.html
+[tool.coverage.run]
+branch = true
+source = [
+    "lib",
+    "tests",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "@overload",
+    "except ImportError",
+    "if __name__ == .__main__.:",
+]
+
+
+
+# https://mypy.readthedocs.io/en/stable/config_file.html
+[tool.mypy]
+files = [
+    "lib",
+    "tests",
+]
+strict = true
+show_error_codes = true
+pretty = true
+ignore_missing_imports = true
+warn_unused_ignores = false
+
+
+
+[tool.pylint.main]
+extension-pkg-whitelist = ["apt_pkg"]
+# ignore = ["tests"]
+persistent = false
+
+[tool.pylint."messages control"]
+disable = [
+    "consider-using-f-string",
+    "fixme",
+    "invalid-name",
+    "locally-disabled",
+    "missing-docstring",
+    "protected-access",
+    "raise-missing-from",
+    "super-with-arguments",
+    "too-few-public-methods",
+    "too-many-ancestors",
+    "too-many-boolean-expressions",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-arguments",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-nested-blocks",
+    "too-many-public-methods",
+    "too-many-statements",
+    "unsubscriptable-object",
+    "useless-object-inheritance",
+]
+
+[tool.pylint.reports]
+reports = false
+
+[tool.pylint.similarities]
+min-similarity-lines = 999
