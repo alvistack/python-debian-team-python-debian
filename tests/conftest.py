@@ -5,7 +5,7 @@ except ImportError:
 
 import pytest
 
-from debian.tests.stubbed_arch_table import StubbedDpkgArchTable
+from .stubbed_arch_table import StubbedDpkgArchTable
 
 
 @pytest.fixture(autouse=True)
