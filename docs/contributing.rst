@@ -85,9 +85,9 @@ Style guide
 -----------
 
  - Code should be whitespace clean, pep8 & pylint compatible;
-   a `.pylintrc` configuration file is provided is also run on
+   pylint configuration is provided in `pyproject.toml` and is also run on
    salsa.debian.org as part of the CI checks for merge requests.
-   (Where pep8 and pylintrc disagree about
+   (Where pep8 and pylint disagree about
    whitespace, follow pylint's recommendations.)
 
  - Write type annotations to help `mypy --strict` understand the types and
