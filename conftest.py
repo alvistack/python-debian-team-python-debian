@@ -5,7 +5,7 @@ except ImportError:
 
 import pytest
 
-from .stubbed_arch_table import StubbedDpkgArchTable
+from tests.stubbed_arch_table import StubbedDpkgArchTable
 
 
 @pytest.fixture(autouse=True)
