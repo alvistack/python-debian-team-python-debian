@@ -78,9 +78,9 @@ version = { attr = "debian._version.__version__" }
 minversion = "6.0"
 addopts = [
     "--import-mode=importlib",
-    "--cov-report=term-missing",
-    "--cov=lib/debian",
-    "--cov=tests",
+    # "--cov-report=term-missing",
+    # "--cov=lib/debian",
+    # "--cov=tests",
     "--doctest-modules",
     "-v",
     "-rsx",
