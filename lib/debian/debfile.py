@@ -7,6 +7,7 @@ Debfile Classes
 
 # Copyright (C) 2007-2008   Stefano Zacchiroli  <zack@debian.org>
 # Copyright (C) 2007        Filippo Giunchedi   <filippo@debian.org>
+# Copyright (C) 2014-2023   Stuart Prescott     <stuart@debian.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
