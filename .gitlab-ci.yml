@@ -29,6 +29,7 @@ variables:
   variables:
     OPTIONAL_PIP_DEPS: ""
     JOB_PIP_DEPS: ""
+    PIP_BREAK_SYSTEM_PACKAGES: 1
 
 ### Unit testing runners
 
@@ -100,22 +101,22 @@ unit-tests-oldstable:
   extends:
   - .depends-debian-full
   - .unit-tests-debian
+  before_script:
+  - !reference [.depends-debian-minimal, before_script]
+  - dpkg -r python3-pytest
+  - !reference [.depends-pip, before_script]
   variables:
     # require optional dependencies to be installed at test time
     FORBID_MISSING_APT_PKG: "1"
     FORBID_MISSING_GPGV: "1"
     FORBID_MISSING_AR: "1"
+    JOB_DEPS: python3-pip
+    JOB_PIP_DEPS: pytest
 
 unit-tests-oldoldstable:
   image: debian:oldoldstable
   extends:
-  - .depends-debian-full
-  - .unit-tests-debian
-  variables:
-    # require optional dependencies to be installed at test time
-    FORBID_MISSING_APT_PKG: "1"
-    FORBID_MISSING_GPGV: "1"
-    FORBID_MISSING_AR: "1"
+  - unit-tests-oldstable
 
 ### Unit testing configurations (non-Debian)
 
