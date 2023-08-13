@@ -116,17 +116,17 @@ that those who come after you can understand both 'what' and 'why'.
 
 The tests use absolute imports and do not alter `sys.path` so that they can be
 used to test either the installed package or the current working tree. Tests
-can be run either from the top-level directory or from the lib/ directory:
+can be run either from the top-level directory:
 
 Run all tests from the top most directory of the source package::
 
-    $ python3 -m pytest -v -rsx --doctest-modules lib/
+    $ python3 -m pytest
 
 Or just run some selected tests::
 
-    $ python3 -m pytest -v -rsx --doctest-modules lib/debian/tests/test_deb822.py::TestDeb822::test_buildinfo
+    $ python3 -m pytest tests/test_deb822.py::TestDeb822::test_buildinfo
 
-    $ python3 -m pytest -v -rsx --doctest-modules debian/tests/test_deb822.py
+    $ python3 -m pytest tests/test_deb822.py
 
 For simplicity all the tests can also be run as::
 

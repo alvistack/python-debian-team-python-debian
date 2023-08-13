@@ -53,7 +53,7 @@ platforms = [ "any" ]
 # ]
 
 [tool.setuptools.packages.find]
-where = ["lib"]
+where = ["src"]
 include = [
     "debian*",
 ]
@@ -79,7 +79,7 @@ minversion = "6.0"
 addopts = [
     "--import-mode=importlib",
     # "--cov-report=term-missing",
-    # "--cov=lib/debian",
+    # "--cov=src/debian",
     # "--cov=tests",
     "--doctest-modules",
     "-v",
@@ -89,17 +89,17 @@ log_level = "DEBUG"
 filterwarnings = [
 ]
 testpaths = [
-    "lib",
+    "src",
     "tests",
 ]
-pythonpath = "lib"
+pythonpath = "src"
 
 
 # https://coverage.readthedocs.io/en/6.4/config.html
 [tool.coverage.run]
 branch = true
 source = [
-    "lib",
+    "src",
     "tests",
 ]
 
@@ -117,7 +117,7 @@ exclude_lines = [
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]
 files = [
-    "lib",
+    "src",
     "tests",
 ]
 strict = true

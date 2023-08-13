@@ -23,9 +23,9 @@ export FORBID_MISSING_ZSTD ?= 1
 %.py: %.py.in debian/changelog
 	sed -e 's/__CHANGELOG_VERSION__/$(shell debian/make_pep440_compliant "$(DEB_VERSION)")/' < $< > $@
 
-override_dh_auto_build: lib/debian/_version.py
+override_dh_auto_build: src/debian/_version.py
 	dh_auto_build
-	lib/debian/doc-debtags > README.debtags
+	src/debian/doc-debtags > README.debtags
 
 # don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
@@ -38,19 +38,19 @@ override_dh_auto_install:
 	# python and dh_python3 will leave them behind.
 	rm -rf $(CURDIR)/*/usr/lib/python3.*
 
-dist: lib/debian/_version.py
+dist: src/debian/_version.py
 	rm -f dist/python?debian-$(DEB_VERSION)*
 	python3 setup.py sdist bdist_wheel bdist_egg
 	echo "You can now: twine upload --sign dist/python?debian-$(DEB_VERSION)*"
 
 apidoc:
 	rm -f docs/api/*
-	cd lib && sphinx-apidoc -e --private -H python-debian \
+	cd src && sphinx-apidoc -e --private -H python-debian \
 	  -o ../docs/api/ . \
 	  debian/tests/
 
 doc: apidoc
-	PYTHONPATH=$(CURDIR)/lib \
+	PYTHONPATH=$(CURDIR)/src \
 	  make -C docs/ SPHINXOPTS="-a -v -n" html
 
 test:
@@ -65,10 +65,10 @@ test:
 	  LC_ALL=C.UTF-8 $$py -m pytest; \
 	done
 
-qa: lib/debian/_version.py
+qa: src/debian/_version.py
 	@echo "Running both pylint and mypy"
 	@echo "----------- pylint -----------"
-	@pylint $$(find lib/debian -name \*py | grep -v test | sort); \
+	@pylint $$(find src/debian -name \*py | grep -v test | sort); \
 	  pylinterr=$$?; \
 	  echo "----------- mypy -----------"; \
 	  mypy; \

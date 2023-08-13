@@ -9,7 +9,7 @@ Copyright:
 License: GPL-2+
 
 Files:
-    lib/debian/deb822.py
+    src/debian/deb822.py
     tests/test_deb822.py
 Copyright:
     2005-2006  dann frazier <dannf@dannf.org>
@@ -22,7 +22,7 @@ License: GPL-2+
 
 Files:
     examples/changelog/*
-    lib/debian/changelog.py
+    src/debian/changelog.py
     tests/test_changelog.py
 Copyright:
     2006-2007  James Westby <jw+debian@jameswestby.net>
@@ -30,14 +30,14 @@ Copyright:
     2014-2023  Stuart Prescott <stuart@debian.org>
 License: GPL-2+
 Comment:
-    lib/debian/changelog.py's parsing code is based on that from dpkg which is:
+    src/debian/changelog.py's parsing code is based on that from dpkg which is:
         Copyright 1996 Ian Jackson
         Copyright 2005 Frank Lichtenheld <frank@lichtenheld.de>
     and licensed under the same license.
 
 Files:
- lib/debian/debian_support.py
- tests/test_debian_support.py
+    src/debian/debian_support.py
+    tests/test_debian_support.py
 Copyright:
     2005       Florian Weimer <fw@deneb.enyo.de>
     2006-2007  James Westby <jw+debian@jameswestby.net>
@@ -47,9 +47,9 @@ License: GPL-2+
 
 Files:
     examples/debtags/*
-    lib/debian/debtags.py
-    lib/debian/doc-debtags
-    lib/debian/tests/test_debtags.py
+    src/debian/debtags.py
+    src/debian/doc-debtags
+    src/debian/tests/test_debtags.py
 Copyright:
     2003-2007  Enrico Zini <enrico@debian.org>
     2018-2023  Stuart Prescott <stuart@debian.org>
@@ -57,8 +57,8 @@ License: GPL-3+
 
 Files:
     examples/debfile/*
-    lib/debian/arfile.py
-    lib/debian/debfile.py
+    src/debian/arfile.py
+    src/debian/debfile.py
     tests/test_debfile.py
 Copyright:
     2007-2008  Stefano Zacchiroli <zack@debian.org>
@@ -67,7 +67,7 @@ Copyright:
 License: GPL-3+
 
 Files:
-    lib/debian/watch.py
+    src/debian/watch.py
     tests/test_watch.py
 Copyright:
     2019-2020  Jelmer Vernooij <jelmer@debian.org>
@@ -75,7 +75,7 @@ License: GPL-3+
 
 Files:
     examples/copyright/*
-    lib/debian/copyright.py
+    src/debian/copyright.py
     tests/test_copyright.py
 Copyright:
     2014       Google, Inc.
@@ -83,20 +83,21 @@ Copyright:
 License: GPL-2+
 
 Files:
-    lib/debian/substvars.py
+    src/debian/substvars.py
     tests/test_substvars.py
 Copyright:
     2022       Niels Thykier <niels@thykier.net>
 License: GPL-2+
 
 Files:
-    lib/debian/_deb822_repro/*
+    src/debian/_deb822_repro/*
     tests/test_repro_deb822.py
 Copyright:
     2021       Niels Thykier <niels@thykier.net>
 License: GPL-2+
 
-Files: lib/debian/_arch_table.py
+Files:
+    src/debian/_arch_table.py
 Copyright:
     2006-2015  Guillem Jover <guillem@debian.org>
     2014       Ansgar Burchardt <ansgar@debian.org>
