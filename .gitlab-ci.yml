@@ -29,13 +29,14 @@ variables:
   variables:
     OPTIONAL_PIP_DEPS: ""
     JOB_PIP_DEPS: ""
+    PIP_BREAK_SYSTEM_PACKAGES: 1
 
 ### Unit testing runners
 
 .unit-tests-generic:
   script:
-  - LC_ALL=C $PYTHON -m pytest --doctest-modules $COVERAGE --verbose lib/
-  - LC_ALL=C.UTF-8 $PYTHON -m pytest --doctest-modules $COVERAGE $COVERAGE_REPORT --verbose lib/
+  - LC_ALL=C $PYTHON -m pytest $COVERAGE
+  - LC_ALL=C.UTF-8 $PYTHON -m pytest $COVERAGE $COVERAGE_REPORT
   variables:
     # Only generate coverage data and a report once in the test matrix
     COVERAGE: ""
@@ -51,7 +52,7 @@ variables:
   extends:
   - .unit-tests-generic
   script:
-  - ./debian/rules lib/debian/__init__.py
+  - ./debian/rules src/debian/_version.py
   - !reference [.unit-tests-generic, script]
 
 ### Unit testing configurations (Debian)
@@ -100,22 +101,22 @@ unit-tests-oldstable:
   extends:
   - .depends-debian-full
   - .unit-tests-debian
+  before_script:
+  - !reference [.depends-debian-minimal, before_script]
+  - dpkg -r python3-pytest
+  - !reference [.depends-pip, before_script]
   variables:
     # require optional dependencies to be installed at test time
     FORBID_MISSING_APT_PKG: "1"
     FORBID_MISSING_GPGV: "1"
     FORBID_MISSING_AR: "1"
+    JOB_DEPS: python3-pip
+    JOB_PIP_DEPS: pytest
 
 unit-tests-oldoldstable:
   image: debian:oldoldstable
   extends:
-  - .depends-debian-full
-  - .unit-tests-debian
-  variables:
-    # require optional dependencies to be installed at test time
-    FORBID_MISSING_APT_PKG: "1"
-    FORBID_MISSING_GPGV: "1"
-    FORBID_MISSING_AR: "1"
+  - unit-tests-oldstable
 
 ### Unit testing configurations (non-Debian)
 
@@ -124,7 +125,7 @@ unit-tests-truncated-debian:
   - .depends-debian-minimal
   - .unit-tests-generic
   script:
-  - ./debian/rules lib/debian/__init__.py
+  - ./debian/rules src/debian/_version.py
   - rm -f /usr/bin/ar /usr/bin/gpgv
   - !reference [.unit-tests-generic, script]
 
@@ -160,7 +161,7 @@ unit-tests-wine:
   - wenv python -m pip install chardet setuptools pytest
   - rm -f /usr/bin/ar /usr/bin/gpgv
   script:
-  - wenv python -m pytest --doctest-modules --verbose lib/
+  - wenv python -m pytest
   variables:
     WENV_ARCH: win64
     WENV_WINE_BIN_WIN64: /usr/bin/wine
@@ -183,10 +184,27 @@ unit-tests-windows:
   - python -m pip install -U pip wheel
   - python -m pip install chardet setuptools pytest
   script:
-  - python -m pytest --doctest-modules --verbose lib/
+  - python -m pytest
   variables:
     PYTHON: python
     PIP_BREAK_SYSTEM_PACKAGES: 1
+
+### Installation test with pip
+
+pip-install-test:
+  extends:
+  - .depends-debian-full
+  script:
+  - ./debian/rules src/debian/_version.py
+  - cp -a tests/ pyproject.toml /tmp
+  - python3 -mvenv venv
+  - . ./venv/bin/activate
+  - pip install --verbose .
+  - pip install -e ".[test]"
+  - cd /tmp
+  - python3 -m pytest tests
+  variables:
+    JOB_DEPS: python3-pip python3-venv
 
 ### Coding style checks
 
@@ -194,7 +212,7 @@ style:
   extends: .depends-debian-full
   script:
   - ./debian/rules qa
-  - rm lib/debian/_version.py
+  - rm src/debian/_version.py
   variables:
     JOB_DEPS: pylint mypy
 

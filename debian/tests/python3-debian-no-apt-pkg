@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e -u -x
-cp -r lib/debian/tests/ "$AUTOPKGTEST_TMP"
+cp -r pyproject.toml conftest.py tests/ "$AUTOPKGTEST_TMP"
 cd "$AUTOPKGTEST_TMP/tests/"
 export PYTHONWARNINGS=d
 for py in $(py3versions -s); do
@@ -8,6 +8,6 @@ for py in $(py3versions -s); do
   echo "Testing with $py"
   echo "----------------------------------------------"
   # text mode file opening is locale dependent so try both ASCII and UTF-8
-  LC_ALL=C $py -m pytest --doctest-modules --verbose
-  LC_ALL=C.UTF-8 $py -m pytest --doctest-modules --verbose
+  LC_ALL=C $py -m pytest
+  LC_ALL=C.UTF-8 $py -m pytest
 done

@@ -74,8 +74,9 @@ Changelog Classes
 -----------------
 """
 
-# Copyright (C) 2006-7 James Westby <jw+debian@jameswestby.net>
-# Copyright (C) 2008 Canonical Ltd.
+# Copyright (C) 2006-2007  James Westby <jw+debian@jameswestby.net>
+# Copyright (C) 2008       Canonical Ltd.
+# Copyright (C) 2018-2023  Stuart Prescott <stuart@debian.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
