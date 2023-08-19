@@ -504,9 +504,15 @@ class TestDebFile:
     def test_data_has_file(self, sample_deb):
         # type: (str) -> None
         """ test for round-trip of a data file """
+        # also test some variations on how the root directory is stored
         with debfile.DebFile(sample_deb) as deb:
             debdatafile = str(self.example_data_dir / self.example_data_files[-1])
             assert deb.data.has_file(debdatafile)
+            assert deb.data.has_file("./" + debdatafile)
+
+            assert deb.data.has_file("/")
+            assert deb.data.has_file("./")
+            assert deb.data.has_file(".")
 
             assert not deb.data.has_file("/usr/share/doc/nosuchfile")
             assert not deb.data.has_file("/nosuchdir/nosuchfile")

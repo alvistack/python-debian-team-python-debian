@@ -91,9 +91,13 @@ class _NormedFilePath(str):
         # type: (Any) -> bool
         s1 = str(self)
         s2 = str(value)
-        if not s1.startswith("./"):
+        if s1 == ".":
+            s1 = "./"
+        elif not s1.startswith("./"):
             s1 = "./" + s1
-        if not s2.startswith("./"):
+        if s2 == ".":
+            s2 = "./"
+        elif not s2.startswith("./"):
             s2 = "./" + s2
         return s1 == s2
 
@@ -225,6 +229,10 @@ class DebPart(object):
 
         if fname.startswith('/'):
             return '.' + fname
+
+        if fname == ".":
+            return './'
+
         return './' + fname
 
     def __resolve_symlinks(self, path):
