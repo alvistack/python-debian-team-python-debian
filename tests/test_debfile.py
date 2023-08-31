@@ -495,17 +495,24 @@ class TestDebFile:
                 with open(origfilename, mode) as fh:
                     origdata = fh.read()
                 encoding = None if not "t" in mode else "UTF-8"
-                dfh = deb.data.get_file(str(debfilename), encoding=encoding, follow_symlinks=follow_symlinks)
-                debdata = dfh.read()
-                assert origdata == debdata
-                dfh.close()
+                for prefix in "", "./":
+                    dfh = deb.data.get_file(prefix + str(debfilename), encoding=encoding, follow_symlinks=follow_symlinks)
+                    debdata = dfh.read()
+                    assert origdata == debdata
+                    dfh.close()
 
     def test_data_has_file(self, sample_deb):
         # type: (str) -> None
         """ test for round-trip of a data file """
+        # also test some variations on how the root directory is stored
         with debfile.DebFile(sample_deb) as deb:
             debdatafile = str(self.example_data_dir / self.example_data_files[-1])
             assert deb.data.has_file(debdatafile)
+            assert deb.data.has_file("./" + debdatafile)
+
+            assert deb.data.has_file("/")
+            assert deb.data.has_file("./")
+            assert deb.data.has_file(".")
 
             assert not deb.data.has_file("/usr/share/doc/nosuchfile")
             assert not deb.data.has_file("/nosuchdir/nosuchfile")
@@ -575,7 +582,13 @@ class TestDebFile:
             self._test_file_contents(sample_deb, "/usr/share/doc/nosuchfile", find_test_file(datafile))
 
         with pytest.raises(debfile.DebError):
+            self._test_file_contents(sample_deb, "./usr/share/doc/nosuchfile", find_test_file(datafile))
+
+        with pytest.raises(debfile.DebError):
             self._test_file_contents(sample_deb, "/nosuchdir/nosuchfile", find_test_file(datafile))
+
+        with pytest.raises(debfile.DebError):
+            self._test_file_contents(sample_deb, "./nosuchdir/nosuchfile", find_test_file(datafile))
 
     def test_data_get_file_symlinks(self, sample_deb):
         # type: (str) -> None
@@ -617,10 +630,11 @@ class TestDebFile:
             filecontrol = "".join(dpkg_deb.readlines())
 
         with debfile.DebFile(sample_deb) as deb:
-            ctrl = deb.control.get_content("control")
-            assert ctrl is not None
-            assert ctrl.decode("utf-8") == filecontrol
-            assert deb.control.get_content("control", encoding="utf-8") == filecontrol
+            for control_file in ["control", "./control"]:
+                ctrl = deb.control.get_content(control_file)
+                assert ctrl is not None
+                assert ctrl.decode("utf-8") == filecontrol
+                assert deb.control.get_content("control", encoding="utf-8") == filecontrol
 
     def test_md5sums(self, sample_deb):
         # type: (str) -> None
