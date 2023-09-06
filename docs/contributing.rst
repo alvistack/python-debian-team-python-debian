@@ -206,12 +206,12 @@ upload it.
 The upload procedure is::
 
     $ ./debian/rules dist
-    $ twine upload --sign dist/python?debian-x.y.z.*
+    $ twine upload dist/python?debian-x.y.z.*
 
 
 Test uploads to TestPyPI can be made and tested with::
 
-    $ twine upload --sign --repository testpypi dist/python-debian-x.y.z.tar.gz
+    $ twine upload --repository testpypi dist/python-debian-x.y.z.tar.gz
     $ virtualenv python-debian-test
     $ cd python-debian-test
     $ . bin/activate
