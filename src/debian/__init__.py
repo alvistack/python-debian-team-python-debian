@@ -9,21 +9,15 @@ try:
 
 except ImportError:
     try:
-        # Try to extract the version from the package changelog and
-        # determine whether it is a post-release or pre-release version.
-        import os.path
-        import debian.changelog
-        changelog_filename = os.path.join(
-            os.path.dirname(__file__), '..', '..', 'debian', 'changelog')
-        with open(changelog_filename, 'rb') as fh:
-            c = debian.changelog.Changelog(fh)
-            version = str(c.version)
-            mark = "~" if c.distributions == 'UNRELEASED' else "+"
-    except:    # pylint: disable=bare-except
+        from setuptools_scm import get_version
+        __version__ = get_version(root="..")
+    except ImportError:
+        import warnings
+        warnings.warn("_version.py not found and setuptools_scm not installed.")
+    except Exception as e: # pylint: disable=broad-exception-caught
+        import warnings
+        warnings.warn("_version.py not found and setuptools_scm couldn't make a version.\n%s" % e)
+    finally:
         # Fake a version string in desperation
-        version = '0.0.0'
-        mark = '-'
-
-    import datetime
-    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d")
-    __version__ = "%s%sgit%s" % (version, mark, timestamp)
+        if not __version__:
+            __version__ = '0.0.0-unknown'

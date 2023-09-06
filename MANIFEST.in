@@ -1,0 +1,9 @@
+exclude .git*
+exclude conftest.py
+exclude HISTORY.deb822
+exclude MANIFEST.in
+exclude TODO
+prune debian/
+prune docs
+prune examples
+prune tests
