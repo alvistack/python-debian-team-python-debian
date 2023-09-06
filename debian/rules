@@ -6,6 +6,8 @@
 
 include /usr/share/dpkg/pkg-info.mk
 
+export SETUPTOOLS_SCM_PRETEND_VERSION = $(shell debian/make_pep440_compliant "$(DEB_VERSION)")
+
 # tell pybuild which module to install into the packages
 export PYBUILD_NAME=debian
 
@@ -20,11 +22,7 @@ export FORBID_MISSING_ZSTD ?= 1
 %:
 	dh $@ --with python3 --buildsystem pybuild
 
-%.py: %.py.in debian/changelog
-	sed -e 's/__CHANGELOG_VERSION__/$(shell debian/make_pep440_compliant "$(DEB_VERSION)")/' < $< > $@
-
-override_dh_auto_build: src/debian/_version.py
-	dh_auto_build
+execute_after_dh_auto_build:
 	src/debian/doc-debtags > README.debtags
 
 # don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
@@ -32,16 +30,11 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 override_dh_auto_test: test
 endif
 
-override_dh_auto_install:
-	dh_auto_install
-	# setuputils may produce different files for different versions of
-	# python and dh_python3 will leave them behind.
-	rm -rf $(CURDIR)/*/usr/lib/python3.*
-
-dist: src/debian/_version.py
-	rm -f dist/python?debian-$(DEB_VERSION)*
-	python3 setup.py sdist bdist_wheel bdist_egg
-	echo "You can now: twine upload --sign dist/python?debian-$(DEB_VERSION)*"
+dist:
+	# needs python3-build python3-wheel
+	rm -f dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*
+	python3 -m build --skip-dependency-check --no-isolation --sdist --wheel
+	echo "You can now: twine upload --sign dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*"
 
 apidoc:
 	rm -f docs/api/*
@@ -65,7 +58,7 @@ test:
 	  LC_ALL=C.UTF-8 $$py -m pytest; \
 	done
 
-qa: src/debian/_version.py
+qa:
 	@echo "Running both pylint and mypy"
 	@echo "----------- pylint -----------"
 	@pylint $$(find src/debian -name \*py | grep -v test | sort); \

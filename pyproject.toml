@@ -2,6 +2,7 @@
 [build-system]
 requires = [
     "setuptools>=61",
+    "setuptools_scm[toml]>=6.2",
     "wheel",
 ]
 build-backend = "setuptools.build_meta"
@@ -68,9 +69,10 @@ namespaces = false
     "*.pyi",
 ]
 
-[tool.setuptools.dynamic]
-version = { attr = "debian._version.__version__" }
-
+[tool.setuptools_scm]
+write_to = "src/debian/_version.py"
+# needs setuptools_scm > 8
+# version_file = "debian/_version.py"
 
 
 # https://docs.pytest.org/en/6.2.x/customize.html

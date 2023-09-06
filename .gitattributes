@@ -1,3 +1,6 @@
 # force all text files to be LF terminated
 # this is especially important for the test data
 * text=auto eol=lf
+
+# include metadata in git archives for setuptools_scm
+.git_archival.txt  export-subst

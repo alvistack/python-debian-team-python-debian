@@ -51,9 +51,6 @@ variables:
 .unit-tests-debian:
   extends:
   - .unit-tests-generic
-  script:
-  - ./debian/rules src/debian/_version.py
-  - !reference [.unit-tests-generic, script]
 
 ### Unit testing configurations (Debian)
 
@@ -125,7 +122,6 @@ unit-tests-truncated-debian:
   - .depends-debian-minimal
   - .unit-tests-generic
   script:
-  - ./debian/rules src/debian/_version.py
   - rm -f /usr/bin/ar /usr/bin/gpgv
   - !reference [.unit-tests-generic, script]
 
@@ -195,7 +191,6 @@ pip-install-test:
   extends:
   - .depends-debian-full
   script:
-  - ./debian/rules src/debian/_version.py
   - cp -a tests/ pyproject.toml /tmp
   - python3 -mvenv venv
   - . ./venv/bin/activate
@@ -204,7 +199,7 @@ pip-install-test:
   - cd /tmp
   - python3 -m pytest tests
   variables:
-    JOB_DEPS: python3-pip python3-venv
+    JOB_DEPS: git python3-pip python3-venv
 
 ### Coding style checks
 
@@ -212,7 +207,6 @@ style:
   extends: .depends-debian-full
   script:
   - ./debian/rules qa
-  - rm src/debian/_version.py
   variables:
     JOB_DEPS: pylint mypy
 
