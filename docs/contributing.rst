@@ -190,9 +190,11 @@ Uploading
 ---------
 
 When uploading the package, it should be uploaded both to Debian and also to
-PyPI. Please upload the source tarball (sdist) and also an egg (bdist_egg)
-and a wheel (bdist_wheel), all built for Python 3. The python3-wheel
-package needs to be installed to build the wheel.
+PyPI. Please upload the source tarball (sdist) and also
+a wheel (bdist_wheel), all built for Python 3. The following
+packages need to be installed for this step::
+
+    python3-build python3-setuptools-scm python3-wheel
 
 The following developers have access to the PyPI project to be able to
 upload it.
