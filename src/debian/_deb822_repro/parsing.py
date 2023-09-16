@@ -3024,13 +3024,16 @@ def _build_field_with_value(
 
 def _abort_on_error_tokens(sequence):
     # type: (Iterable[TokenOrElement]) -> Iterable[TokenOrElement]
+    line_no = 1
     for token in sequence:
         # We are always called while the sequence consists entirely of tokens
         if isinstance(token, Deb822ErrorToken):
             error_as_text = token.text.replace('\n', '\\n')
             raise SyntaxOrParseError(
-                'Syntax or Parse error on the line: "{error_as_text}"'.format(
-                    error_as_text=error_as_text))
+                'Syntax or Parse error on or near line {line_no}: "{error_as_text}"'.format(
+                    error_as_text=error_as_text,
+                    line_no=line_no))
+        line_no += token.convert_to_text().count("\n")
         yield token
 
 
