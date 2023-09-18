@@ -66,6 +66,7 @@ Classes that deb822 provides:
       * Checksums-Sha1: sha1, size, name
       * Checksums-Sha256: sha256, size, name
       * Checksums-Sha512: sha512, size, name
+      * Package-List: package, package-type, section, priority, _other
 
   * :class:`Sources` represents a Sources file from a Debian mirror.
     It extends the Dsc class by interpreting fields that
@@ -1771,7 +1772,7 @@ class _multivalued(Deb822):
                 updater_method = self[field].update
 
             for line in filter(None, contents.splitlines()):   # type: str
-                updater_method(Deb822Dict(zip(fields, line.split())))
+                updater_method(Deb822Dict(zip(fields, line.split(maxsplit=len(fields) - 1))))
 
     def validate_input(self, key, value):
         # type: (str, Union[List[Dict[str, str]], str]) -> None
@@ -1803,7 +1804,10 @@ class _multivalued(Deb822):
                 pass
             for item in array:
                 for x in order:
-                    raw_value = str(item[x])
+                    try:
+                        raw_value = str(item[x])
+                    except KeyError:
+                        break
                     try:
                         length = field_lengths[keyl][x]
                     except KeyError:
@@ -1909,6 +1913,7 @@ class Dsc(_gpg_multivalued, _VersionAccessorMixin):
         "checksums-sha1": ["sha1", "size", "name"],
         "checksums-sha256": ["sha256", "size", "name"],
         "checksums-sha512": ["sha512", "size", "name"],
+        "package-list": ["package", "package-type", "section", "priority", "_other"],
     }
 
 

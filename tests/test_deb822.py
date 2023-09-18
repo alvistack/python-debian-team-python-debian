@@ -1252,6 +1252,22 @@ Description: python modules to work with Debian-related data formats
         with pytest.raises(ValueError):
             d.get_as_string('files')
 
+    def test_multivalued_field_varargs_missing(self):
+        # type: () -> None
+        """Last field of multivalued fields remains unset."""
+        text = "Package-List:\n pkg deb section priority\n"
+        d = deb822.Dsc(text)
+        assert d["Package-List"] == [{"package": "pkg", "package-type": "deb", "section": "section", "priority": "priority"}]
+        assert str(d) == text
+
+    def test_multivalued_field_varargs_multiple(self):
+        # type: () -> None
+        """Last field of multivalued fields should collect all remaining arguments."""
+        text = "Package-List:\n pkg deb section priority arch=all essential=yes\n"
+        d = deb822.Dsc(text)
+        assert d["Package-List"] == [{"package": "pkg", "package-type": "deb", "section": "section", "priority": "priority", "_other": "arch=all essential=yes"}]
+        assert str(d) == text
+
     def _test_iter_paragraphs_comments(self, paragraphs):
         # type: (List[deb822.Deb822]) -> None
         assert len(paragraphs) == len(PARSED_PARAGRAPHS_WITH_COMMENTS)
