@@ -283,8 +283,7 @@ class ChangeBlock(object):
             changes.reverse()
             added = False
             for i, ch_entry in enumerate(changes):
-                m = blankline.match(ch_entry)
-                if m is None:
+                if ch_entry and not ch_entry.isspace():
                     changes.insert(i, change)
                     added = True
                     break
@@ -368,7 +367,6 @@ topline = re.compile(
     r'((\s+%(name_chars)s+)+)\;'
     % {'name_chars': '[-+0-9a-z.]'},
     re.IGNORECASE)
-blankline = re.compile(r'^\s*$')
 changere = re.compile(r'^\s\s+.*$')
 endline = re.compile(
     r'^ -- (.*) <(.*)>(  ?)((\w+\,\s*)?\d{1,2}\s+\w+\s+'
@@ -548,7 +546,6 @@ class Changelog(object):
             line = line.rstrip('\n')
             if state in (first_heading, next_heading_or_eof):
                 top_match = topline.match(line)
-                blank_match = blankline.match(line)
                 if top_match is not None:
                     if (max_blocks is not None
                             and len(self._blocks) >= max_blocks):
@@ -590,7 +587,7 @@ class Changelog(object):
                             other_pairs[key] = value
                     current_block.other_pairs = other_pairs
                     state = start_of_change_data
-                elif blank_match is not None:
+                elif not line or line.isspace():
                     if state == first_heading:
                         self.initial_blank_lines.append(line)
                     else:
@@ -638,7 +635,6 @@ class Changelog(object):
                 change_match = changere.match(line)
                 end_match = endline.match(line)
                 end_no_details_match = endline_nodetails.match(line)
-                blank_match = blankline.match(line)
                 if change_match is not None:
                     changes.append(line)
                     state = more_changes_or_trailer
@@ -665,7 +661,7 @@ class Changelog(object):
                     changes = []
                     current_block = ChangeBlock(encoding=encoding)
                     state = next_heading_or_eof
-                elif blank_match is not None:
+                elif not line or line.isspace():
                     changes.append(line)
                 else:
                     cvs_match = cvs_keyword.match(line)
