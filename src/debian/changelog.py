@@ -634,7 +634,6 @@ class Changelog(object):
             elif state in (start_of_change_data, more_changes_or_trailer):
                 change_match = changere.match(line)
                 end_match = endline.match(line)
-                end_no_details_match = endline_nodetails.match(line)
                 if change_match is not None:
                     changes.append(line)
                     state = more_changes_or_trailer
@@ -651,7 +650,7 @@ class Changelog(object):
                     changes = []
                     current_block = ChangeBlock(encoding=encoding)
                     state = next_heading_or_eof
-                elif end_no_details_match is not None:
+                elif endline_nodetails.match(line) is not None:
                     if not allow_empty_author:
                         self._parse_error(
                             "Badly formatted trailer line: %s" % line, strict)
