@@ -566,13 +566,14 @@ class Changelog(object):
                                 strict)
                             continue
                         key = kv_match.group(1)
+                        key_lower = key.lower()
                         value = kv_match.group(2)
-                        if key.lower() in all_keys:
+                        if key_lower in all_keys:
                             self._parse_error(
                                 "Repeated key-value: "
-                                "%s" % key.lower(), strict)
-                        all_keys[key.lower()] = value
-                        if key.lower() == "urgency":
+                                "%s" % key_lower, strict)
+                        all_keys[key_lower] = value
+                        if key_lower == "urgency":
                             val_match = value_re.match(value)
                             if val_match is None:
                                 self._parse_error(
