@@ -2609,12 +2609,15 @@ class _AutoDecoder(object):
             logger.warning('decoding from %s failed; attempting to detect '
                            'the true encoding', self.encoding)
             result = chardet.detect(value)
+            encoding = result['encoding']
+            if encoding is None:
+                raise
             try:
-                decoded = value.decode(result['encoding'])
+                decoded = value.decode(encoding)
                 # Assume the rest of the paragraph is in this encoding as
                 # well (there's no sense in repeating this exercise for
                 # every field).
-                self.encoding = result['encoding']
+                self.encoding = encoding
                 return decoded
             except UnicodeDecodeError:
                 raise e

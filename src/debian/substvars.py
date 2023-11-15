@@ -46,8 +46,10 @@ from types import TracebackType
 from typing import Dict, Set, Optional, Union, Iterator, IO, Iterable, TYPE_CHECKING, Type
 
 try:
-    from os import PathLike
-    AnyPath = Union[PathLike, str, bytes]
+    if TYPE_CHECKING:
+        from typing import Self
+        from os import PathLike
+        AnyPath = Union[PathLike[str], PathLike[bytes], str, bytes]
 except ImportError:
     pass
 
@@ -174,7 +176,7 @@ class Substvars(_Substvars_Base['Substvars']):
 
     @classmethod
     def load_from_path(cls, substvars_path, missing_ok=False):
-        # type: (AnyPath, bool) -> Substvars
+        # type: (AnyPath, bool) -> Self
         """Shorthand for initializing a Substvars from a file
 
         The return substvars will have `substvars_path` set to the provided path enabling
