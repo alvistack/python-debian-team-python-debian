@@ -28,14 +28,14 @@ detected, verified and the payload then offered to the parser.
 Relevant documentation on the Deb822 file formats available here.
 
 - `deb-control(5)
-  <https://manpages.debian.org/stretch/dpkg-dev/deb-control.5.html>`_,
+  <https://manpages.debian.org/unstable/dpkg-dev/deb-control.5.html>`_,
   the `control` file in the binary package (generated from
   `debian/control` in the source package)
 - `deb-changes(5)
-  <https://manpages.debian.org/stretch/dpkg-dev/deb-changes.5.html>`_,
+  <https://manpages.debian.org/unstable/dpkg-dev/deb-changes.5.html>`_,
   `changes` files that developers upload to add new packages to the
   archive.
-- `dsc(5) <https://manpages.debian.org/stretch/dpkg-dev/dsc.5.html>`_,
+- `dsc(5) <https://manpages.debian.org/unstable/dpkg-dev/dsc.5.html>`_,
   Debian Source Control file that defines the files that are part of a
   source package.
 - `Debian mirror format <http://wiki.debian.org/RepositoryFormat>`_,
