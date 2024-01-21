@@ -91,7 +91,7 @@ def _complain(msg, strict):
     logger.warning(msg)
 
 
-class WatchFile(object):
+class WatchFile:
     """A Debian watch file.
 
     :ivar entries: list of Watch entries
@@ -231,7 +231,7 @@ class WatchFile(object):
             entries=entries, options=persistent_options, version=version)
 
 
-class Watch(object):
+class Watch:
     """Watch line entry.
 
     This will contain the attributes documented in uscan(1):

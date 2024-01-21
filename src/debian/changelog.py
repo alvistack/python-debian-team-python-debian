@@ -176,7 +176,7 @@ class VersionError(Exception):
         return "Could not parse version: " + self._version
 
 
-class ChangeBlock(object):
+class ChangeBlock:
     """Holds all the information about one block from the changelog.
 
     See `deb-changelog(5)
@@ -413,7 +413,7 @@ old_format_re7 = re.compile(r'^Old Changelog:\s*$', re.IGNORECASE)
 old_format_re8 = re.compile(r'^(?:\d+:)?\w[\w.+~-]*:?\s*$')
 
 
-class Changelog(object):
+class Changelog:
     """Represents a debian/changelog file.
 
     To get the properly formatted changelog back out of the object

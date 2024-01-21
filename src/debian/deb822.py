@@ -1397,7 +1397,7 @@ class GpgInfo(_BaseGpgInfo):
             return cls.from_sequence(target_file, *args, **kwargs)
 
 
-class PkgRelation(object):
+class PkgRelation:
     """Inter-package relationships
 
     Structured representation of the relationships of a package to another,
@@ -1598,7 +1598,7 @@ if TYPE_CHECKING:
             pass
 
 
-class _VersionAccessorMixin(object):
+class _VersionAccessorMixin:
     """Give access to Version keys as debian_support.Version objects."""
     def get_version(self):
         # type: (_HasVersionFieldProtocol) -> debian.debian_support.Version
@@ -1610,7 +1610,7 @@ class _VersionAccessorMixin(object):
 
 
 
-class _PkgRelationMixin(object):
+class _PkgRelationMixin:
     """Package relationship mixin
 
     Inheriting from this mixin you can extend a :class:`Deb822` object with
@@ -2586,7 +2586,7 @@ class Removals(Deb822):
         return b
 
 
-class _AutoDecoder(object):
+class _AutoDecoder:
 
     def __init__(self, encoding=None):
         # type: (Optional[str]) -> None
