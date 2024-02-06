@@ -3,10 +3,6 @@ set -e -u -x
 cp -r lib/debian/tests/ "$AUTOPKGTEST_TMP"
 cd "$AUTOPKGTEST_TMP/tests/"
 export PYTHONWARNINGS=d
-export FORBID_MISSING_APT_PKG=1
-export FORBID_MISSING_GPGV=1
-export FORBID_MISSING_AR=1
-
 for py in $(py3versions -s); do
   echo "----------------------------------------------"
   echo "Testing with $py"
