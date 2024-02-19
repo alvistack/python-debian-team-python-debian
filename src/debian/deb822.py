@@ -1430,16 +1430,12 @@ class PkgRelation(object):
                                               ['enabled', 'profile'])
 
     if TYPE_CHECKING:
-        ParsedRelation = TypedDict(
-            'ParsedRelation',
-            {
-                'name': str,
-                'archqual': Optional[str],
-                'version': Optional[Tuple[str, str]],
-                'arch': Optional[List['PkgRelation.ArchRestriction']],
-                'restrictions': Optional[List[List['PkgRelation.BuildRestriction']]],
-            }
-        )
+        class ParsedRelation(TypedDict):
+            name: str
+            archqual: Optional[str]
+            version: Optional[Tuple[str, str]]
+            arch: Optional[List['PkgRelation.ArchRestriction']]
+            restrictions: Optional[List[List['PkgRelation.BuildRestriction']]]
 
     @classmethod
     def parse_relations(cls, raw):
