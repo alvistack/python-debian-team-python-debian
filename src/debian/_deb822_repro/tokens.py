@@ -113,7 +113,7 @@ class Deb822Token:
         # type: () -> None
         if '\n' in self._text:
             is_single_line_token = False
-            if self.is_comment or isinstance(self, Deb822ErrorToken):
+            if self.is_comment or self.is_error:
                 is_single_line_token = True
             if not is_single_line_token and not self.is_whitespace:
                 raise ValueError("Only whitespace, error and comment tokens may contain newlines")
@@ -130,6 +130,11 @@ class Deb822Token:
 
     @property
     def is_comment(self):
+        # type: () -> bool
+        return False
+
+    @property
+    def is_error(self):
         # type: () -> bool
         return False
 
@@ -211,6 +216,12 @@ class Deb822ErrorToken(Deb822Token):
     """Token that represents a syntactical error"""
 
     __slots__ = ()
+
+
+    @property
+    def is_error(self):
+        # type: () -> bool
+        return True
 
 
 class Deb822CommentToken(Deb822Token):

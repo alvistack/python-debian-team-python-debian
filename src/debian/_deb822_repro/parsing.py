@@ -114,7 +114,7 @@ class ValueReference(Generic[TE]):
         Updating the value via this method will *not* invalidate the reference (or other
         references to the same container).
 
-        This can raise an exception of the new value does not follow the requirements
+        This can raise an exception if the new value does not follow the requirements
         for the referenced values.  As an example, values in whitespace separated
         lists cannot contain spaces and would trigger an exception.
         """
@@ -956,6 +956,16 @@ class Deb822Element:
                 yield from part.iter_recurse(only_element_or_token_type=only_element_or_token_type)
 
     @property
+    def is_error(self):
+        # type: () -> bool
+        return False
+
+    @property
+    def is_comment(self):
+        # type: () -> bool
+        return False
+
+    @property
     def parent_element(self):
         # type: () -> Optional[Deb822Element]
         return resolve_ref(self._parent_element)
@@ -1001,6 +1011,11 @@ class Deb822ErrorElement(Deb822Element):
     def iter_parts(self):
         # type: () -> Iterable[TokenOrElement]
         yield from self._parts
+
+    @property
+    def is_error(self):
+        # type: () -> bool
+        return True
 
 
 class Deb822ValueLineElement(Deb822Element):
@@ -1167,6 +1182,11 @@ class Deb822CommentElement(Deb822Element):
         if not comment_tokens:  # pragma: no cover
             raise ValueError("Comment elements must have at least one comment token")
         self._init_parent_of_parts()
+
+    @property
+    def is_comment(self):
+        # type: () -> bool
+        return True
 
     def __len__(self):
         # type: () -> int
@@ -3027,8 +3047,8 @@ def _abort_on_error_tokens(sequence):
     line_no = 1
     for token in sequence:
         # We are always called while the sequence consists entirely of tokens
-        if isinstance(token, Deb822ErrorToken):
-            error_as_text = token.text.replace('\n', '\\n')
+        if token.is_error:
+            error_as_text = token.convert_to_text().replace('\n', '\\n')
             raise SyntaxOrParseError(
                 'Syntax or Parse error on or near line {line_no}: "{error_as_text}"'.format(
                     error_as_text=error_as_text,
