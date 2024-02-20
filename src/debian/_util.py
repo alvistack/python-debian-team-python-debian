@@ -279,7 +279,7 @@ class LinkedList(Generic[T]):
         self._size = 0
 
 
-class OrderedSet(object):
+class OrderedSet:
     """A set-like object that preserves order when iterating over it
 
     We use this to keep track of keys in Deb822Dict, because it's much faster

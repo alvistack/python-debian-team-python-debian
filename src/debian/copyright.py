@@ -104,7 +104,7 @@ def _complain(msg, strict):
     logger.warning(msg)
 
 
-class Copyright(object):
+class Copyright:
     """Represents a debian/copyright file.
 
     A Copyright object contains a Header paragraph and a list of additional
@@ -301,7 +301,7 @@ def _single_line(s):
     return s
 
 
-class _LineBased(object):
+class _LineBased:
     """Namespace for conversion methods for line-based lists as tuples."""
     # TODO(jsw): Expose this somewhere else?  It may have more general utility.
 
@@ -344,7 +344,7 @@ class _LineBased(object):
         return '\n'.join(tmp)
 
 
-class _SpaceSeparated(object):
+class _SpaceSeparated:
     """Namespace for conversion methods for space-separated lists as tuples."""
     # TODO(jsw): Expose this somewhere else?  It may have more general utility.
 
@@ -554,7 +554,7 @@ class _RestrictedWrapper(metaclass=_ClassInitMeta):
 
     Typical usage::
 
-        class Foo(object):
+        class Foo:
             def __init__(self, ...):
                 # ...
 

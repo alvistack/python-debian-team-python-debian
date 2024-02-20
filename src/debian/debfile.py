@@ -138,7 +138,7 @@ class DebError(ArError):
     pass
 
 
-class DebPart(object):
+class DebPart:
     """'Part' of a .deb binary package.
 
     A .deb package is considered as made of 2 parts: a 'data' part
