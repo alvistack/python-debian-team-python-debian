@@ -30,8 +30,8 @@ from debian._util import (
 try:
     from typing import (
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
-        cast, overload, Mapping, TYPE_CHECKING,
-)
+        cast, overload, Mapping, TYPE_CHECKING, Sequence,
+    )
     from debian._util import T
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
@@ -1003,9 +1003,9 @@ class Deb822ErrorElement(Deb822Element):
     __slots__ = ('_parts',)
 
     def __init__(self, parts):
-        # type: (List[TokenOrElement]) -> None
+        # type: (Sequence[TokenOrElement]) -> None
         super().__init__()
-        self._parts = parts
+        self._parts = tuple(parts)
         self._init_parent_of_parts()
 
     def iter_parts(self):
@@ -1112,14 +1112,16 @@ class Deb822ValueElement(Deb822Element):
     __slots__ = ('_value_entry_elements',)
 
     def __init__(self, value_entry_elements):
-        # type: (List[Deb822ValueLineElement]) -> None
+        # type: (Sequence[Deb822ValueLineElement]) -> None
         super().__init__()
-        self._value_entry_elements = value_entry_elements  # type: List[Deb822ValueLineElement]
+        # Split over two lines due to line length issues
+        v = tuple(value_entry_elements)
+        self._value_entry_elements = v  # type: Sequence[Deb822ValueLineElement]
         self._init_parent_of_parts()
 
     @property
     def value_lines(self):
-        # type: () -> List[Deb822ValueLineElement]
+        # type: () -> Sequence[Deb822ValueLineElement]
         """Read-only list of value entries"""
         return self._value_entry_elements
 
@@ -1176,9 +1178,9 @@ class Deb822CommentElement(Deb822Element):
     __slots__ = ('_comment_tokens',)
 
     def __init__(self, comment_tokens):
-        # type: (List[Deb822CommentToken]) -> None
+        # type: (Sequence[Deb822CommentToken]) -> None
         super().__init__()
-        self._comment_tokens = comment_tokens  # type: List[Deb822CommentToken]
+        self._comment_tokens = tuple(comment_tokens)  # type: Sequence[Deb822CommentToken]
         if not comment_tokens:  # pragma: no cover
             raise ValueError("Comment elements must have at least one comment token")
         self._init_parent_of_parts()
