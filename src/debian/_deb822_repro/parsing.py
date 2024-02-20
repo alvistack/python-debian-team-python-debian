@@ -15,6 +15,7 @@ from debian._deb822_repro._util import (combine_into_replacement, BufferingItera
 from debian._deb822_repro.formatter import (
     FormatterContentToken, one_value_per_line_trailing_separator, format_field,
 )
+from debian._deb822_repro.locatable import Locatable, START_POSITION, TEPosition, TERange
 from debian._deb822_repro.tokens import (
     Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
     Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
@@ -31,7 +32,7 @@ try:
     from typing import (
         Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
         cast, overload, Mapping, TYPE_CHECKING, Sequence,
-    )
+)
     from debian._util import T
     # for some reason, pylint does not see that Commentish is used in typing
     from debian._deb822_repro.types import (  # pylint: disable=unused-import
@@ -39,6 +40,7 @@ try:
         ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
         FormatterCallback,
     )
+
     if TYPE_CHECKING:
         StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
         StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
@@ -122,6 +124,12 @@ class ValueReference(Generic[TE]):
         if self._mutation_notifier is not None:
             self._mutation_notifier()
 
+    @property
+    def locatable(self):
+        # type: () -> Locatable
+        """Reference to a locatable that can be used to determine where this value is"""
+        return self._resolve_node().value
+
     def remove(self):
         # type: () -> None
         """Remove the underlying value
@@ -156,7 +164,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
 
     def __init__(self,
                  kvpair_element,  # type: 'Deb822KeyValuePairElement'
-                 interpreted_value_element,  # type: 'List[TokenOrElement]'
+                 interpreted_value_element,  # type: Deb822InterpretationProxyElement
                  vtype,  # type: Type[VE]
                  stype,  # type: Type[ST]
                  str2value_parser,  # type: StrToValueParser[VE]
@@ -165,7 +173,8 @@ class Deb822ParsedTokenList(Generic[VE, ST],
                  ):
         # type: (...) -> None
         self._kvpair_element = kvpair_element
-        self._token_list = LinkedList(interpreted_value_element)
+        self._proxy_element = interpreted_value_element
+        self._token_list = LinkedList(interpreted_value_element.parts)
         self._vtype = vtype
         self._stype = stype
         self._str2value_parser = str2value_parser
@@ -719,7 +728,7 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
 
     def _high_level_interpretation(self,
                                    kvpair_element,  # type: Deb822KeyValuePairElement
-                                   token_list,  # type: List['TokenOrElement']
+                                   proxy_element,  # type: Deb822InterpretationProxyElement
                                    discard_comments_on_read=True  # type: bool
                                    ):
         # type: (...) -> T
@@ -741,9 +750,12 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
             self,
             kvpair  # type: Deb822KeyValuePairElement
     ):
-        # type: (...) -> Iterable[Union[Deb822Token, VE]]
-        content = kvpair.value_element.convert_to_text()
-        yield from self._parse_str(content)
+        # type: (...) -> Deb822InterpretationProxyElement
+        value_element = kvpair.value_element
+        content = value_element.convert_to_text()
+        token_list = []  # type: List['TokenOrElement']
+        token_list.extend(self._parse_str(content))
+        return Deb822InterpretationProxyElement(value_element, token_list)
 
     def _parse_str(self, content):
         # type: (str) -> Iterable[Union[Deb822Token, VE]]
@@ -761,10 +773,9 @@ class GenericContentBasedInterpretation(Interpretation[T], Generic[T, VE]):
                   discard_comments_on_read=True  # type: bool
                   ):
         # type: (...) -> T
-        token_list = []  # type: List['TokenOrElement']
-        token_list.extend(self._parse_kvpair(kvpair_element))
+        proxy_element = self._parse_kvpair(kvpair_element)
         return self._high_level_interpretation(kvpair_element,
-                                               token_list,
+                                               proxy_element,
                                                discard_comments_on_read=discard_comments_on_read,
                                                )
 
@@ -824,13 +835,13 @@ class ListInterpretation(GenericContentBasedInterpretation[Deb822ParsedTokenList
 
     def _high_level_interpretation(self,
                                    kvpair_element,  # type: Deb822KeyValuePairElement
-                                   token_list,  # type: List['TokenOrElement']
+                                   proxy_element,  # type: Deb822InterpretationProxyElement
                                    discard_comments_on_read=True  # type: bool
                                    ):
         # type: (...) -> Deb822ParsedTokenList[VE, ST]
         return Deb822ParsedTokenList(
             kvpair_element,
-            token_list,
+            proxy_element,
             self._vtype,
             self._stype,
             self._parse_str,
@@ -916,14 +927,15 @@ def _parse_uploaders_list_value(token, buffered_iterator):
     return Deb822ParsedValueElement(value_parts)
 
 
-class Deb822Element:
+class Deb822Element(Locatable):
     """Composite elements (consists of 1 or more tokens)"""
 
-    __slots__ = ('_parent_element', '__weakref__')
+    __slots__ = ('_parent_element', '_full_te_size_cache', '__weakref__')
 
     def __init__(self):
         # type: () -> None
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
+        self._full_te_size_cache = None  # type: Optional[TERange]
 
     def iter_parts(self):
         # type: () -> Iterable[TokenOrElement]
@@ -989,6 +1001,49 @@ class Deb822Element:
         # type: (Deb822Element) -> None
         if parent is self.parent_element:
             self._parent_element = None
+
+    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+        te_size_cache = self._full_te_size_cache
+        if te_size_cache is None:
+            te_size_cache = TERange.from_position_and_sizes(
+                START_POSITION,
+                (p.te_size(skip_leading_comments=False) for p in self.iter_parts())
+            )
+            self._full_te_size_cache = te_size_cache
+        return te_size_cache
+
+
+class Deb822InterpretationProxyElement(Deb822Element):
+
+    __slots__ = ('parts',)
+
+    def __init__(self, real_element: Deb822Element, parts: List[TokenOrElement]) -> None:
+        super().__init__()
+        self.parent_element = real_element
+        self.parts = parts
+        for p in parts:
+            p.parent_element = self
+
+    def iter_parts(self):
+        # type: () -> Iterable[TokenOrElement]
+        return iter(self.parts)
+
+    def position_in_parent(self, *, skip_leading_comments: bool = True) -> TEPosition:
+        parent = self.parent_element
+        if parent is None:
+            raise RuntimeError("parent was garbage collected")
+        return parent.position_in_parent()
+
+    def position_in_file(self, *, skip_leading_comments: bool = True) -> TEPosition:
+        parent = self.parent_element
+        if parent is None:
+            raise RuntimeError("parent was garbage collected")
+        return parent.position_in_file()
+
+    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+        # Same as parent except we never use a cache.
+        sizes = (p.te_size(skip_leading_comments=False) for p in self.iter_parts())
+        return TERange.from_position_and_sizes(START_POSITION, sizes)
 
 
 class Deb822ErrorElement(Deb822Element):
@@ -1063,10 +1118,13 @@ class Deb822ValueLineElement(Deb822Element):
         return self._newline_token
 
     def add_newline_if_missing(self):
-        # type: () -> None
+        # type: () -> bool
         if self._newline_token is None:
             self._newline_token = Deb822NewlineAfterValueToken()
             self._newline_token.parent_element = self
+            self._full_te_size_cache = None
+            return True
+        return False
 
     def _iter_content_parts(self):
         # type: () -> Iterable[TokenOrElement]
@@ -1091,7 +1149,7 @@ class Deb822ValueLineElement(Deb822Element):
                 and not self._trailing_whitespace_token \
                 and isinstance(self._value_tokens[0], Deb822Token):
             # By default, we get a single value spanning the entire line
-            # (minus continuation line and newline but we are supposed to
+            # (minus continuation line and newline, but we are supposed to
             # exclude those)
             return self._value_tokens[0].text
 
@@ -1106,6 +1164,27 @@ class Deb822ValueLineElement(Deb822Element):
         yield from self._iter_content_parts()
         if self._newline_token:
             yield self._newline_token
+
+    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+        if skip_leading_comments:
+            return TERange.from_position_and_sizes(
+                START_POSITION,
+                (
+                    p.te_size(skip_leading_comments=False)
+                    for p in self.iter_parts() if not p.is_comment
+                )
+            )
+        return super().te_size(skip_leading_comments=skip_leading_comments)
+
+    def position_in_parent(self, *, skip_leading_comments: bool = True) -> TEPosition:
+        base_pos = super().position_in_parent(skip_leading_comments=False)
+        if skip_leading_comments:
+            for p in self.iter_parts():
+                if p.is_comment:
+                    continue
+                non_comment_pos = p.position_in_parent(skip_leading_comments=False)
+                base_pos = non_comment_pos.relative_to(base_pos)
+        return base_pos
 
 
 class Deb822ValueElement(Deb822Element):
@@ -1130,9 +1209,13 @@ class Deb822ValueElement(Deb822Element):
         yield from self._value_entry_elements
 
     def add_final_newline_if_missing(self):
-        # type: () -> None
+        # type: () -> bool
         if self._value_entry_elements:
-            self._value_entry_elements[-1].add_newline_if_missing()
+            changed = self._value_entry_elements[-1].add_newline_if_missing()
+            if changed:
+                self._full_te_size_cache = None
+            return changed
+        return False
 
 
 class Deb822ParsedValueElement(Deb822Element):
@@ -1238,6 +1321,7 @@ class Deb822KeyValuePairElement(Deb822Element):
     @value_element.setter
     def value_element(self, new_value):
         # type: (Deb822ValueElement) -> None
+        self._full_te_size_cache = None
         self._value_element.clear_parent_if_parent(self)
         self._value_element = new_value
         new_value.parent_element = self
@@ -1257,6 +1341,7 @@ class Deb822KeyValuePairElement(Deb822Element):
     @comment_element.setter
     def comment_element(self, value):
         # type: (Optional[Deb822CommentElement]) -> None
+        self._full_te_size_cache = None
         if value is not None:
             if not value[-1].text.endswith("\n"):
                 raise ValueError("Field comments must end with a newline")
@@ -1273,6 +1358,29 @@ class Deb822KeyValuePairElement(Deb822Element):
         yield self._field_token
         yield self._separator_token
         yield self._value_element
+
+    def position_in_parent(
+        self,
+        *,
+        skip_leading_comments: bool = True,
+    ) -> TEPosition:
+        position = super().position_in_parent(skip_leading_comments=False)
+        if skip_leading_comments:
+            if self._comment_element:
+                field_pos = self._field_token.position_in_parent()
+                position = field_pos.relative_to(position)
+        return position
+
+    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+        if skip_leading_comments:
+            return TERange.from_position_and_sizes(
+                START_POSITION,
+                (
+                    p.te_size(skip_leading_comments=False)
+                    for p in self.iter_parts() if not p.is_comment
+                )
+            )
+        return super().te_size(skip_leading_comments=False)
 
 
 def _format_comment(c):
@@ -1338,7 +1446,7 @@ else:
 
 
 # Deb822ParagraphElement uses this Mixin (by having `_paragraph` return self).
-# Therefore the Mixin needs to call the "proper" methods on the paragraph to
+# Therefore, the Mixin needs to call the "proper" methods on the paragraph to
 # avoid doing infinite recursion.
 class AutoResolvingMixin(Generic[T], _ParagraphMapping_Base[T]):
 
@@ -1383,7 +1491,7 @@ class AutoResolvingMixin(Generic[T], _ParagraphMapping_Base[T]):
 
 
 # Deb822ParagraphElement uses this Mixin (by having `_paragraph` return self).
-# Therefore the Mixin needs to call the "proper" methods on the paragraph to
+# Therefore, the Mixin needs to call the "proper" methods on the paragraph to
 # avoid doing infinite recursion.
 class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
                                        ABC):
@@ -2214,6 +2322,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def remove_kvpair_element(self, key):
         # type: (ParagraphKey) -> None
+        self._full_te_size_cache = None
         key, _, _ = _unpack_key(key, raise_if_indexed=True)
         del self._kvpair_elements[key]
         self._kvpair_order.remove(key)
@@ -2252,6 +2361,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
             # way
             key = value.field_name
         original_value = self._kvpair_elements.get(key)
+        self._full_te_size_cache = None
         self._kvpair_elements[key] = value
         self._kvpair_order.append(key)
         if original_value is not None:
@@ -2268,7 +2378,8 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
         """
         for last_field_name in reversed(self._kvpair_order):
             last_kvpair = self._kvpair_elements[cast('_strI', last_field_name)]
-            last_kvpair.value_element.add_final_newline_if_missing()
+            if last_kvpair.value_element.add_final_newline_if_missing():
+                self._full_te_size_cache = None
             break
 
         if key is None:
@@ -2534,6 +2645,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
             # Use the string from the Deb822FieldNameToken as it is a _strI and has the same value
             # (memory optimization)
             key = value.field_name
+        self._full_te_size_cache = None
         original_nodes = self._kvpair_elements.get(key)
         if original_nodes is None or not original_nodes:
             if index is not None and index != 0:
@@ -2578,6 +2690,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         field_list = self._kvpair_elements[key]
 
         if name_token is None and idx is None:
+            self._full_te_size_cache = None
             # Remove all case
             for node in field_list:
                 node.value.parent_element = None
@@ -2600,6 +2713,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
                 msg = 'The field "{key}" is present, but the index "{idx}" was invalid.'
                 raise KeyError(msg.format(key=key, idx=idx))
 
+        self._full_te_size_cache = None
         if len(field_list) == 1:
             del self._kvpair_elements[key]
         else:
@@ -2628,7 +2742,8 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
             return key_impl(kvpair.field_name)
 
         for last_kvpair in reversed(self._kvpair_order):
-            last_kvpair.value_element.add_final_newline_if_missing()
+            if last_kvpair.value_element.add_final_newline_if_missing():
+                self._full_te_size_cache = None
             break
 
         sorted_kvpair_list = sorted(self._kvpair_order, key=_actual_key)
@@ -2728,6 +2843,7 @@ class Deb822FileElement(Deb822Element):
 
         anchor_node = None
         needs_newline = True
+        self._full_te_size_cache = None
         if idx == 0:
             # Special-case, if idx is 0, then we insert it before everything else.
             # This is mostly a cosmetic choice for corner cases involving free-floating
@@ -2786,6 +2902,7 @@ class Deb822FileElement(Deb822Element):
                 raise ValueError("Paragraph is already a part of this file")
             raise ValueError("Paragraph is already part of another Deb822File")
 
+        self._full_te_size_cache = None
         # We need a separating newline if there is not a whitespace token at the end of the file.
         # Note the special case where the file ends on a comment; here we insert a whitespace too
         # to be sure.  Otherwise, we would have to check that there is an empty line before that
@@ -2804,6 +2921,7 @@ class Deb822FileElement(Deb822Element):
                 break
         if node is None:
             raise RuntimeError("unable to find paragraph")
+        self._full_te_size_cache = None
         previous_node = node.previous_node
         next_node = node.next_node
         self._token_and_elements.remove_node(node)
@@ -2819,6 +2937,14 @@ class Deb822FileElement(Deb822Element):
         # type: (TE) -> TE
         t.parent_element = self
         return t
+
+    def position_in_parent(self, *, skip_leading_comments: bool = True) -> TEPosition:
+        # Recursive base-case
+        return START_POSITION
+
+    def position_in_file(self, *, skip_leading_comments: bool = True) -> TEPosition:
+        # By definition
+        return START_POSITION
 
     @overload
     def dump(self,
@@ -3001,7 +3127,7 @@ def _build_field_with_value(
             next_token = buffered_stream.peek()
             start_of_field = isinstance(next_token, Deb822FieldNameToken)
             if start_of_field:
-                # Remember to consume the field token, the we are aligned
+                # Remember to consume the field token
                 try:
                     token_or_element = next(buffered_stream)
                 except StopIteration:  # pragma: no cover
@@ -3013,7 +3139,7 @@ def _build_field_with_value(
             value_element = next(buffered_stream, None)
             if separator is None or value_element is None:
                 # Early EOF - should not be possible with how the tokenizer works
-                # right now, but now it is future proof.
+                # right now, but now it is future-proof.
                 if comment_element:
                     yield comment_element
                 error_elements = [field_name]

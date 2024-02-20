@@ -1,10 +1,12 @@
 import re
 import sys
-from weakref import ReferenceType
 import weakref
+from weakref import ReferenceType
 
-from debian._util import resolve_ref, _strI
 from debian._deb822_repro._util import BufferingIterator
+from debian._deb822_repro.locatable import Locatable, START_POSITION, \
+    TERange, ONE_CHAR_RANGE, ONE_LINE_RANGE, TEPosition
+from debian._util import resolve_ref, _strI
 
 try:
     from typing import Optional, cast, TYPE_CHECKING, Iterable, Union, Dict, Callable
@@ -84,7 +86,7 @@ _RE_FIELD_LINE = re.compile(r'''
 ''', re.VERBOSE)
 
 
-class Deb822Token:
+class Deb822Token(Locatable):
     """A token is an atomic syntactical element from a deb822 file
 
     A file is parsed into a series of tokens.  If these tokens are converted to
@@ -93,7 +95,7 @@ class Deb822Token:
     Deb822Token.
     """
 
-    __slots__ = ('_text', '_parent_element', '__weakref__')
+    __slots__ = ('_text', '_parent_element', '_token_size', '__weakref__')
 
     def __init__(self, text):
         # type: (str) -> None
@@ -101,6 +103,7 @@ class Deb822Token:
             raise ValueError("Tokens must have content")
         self._text = text  # type: str
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
+        self._token_size = None  # type: Optional[TERange]
         self._verify_token_text()
 
     def __repr__(self):
@@ -147,6 +150,24 @@ class Deb822Token:
     def convert_to_text(self):
         # type: () -> str
         return self._text
+
+    def te_size(self, *, skip_leading_comments: bool = False) -> TERange:
+        # As tokens are an atomtic unit
+        token_size = self._token_size
+        if token_size is not None:
+            return token_size
+        token_len = len(self._text)
+        if token_len == 1:
+            # The indirection with `r` because mypy gets confused and thinks that `token_size`
+            # cannot have any type at all.
+            token_size = ONE_CHAR_RANGE if self._text != "\n" else ONE_LINE_RANGE
+        else:
+            new_lines = self._text.count("\n")
+            assert not new_lines or self._text[-1] == "\n"
+            end_pos = TEPosition(new_lines, 0) if new_lines else TEPosition(0, token_len)
+            token_size = TERange(START_POSITION, end_pos)
+        self._token_size = token_size
+        return token_size
 
     @property
     def parent_element(self):

@@ -22,7 +22,6 @@ import collections
 import contextlib
 import logging
 import textwrap
-from debian.deb822 import Deb822
 
 import pytest
 
@@ -32,10 +31,12 @@ from debian._deb822_repro import (parse_deb822_file,
                                   LIST_COMMA_SEPARATED_INTERPRETATION,
                                   Interpretation,
                                   )
-from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
-    Deb822FileElement, Deb822ParsedValueElement, LIST_UPLOADERS_INTERPRETATION
-from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
 from debian._deb822_repro._util import print_ast
+from debian._deb822_repro.locatable import TEPosition, TERange, START_POSITION
+from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
+    Deb822FileElement, LIST_UPLOADERS_INTERPRETATION
+from debian._deb822_repro.tokens import Deb822ErrorToken
+from debian.deb822 import Deb822
 
 try:
     from typing import Any, Iterator, Tuple
@@ -192,7 +193,6 @@ ROUND_TRIP_CASES = [
                        paragraph_count=2
                        ),
 ]
-
 
 
 class TestFormatPreservingDeb822Parser:
@@ -1771,3 +1771,97 @@ class TestFormatPreservingDeb822Parser:
         source_paragraph = next(iter(deb822_file))
         source_paragraph['Build-Depends'] = ' \n debhelper-compat (= 11),\n uuid-dev'
         assert original == deb822_file.convert_to_text()
+
+    def test_positions(self):
+        # type: () -> None
+
+        original = textwrap.dedent('''\
+        Source: foo
+        Build-Depends:
+         debhelper-compat (= 11),
+        # A multine line comment
+        # about uuid-dev
+        # that happens to be 3 lines long
+         uuid-dev,
+        Standards-Version: 4.6.2
+
+        # Comment on line 7 - TEPosition(6, 0) as it is 0-based
+
+        Package: foo
+        # Some comment about architecture, which should not affect the position
+        # of later elements depending on the skip_leading_comments parameter
+        Architecture: any
+        # Some multiline comment
+        # about the Depends field.
+        Depends: foo, bar,
+        # Some comment related to baz
+          baz,
+        ''')
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        paragraphs = list(deb822_file)
+        source_paragraph = paragraphs[0]
+        binary_paragraph = paragraphs[1]
+
+        assert deb822_file.position_in_file() == START_POSITION
+        assert deb822_file.position_in_file(skip_leading_comments=False) == START_POSITION
+        assert deb822_file.position_in_parent() == START_POSITION
+        assert deb822_file.position_in_parent(skip_leading_comments=False) == START_POSITION
+
+        source_element = source_paragraph.get_kvpair_element("Source")
+        build_depends = source_paragraph.get_kvpair_element("Build-Depends")
+        assert source_element is not None and build_depends is not None
+        assert source_element.position_in_parent() == TEPosition(0, 0)
+        assert source_element.position_in_file() == TEPosition(0, 0)
+        assert source_element.te_size() == TERange(START_POSITION, TEPosition(1, 0))
+
+        assert build_depends.position_in_parent() == TEPosition(1, 0)
+        assert build_depends.position_in_file() == TEPosition(1, 0)
+        assert build_depends.te_size() == TERange(START_POSITION, TEPosition(6, 0))
+
+        assert binary_paragraph.position_in_file() == TEPosition(11, 0)
+        depends = binary_paragraph.get_kvpair_element("Depends")
+        assert depends
+        depends_list = list(depends.interpret_as(LIST_COMMA_SEPARATED_INTERPRETATION).iter_value_references())
+        foo = depends_list[0]
+        bar = depends_list[1]
+        baz = depends_list[2]
+        assert depends.position_in_parent() == TEPosition(6, 0)
+        assert depends.position_in_parent(skip_leading_comments=False) == TEPosition(4, 0)
+        assert depends.position_in_file() == TEPosition(17, 0)
+        assert depends.position_in_file(skip_leading_comments=False) == TEPosition(15, 0)
+        assert foo.locatable.position_in_parent() == TEPosition(0, 1)
+        assert foo.locatable.position_in_file() == TEPosition(17, 9)
+        assert bar.locatable.position_in_parent() == TEPosition(0, 6)
+        assert bar.locatable.position_in_file() == TEPosition(17, 14)
+        assert baz.locatable.position_in_parent() == TEPosition(2, 2)
+        assert baz.locatable.position_in_file() == TEPosition(19, 2)
+
+        source_paragraph["Rules-Requires-Root"] = "no"
+
+        # As a consequence, all of these should have shifted a line
+        assert binary_paragraph.position_in_file() == TEPosition(12, 0)
+        assert depends.position_in_file() == TEPosition(18, 0)
+        assert depends.position_in_file(skip_leading_comments=False) == TEPosition(16, 0)
+        assert foo.locatable.position_in_file() == TEPosition(18, 9)
+        assert bar.locatable.position_in_file() == TEPosition(18, 14)
+        assert baz.locatable.position_in_file() == TEPosition(20, 2)
+        # However, the Source fields should remain unchanged (as they are before the change)
+        assert source_element.position_in_parent() == TEPosition(0, 0)
+        assert source_element.position_in_file() == TEPosition(0, 0)
+        assert build_depends.position_in_parent() == TEPosition(1, 0)
+        assert build_depends.position_in_file() == TEPosition(1, 0)
+
+        source_paragraph.order_first("Rules-Requires-Root")
+        # ... until we rotate the field above them
+        assert source_element.position_in_parent() == TEPosition(1, 0)
+        assert source_element.position_in_file() == TEPosition(1, 0)
+        assert build_depends.position_in_parent() == TEPosition(2, 0)
+        assert build_depends.position_in_file() == TEPosition(2, 0)
+
+        # But for good measure, the binary fields remained unchanged
+        assert binary_paragraph.position_in_file() == TEPosition(12, 0)
+        assert depends.position_in_file() == TEPosition(18, 0)
+        assert depends.position_in_file(skip_leading_comments=False) == TEPosition(16, 0)
+        assert foo.locatable.position_in_file() == TEPosition(18, 9)
+        assert bar.locatable.position_in_file() == TEPosition(18, 14)
+        assert baz.locatable.position_in_file() == TEPosition(20, 2)
