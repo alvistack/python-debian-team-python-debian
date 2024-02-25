@@ -27,7 +27,7 @@ class TEPosition:
     line_position: int
     """Describes the line position as a 0-based line number
 
-    See line_number if you want a human readable line number
+    See line_number if you want a human-readable line number
     """
     cursor_position: int
     """Describes a cursor position ("between two characters") or a character offset.
@@ -42,6 +42,28 @@ class TEPosition:
         return self.line_position + 1
 
     def relative_to(self, new_base: "TEPosition") -> "TEPosition":
+        """Offsets the position relative to another position
+
+        This is useful to avoid the `position_in_file()` method by caching where
+        the parents position and then for its children you use `range_in_parent()`
+        plus `relative_to()` to rebase the range.
+
+        >>> parent: Locatable = ...                   # doctest: +SKIP
+        >>> children: Iterable[Locatable] = ...       # doctest: +SKIP
+        >>> # This will expensive
+        >>> parent_pos = parent.position_in_file(     # doctest: +SKIP
+        ...    skip_leading_comments=False
+        ... )
+        >>> for child in children:                    # doctest: +SKIP
+        ...    child_pos = child.position_in_parent()
+        ...    # Avoid a position_in_file() for each child
+        ...    child_pos_in_file = child_pos.relative_to(parent_pos)
+        ...    ...  # Use the child_pos_in_file for something
+
+        :param new_base: The position that should have been the origin rather than
+          (0, 0).
+        :returns: The range offset relative to the base position.
+        """
         if self.line_position == 0 and self.cursor_position == 0:
             return new_base
         if new_base.line_position == 0 and new_base.cursor_position == 0:
@@ -77,34 +99,66 @@ class TERange:
 
     @property
     def start_line_position(self) -> int:
+        """Describes the start line position as a 0-based line number
+
+        See start_line_number if you want a human-readable line number
+        """
         return self.start_pos.line_position
 
     @property
     def start_cursor_position(self) -> int:
+        """Describes the starting cursor position
+
+        When this value is 0, the position is at the start of a line. When it is 1, then
+        the position is between the first and the second character (etc.).
+        """
         return self.start_pos.cursor_position
 
     @property
     def start_line_number(self) -> int:
+        """The start line number as human would count it"""
         return self.start_pos.line_number
 
     @property
     def end_line_position(self) -> int:
+        """Describes the end line position as a 0-based line number
+
+        See end_line_number if you want a human-readable line number
+        """
         return self.end_pos.line_position
 
     @property
     def end_line_number(self) -> int:
+        """The end line number as human would count it"""
         return self.end_pos.line_number
 
     @property
     def end_cursor_position(self) -> int:
+        """Describes the end cursor position
+
+        When this value is 0, the position is at the start of a line. When it is 1, then
+        the position is between the first and the second character (etc.).
+        """
         return self.end_pos.cursor_position
 
     @property
     def line_count(self) -> int:
+        """The number of lines (newlines) spanned by this range.
+
+        Will be zero when the range fits inside one line.
+        """
         return self.end_line_position - self.start_line_position
 
     @classmethod
     def between(cls, a: TEPosition, b: TEPosition) -> "Self":
+        """Computes the range between two positions
+
+        Unlike the constructor, this will always create a "positive" range.
+        That is, the "earliest" position will always be the start position
+        regardless of the order they were passed to `between`. When using
+        the TERange constructor, you have freedom to do "inverse" ranges
+        in case that is ever useful
+        """
         if a.line_position > b.line_position or \
            (a.line_position == b.line_position and a.cursor_position > b.cursor_position):
             # Order swap, so `a` is always the earliest position
@@ -114,32 +168,79 @@ class TERange:
             b,
         )
 
-    def rebase(self, new_start_position: TEPosition) -> "TERange":
-        if new_start_position == self.start_pos:
+    def relative_to(self, new_base: TEPosition) -> "TERange":
+        """Offsets the range relative to another position
+
+        This is useful to avoid the `position_in_file()` method by caching where
+        the parents position and then for its children you use `range_in_parent()`
+        plus `relative_to()` to rebase the range.
+
+        >>> parent: Locatable = ...                   # doctest: +SKIP
+        >>> children: Iterable[Locatable] = ...       # doctest: +SKIP
+        >>> # This will expensive
+        >>> parent_pos = parent.position_in_file(     # doctest: +SKIP
+        ...    skip_leading_comments=False
+        ... )
+        >>> for child in children:                    # doctest: +SKIP
+        ...    child_range = child.range_in_parent()
+        ...    # Avoid a position_in_file() for each child
+        ...    child_range_in_file = child_range.relative_to(parent_pos)
+        ...    ...  # Use the child_range_in_file for something
+
+        :param new_base: The position that should have been the origin rather than
+          (0, 0).
+        :returns: The range offset relative to the base position.
+        """
+        if new_base == START_POSITION:
+            return self
+        return TERange(
+            self.start_pos.relative_to(new_base),
+            self.end_pos.relative_to(new_base),
+        )
+
+    def as_size(self) -> "TERange":
+        """Reduces the range to a "size"
+
+        The returned range will always have its start position to (0, 0) and
+        its end position shifted accordingly if it was not already based at
+        (0, 0).
+
+        The original range is not mutated and, if it is already at (0, 0), the
+        method will just return it as-is.
+        """
+        if self.start_pos == START_POSITION:
             return self
         line_count = self.line_count
-        new_end_line = new_start_position.line_position + line_count
         if line_count:
             new_end_cursor_position = self.end_cursor_position
         else:
             delta = self.end_cursor_position - self.start_cursor_position
-            new_end_cursor_position = new_start_position.cursor_position + delta
+            new_end_cursor_position = delta
         return TERange(
-            new_start_position,
+            START_POSITION,
             TEPosition(
-                new_end_line,
+                line_count,
                 new_end_cursor_position,
             )
         )
 
     @classmethod
     def from_position_and_size(cls, base: TEPosition, size: "TERange") -> "Self":
+        """Compute a range from a position and the size of another range
+
+        This provides you with a range starting at the base position that has
+        the same effective span as the size parameter.
+
+        :param base: The desired starting position
+        :param size: A range, which will be used as a size (that is, it will
+          be reduced to a size via the `as_size()` method) for the resulting
+          range
+        :returns: A range at the provided base position that has the size of
+          the provided range.
+        """
         line_position = base.line_position
         cursor_position = base.cursor_position
-        # ranges are not guaranteed to be sizes, but by rebasing them to the start position
-        # we ensure they will be. Note rebase optimizes for this use-case, so it is cheap
-        # to just blindly throw rebase at this problem.
-        size_rebased = size.rebase(START_POSITION)
+        size_rebased = size.as_size()
         lines = size_rebased.line_count
         if lines:
             line_position += lines
@@ -157,13 +258,19 @@ class TERange:
 
     @classmethod
     def from_position_and_sizes(cls, base: TEPosition, sizes: Iterable["TERange"]) -> "Self":
+        """Compute a range from a position and the size of number of ranges
+
+        :param base: The desired starting position
+        :param sizes: All the ranges that combined makes up the size of the
+          desired position. Note that order can affect the end result. Particularly
+          the end character offset gets reset everytime a size spans a line.
+        :returns: A range at the provided base position that has the size of
+          the provided range.
+        """
         line_position = base.line_position
         cursor_position = base.cursor_position
         for size in sizes:
-            # ranges are not guaranteed to be sizes, but by rebasing them to the start position
-            # we ensure they will be. Note rebase optimizes for this use-case, so it is cheap
-            # to just blindly throw rebase at this problem.
-            size_rebased = size.rebase(START_POSITION)
+            size_rebased = size.as_size()
             lines = size_rebased.line_count
             if lines:
                 line_position += lines
@@ -225,6 +332,28 @@ class Locatable:
             (x.te_size(skip_leading_comments=False) for x in relevant_parts),
         )
         return span.end_pos
+
+    def range_in_parent(self, *, skip_leading_comments: bool = True) -> TERange:
+        """The range of this token/element inside its parent
+
+        This is operation is generally linear to the number of "parts" (elements/tokens)
+        inside the parent.
+
+        :param skip_leading_comments: If True, then if any leading comment that
+          that can be skipped will be excluded in the position of this locatable.
+          This is useful if you want the position "semantic" content of a field
+          without also highlighting a leading comment. Remember to align this
+          parameter with the `te_size` call, so the range does not "overshoot"
+          into the next element (or falls short and only covers part of an
+          element). Note that this option can only be used to filter out leading
+          comments when the comments are a subset of the element. It has no
+          effect on elements that are entirely made of comments.
+        """
+        pos = self.position_in_parent(skip_leading_comments=skip_leading_comments)
+        return TERange.from_position_and_size(
+            pos,
+            self.te_size(skip_leading_comments=skip_leading_comments)
+        )
 
     def position_in_file(self, *, skip_leading_comments: bool = True) -> TEPosition:
         """The start position of this token/element in this file
