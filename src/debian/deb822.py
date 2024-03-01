@@ -842,7 +842,6 @@ class Deb822(Deb822Dict):
             self[curkey] = content
 
     def __str__(self) -> str:
-        # type: () -> str
         d = self.dump()
         return d if d is not None else ""
 
