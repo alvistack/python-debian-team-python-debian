@@ -466,8 +466,7 @@ class License(collections.namedtuple('License', 'synopsis text')):
             return cls('')
         return cls(lines[0], text='\n'.join(itertools.islice(lines, 1, None)))
 
-    def to_str(self):
-        # type: () -> str
+    def to_str(self) -> str:
         return format_multiline_lines([self.synopsis] + self.text.splitlines())
 
     # TODO(jsw): Parse the synopsis?
@@ -661,8 +660,7 @@ class _RestrictedWrapper(metaclass=_ClassInitMeta):
         # type: () -> Iterable[str]
         return (str(k) for k in self.__data)
 
-    def __len__(self):
-        # type: () -> int
+    def __len__(self) -> int:
         return len(self.__data)
 
     def dump(self,
@@ -859,13 +857,11 @@ class Header(_RestrictedWrapper):
         if fmt not in _KNOWN_FORMATS:
             logger.warning('format not known: %r', fmt)
 
-    def known_format(self):
-        # type: () -> bool
+    def known_format(self) -> bool:
         """Returns True iff the format is known."""
         return self.format in _KNOWN_FORMATS   # type: ignore
 
-    def current_format(self):
-        # type: () -> bool
+    def current_format(self) -> bool:
         """Returns True iff the format is the current format."""
         return self.format == _CURRENT_FORMAT   # type: ignore
 

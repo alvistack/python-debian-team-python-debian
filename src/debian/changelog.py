@@ -152,8 +152,7 @@ class ChangelogParseError(Exception):
         self._line = line
         super(ChangelogParseError, self).__init__()
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return "Could not parse changelog: "+self._line
 
 
@@ -352,8 +351,7 @@ class ChangeBlock:
             block += line + "\n"
         return block
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return self._format()
 
     def __bytes__(self):  # type: () -> bytes
@@ -775,8 +773,7 @@ class Changelog:
             pieces.append(block._format(allow_missing_author=allow_missing_author))
         return ''.join(pieces)
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return self._format()
 
     def __bytes__(self):  # type: () -> bytes
@@ -802,8 +799,7 @@ class Changelog:
             idx = self.versions.index(n)
         return self._blocks[idx]
 
-    def __len__(self):
-        # type: () -> int
+    def __len__(self) -> int:
         return len(self._blocks)
 
     def set_distributions(self, distributions):
