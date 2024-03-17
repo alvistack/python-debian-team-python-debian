@@ -841,18 +841,11 @@ class Deb822(Deb822Dict):
         if curkey:
             self[curkey] = content
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         d = self.dump()
         return d if d is not None else ""
 
-    def __unicode__(self):
-        # type: () -> str
-        d = self.dump()
-        return d if d is not None else ""
-
-    def __bytes__(self):
-        # type: () -> bytes
+    def __bytes__(self) -> bytes:
         d = self.dump()
         return d.encode(self.encoding) if d is not None else b""
 
