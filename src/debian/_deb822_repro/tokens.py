@@ -5,7 +5,7 @@ from weakref import ReferenceType
 
 from debian._deb822_repro._util import BufferingIterator
 from debian._deb822_repro.locatable import Locatable, START_POSITION, \
-    TERange, ONE_CHAR_RANGE, ONE_LINE_RANGE, TEPosition
+    Range, ONE_CHAR_RANGE, ONE_LINE_RANGE, Position
 from debian._util import resolve_ref, _strI
 
 try:
@@ -103,7 +103,7 @@ class Deb822Token(Locatable):
             raise ValueError("Tokens must have content")
         self._text = text  # type: str
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
-        self._token_size = None  # type: Optional[TERange]
+        self._token_size = None  # type: Optional[Range]
         self._verify_token_text()
 
     def __repr__(self):
@@ -151,7 +151,7 @@ class Deb822Token(Locatable):
         # type: () -> str
         return self._text
 
-    def te_size(self, *, skip_leading_comments: bool = False) -> TERange:
+    def size(self, *, skip_leading_comments: bool = False) -> Range:
         # As tokens are an atomtic unit
         token_size = self._token_size
         if token_size is not None:
@@ -164,8 +164,8 @@ class Deb822Token(Locatable):
         else:
             new_lines = self._text.count("\n")
             assert not new_lines or self._text[-1] == "\n"
-            end_pos = TEPosition(new_lines, 0) if new_lines else TEPosition(0, token_len)
-            token_size = TERange(START_POSITION, end_pos)
+            end_pos = Position(new_lines, 0) if new_lines else Position(0, token_len)
+            token_size = Range(START_POSITION, end_pos)
         self._token_size = token_size
         return token_size
 

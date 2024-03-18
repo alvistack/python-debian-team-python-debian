@@ -15,7 +15,7 @@ from debian._deb822_repro._util import (combine_into_replacement, BufferingItera
 from debian._deb822_repro.formatter import (
     FormatterContentToken, one_value_per_line_trailing_separator, format_field,
 )
-from debian._deb822_repro.locatable import Locatable, START_POSITION, TEPosition, TERange
+from debian._deb822_repro.locatable import Locatable, START_POSITION, Position, Range
 from debian._deb822_repro.tokens import (
     Deb822Token, Deb822ValueToken, Deb822SemanticallySignificantWhiteSpace,
     Deb822SpaceSeparatorToken, Deb822CommentToken, Deb822WhitespaceToken,
@@ -930,12 +930,12 @@ def _parse_uploaders_list_value(token, buffered_iterator):
 class Deb822Element(Locatable):
     """Composite elements (consists of 1 or more tokens)"""
 
-    __slots__ = ('_parent_element', '_full_te_size_cache', '__weakref__')
+    __slots__ = ('_parent_element', '_full_size_cache', '__weakref__')
 
     def __init__(self):
         # type: () -> None
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
-        self._full_te_size_cache = None  # type: Optional[TERange]
+        self._full_size_cache = None  # type: Optional[Range]
 
     def iter_parts(self):
         # type: () -> Iterable[TokenOrElement]
@@ -1002,15 +1002,15 @@ class Deb822Element(Locatable):
         if parent is self.parent_element:
             self._parent_element = None
 
-    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
-        te_size_cache = self._full_te_size_cache
-        if te_size_cache is None:
-            te_size_cache = TERange.from_position_and_sizes(
+    def size(self, *, skip_leading_comments: bool = True) -> Range:
+        size_cache = self._full_size_cache
+        if size_cache is None:
+            size_cache = Range.from_position_and_sizes(
                 START_POSITION,
-                (p.te_size(skip_leading_comments=False) for p in self.iter_parts())
+                (p.size(skip_leading_comments=False) for p in self.iter_parts())
             )
-            self._full_te_size_cache = te_size_cache
-        return te_size_cache
+            self._full_size_cache = size_cache
+        return size_cache
 
 
 class Deb822InterpretationProxyElement(Deb822Element):
@@ -1028,22 +1028,22 @@ class Deb822InterpretationProxyElement(Deb822Element):
         # type: () -> Iterable[TokenOrElement]
         return iter(self.parts)
 
-    def position_in_parent(self, *, skip_leading_comments: bool = True) -> TEPosition:
+    def position_in_parent(self, *, skip_leading_comments: bool = True) -> Position:
         parent = self.parent_element
         if parent is None:
             raise RuntimeError("parent was garbage collected")
         return parent.position_in_parent()
 
-    def position_in_file(self, *, skip_leading_comments: bool = True) -> TEPosition:
+    def position_in_file(self, *, skip_leading_comments: bool = True) -> Position:
         parent = self.parent_element
         if parent is None:
             raise RuntimeError("parent was garbage collected")
         return parent.position_in_file()
 
-    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+    def size(self, *, skip_leading_comments: bool = True) -> Range:
         # Same as parent except we never use a cache.
-        sizes = (p.te_size(skip_leading_comments=False) for p in self.iter_parts())
-        return TERange.from_position_and_sizes(START_POSITION, sizes)
+        sizes = (p.size(skip_leading_comments=False) for p in self.iter_parts())
+        return Range.from_position_and_sizes(START_POSITION, sizes)
 
 
 class Deb822ErrorElement(Deb822Element):
@@ -1122,7 +1122,7 @@ class Deb822ValueLineElement(Deb822Element):
         if self._newline_token is None:
             self._newline_token = Deb822NewlineAfterValueToken()
             self._newline_token.parent_element = self
-            self._full_te_size_cache = None
+            self._full_size_cache = None
             return True
         return False
 
@@ -1165,18 +1165,18 @@ class Deb822ValueLineElement(Deb822Element):
         if self._newline_token:
             yield self._newline_token
 
-    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+    def size(self, *, skip_leading_comments: bool = True) -> Range:
         if skip_leading_comments:
-            return TERange.from_position_and_sizes(
+            return Range.from_position_and_sizes(
                 START_POSITION,
                 (
-                    p.te_size(skip_leading_comments=False)
+                    p.size(skip_leading_comments=False)
                     for p in self.iter_parts() if not p.is_comment
                 )
             )
-        return super().te_size(skip_leading_comments=skip_leading_comments)
+        return super().size(skip_leading_comments=skip_leading_comments)
 
-    def position_in_parent(self, *, skip_leading_comments: bool = True) -> TEPosition:
+    def position_in_parent(self, *, skip_leading_comments: bool = True) -> Position:
         base_pos = super().position_in_parent(skip_leading_comments=False)
         if skip_leading_comments:
             for p in self.iter_parts():
@@ -1213,7 +1213,7 @@ class Deb822ValueElement(Deb822Element):
         if self._value_entry_elements:
             changed = self._value_entry_elements[-1].add_newline_if_missing()
             if changed:
-                self._full_te_size_cache = None
+                self._full_size_cache = None
             return changed
         return False
 
@@ -1321,7 +1321,7 @@ class Deb822KeyValuePairElement(Deb822Element):
     @value_element.setter
     def value_element(self, new_value):
         # type: (Deb822ValueElement) -> None
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         self._value_element.clear_parent_if_parent(self)
         self._value_element = new_value
         new_value.parent_element = self
@@ -1341,7 +1341,7 @@ class Deb822KeyValuePairElement(Deb822Element):
     @comment_element.setter
     def comment_element(self, value):
         # type: (Optional[Deb822CommentElement]) -> None
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         if value is not None:
             if not value[-1].text.endswith("\n"):
                 raise ValueError("Field comments must end with a newline")
@@ -1363,7 +1363,7 @@ class Deb822KeyValuePairElement(Deb822Element):
         self,
         *,
         skip_leading_comments: bool = True,
-    ) -> TEPosition:
+    ) -> Position:
         position = super().position_in_parent(skip_leading_comments=False)
         if skip_leading_comments:
             if self._comment_element:
@@ -1371,16 +1371,16 @@ class Deb822KeyValuePairElement(Deb822Element):
                 position = field_pos.relative_to(position)
         return position
 
-    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+    def size(self, *, skip_leading_comments: bool = True) -> Range:
         if skip_leading_comments:
-            return TERange.from_position_and_sizes(
+            return Range.from_position_and_sizes(
                 START_POSITION,
                 (
-                    p.te_size(skip_leading_comments=False)
+                    p.size(skip_leading_comments=False)
                     for p in self.iter_parts() if not p.is_comment
                 )
             )
-        return super().te_size(skip_leading_comments=False)
+        return super().size(skip_leading_comments=False)
 
 
 def _format_comment(c):
@@ -2322,7 +2322,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
     def remove_kvpair_element(self, key):
         # type: (ParagraphKey) -> None
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         key, _, _ = _unpack_key(key, raise_if_indexed=True)
         del self._kvpair_elements[key]
         self._kvpair_order.remove(key)
@@ -2361,7 +2361,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
             # way
             key = value.field_name
         original_value = self._kvpair_elements.get(key)
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         self._kvpair_elements[key] = value
         self._kvpair_order.append(key)
         if original_value is not None:
@@ -2379,7 +2379,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
         for last_field_name in reversed(self._kvpair_order):
             last_kvpair = self._kvpair_elements[cast('_strI', last_field_name)]
             if last_kvpair.value_element.add_final_newline_if_missing():
-                self._full_te_size_cache = None
+                self._full_size_cache = None
             break
 
         if key is None:
@@ -2645,7 +2645,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
             # Use the string from the Deb822FieldNameToken as it is a _strI and has the same value
             # (memory optimization)
             key = value.field_name
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         original_nodes = self._kvpair_elements.get(key)
         if original_nodes is None or not original_nodes:
             if index is not None and index != 0:
@@ -2690,7 +2690,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         field_list = self._kvpair_elements[key]
 
         if name_token is None and idx is None:
-            self._full_te_size_cache = None
+            self._full_size_cache = None
             # Remove all case
             for node in field_list:
                 node.value.parent_element = None
@@ -2713,7 +2713,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
                 msg = 'The field "{key}" is present, but the index "{idx}" was invalid.'
                 raise KeyError(msg.format(key=key, idx=idx))
 
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         if len(field_list) == 1:
             del self._kvpair_elements[key]
         else:
@@ -2743,7 +2743,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
 
         for last_kvpair in reversed(self._kvpair_order):
             if last_kvpair.value_element.add_final_newline_if_missing():
-                self._full_te_size_cache = None
+                self._full_size_cache = None
             break
 
         sorted_kvpair_list = sorted(self._kvpair_order, key=_actual_key)
@@ -2843,7 +2843,7 @@ class Deb822FileElement(Deb822Element):
 
         anchor_node = None
         needs_newline = True
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         if idx == 0:
             # Special-case, if idx is 0, then we insert it before everything else.
             # This is mostly a cosmetic choice for corner cases involving free-floating
@@ -2902,7 +2902,7 @@ class Deb822FileElement(Deb822Element):
                 raise ValueError("Paragraph is already a part of this file")
             raise ValueError("Paragraph is already part of another Deb822File")
 
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         # We need a separating newline if there is not a whitespace token at the end of the file.
         # Note the special case where the file ends on a comment; here we insert a whitespace too
         # to be sure.  Otherwise, we would have to check that there is an empty line before that
@@ -2921,7 +2921,7 @@ class Deb822FileElement(Deb822Element):
                 break
         if node is None:
             raise RuntimeError("unable to find paragraph")
-        self._full_te_size_cache = None
+        self._full_size_cache = None
         previous_node = node.previous_node
         next_node = node.next_node
         self._token_and_elements.remove_node(node)
@@ -2938,11 +2938,11 @@ class Deb822FileElement(Deb822Element):
         t.parent_element = self
         return t
 
-    def position_in_parent(self, *, skip_leading_comments: bool = True) -> TEPosition:
+    def position_in_parent(self, *, skip_leading_comments: bool = True) -> Position:
         # Recursive base-case
         return START_POSITION
 
-    def position_in_file(self, *, skip_leading_comments: bool = True) -> TEPosition:
+    def position_in_file(self, *, skip_leading_comments: bool = True) -> Position:
         # By definition
         return START_POSITION
 

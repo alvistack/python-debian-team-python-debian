@@ -32,7 +32,7 @@ from debian._deb822_repro import (parse_deb822_file,
                                   Interpretation,
                                   )
 from debian._deb822_repro._util import print_ast
-from debian._deb822_repro.locatable import TEPosition, TERange, START_POSITION, Locatable
+from debian._deb822_repro.locatable import Position, Range, START_POSITION, Locatable
 from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
     Deb822FileElement, LIST_UPLOADERS_INTERPRETATION
 from debian._deb822_repro.tokens import Deb822ErrorToken
@@ -1784,7 +1784,7 @@ class TestFormatPreservingDeb822Parser:
          uuid-dev,
         Standards-Version: 4.6.2
 
-        # Comment on line 7 - TEPosition(6, 0) as it is 0-based
+        # Comment on line 7 - Position(6, 0) as it is 0-based
 
         Package: foo
         # Some comment about architecture, which should not affect the position
@@ -1814,8 +1814,8 @@ class TestFormatPreservingDeb822Parser:
             START_POSITION,
             START_POSITION,
             _size(1),
-            expected_range_in_parent=TERange(START_POSITION, TEPosition(1, 0)),
-            expected_range_in_file=TERange(START_POSITION, TEPosition(1, 0)),
+            expected_range_in_parent=Range(START_POSITION, Position(1, 0)),
+            expected_range_in_file=Range(START_POSITION, Position(1, 0)),
             provided_parent_position_in_file=deb822_file.position_in_file(
                 skip_leading_comments=False
             ),
@@ -1823,11 +1823,11 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             build_depends,
-            TEPosition(1, 0),
-            TEPosition(1, 0),
+            Position(1, 0),
+            Position(1, 0),
             _size(6),
-            expected_range_in_parent=TERange(TEPosition(1, 0), TEPosition(7, 0)),
-            expected_range_in_file=TERange(TEPosition(1, 0), TEPosition(7, 0)),
+            expected_range_in_parent=Range(Position(1, 0), Position(7, 0)),
+            expected_range_in_file=Range(Position(1, 0), Position(7, 0)),
             provided_parent_position_in_file=source_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
@@ -1835,11 +1835,11 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             binary_paragraph,
-            TEPosition(11, 0),
-            TEPosition(11, 0),
+            Position(11, 0),
+            Position(11, 0),
             _size(9),
-            expected_range_in_parent=TERange(TEPosition(11, 0), TEPosition(20, 0)),
-            expected_range_in_file=TERange(TEPosition(11, 0), TEPosition(20, 0)),
+            expected_range_in_parent=Range(Position(11, 0), Position(20, 0)),
+            expected_range_in_file=Range(Position(11, 0), Position(20, 0)),
             provided_parent_position_in_file=source_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
@@ -1854,22 +1854,22 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             depends,
-            TEPosition(6, 0),
-            TEPosition(17, 0),
+            Position(6, 0),
+            Position(17, 0),
             _size(3),
-            expected_range_in_parent=TERange(TEPosition(6, 0), TEPosition(9, 0)),
-            expected_range_in_file=TERange(TEPosition(17, 0), TEPosition(20, 0)),
+            expected_range_in_parent=Range(Position(6, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(17, 0), Position(20, 0)),
             provided_parent_position_in_file=binary_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
         )
         _validate_pos_and_ranges(
             depends,
-            TEPosition(4, 0),
-            TEPosition(15, 0),
+            Position(4, 0),
+            Position(15, 0),
             _size(5),
-            expected_range_in_parent=TERange(TEPosition(4, 0), TEPosition(9, 0)),
-            expected_range_in_file=TERange(TEPosition(15, 0), TEPosition(20, 0)),
+            expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(15, 0), Position(20, 0)),
             provided_parent_position_in_file=binary_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
@@ -1883,32 +1883,32 @@ class TestFormatPreservingDeb822Parser:
         _validate_pos_and_ranges(
             foo.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(0, 1),
-            TEPosition(17, 9),
+            Position(0, 1),
+            Position(17, 9),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(0, 1), TEPosition(0, 4)),
-            expected_range_in_file=TERange(TEPosition(17, 9), TEPosition(17, 12)),
+            expected_range_in_parent=Range(Position(0, 1), Position(0, 4)),
+            expected_range_in_file=Range(Position(17, 9), Position(17, 12)),
             provided_parent_position_in_file=depends_value_pos,
         )
         _validate_pos_and_ranges(
             bar.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(0, 6),
-            TEPosition(17, 14),
+            Position(0, 6),
+            Position(17, 14),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(0, 6), TEPosition(0, 9)),
-            expected_range_in_file=TERange(TEPosition(17, 14), TEPosition(17, 17)),
+            expected_range_in_parent=Range(Position(0, 6), Position(0, 9)),
+            expected_range_in_file=Range(Position(17, 14), Position(17, 17)),
             provided_parent_position_in_file=depends_value_pos,
         )
 
         _validate_pos_and_ranges(
             baz.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(2, 2),
-            TEPosition(19, 2),
+            Position(2, 2),
+            Position(19, 2),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(2, 2), TEPosition(2, 5)),
-            expected_range_in_file=TERange(TEPosition(19, 2), TEPosition(19, 5)),
+            expected_range_in_parent=Range(Position(2, 2), Position(2, 5)),
+            expected_range_in_file=Range(Position(19, 2), Position(19, 5)),
             provided_parent_position_in_file=depends_value_pos,
         )
 
@@ -1919,11 +1919,11 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             binary_paragraph,
-            TEPosition(12, 0),
-            TEPosition(12, 0),
+            Position(12, 0),
+            Position(12, 0),
             _size(9),
-            expected_range_in_parent=TERange(TEPosition(12, 0), TEPosition(21, 0)),
-            expected_range_in_file=TERange(TEPosition(12, 0), TEPosition(21, 0)),
+            expected_range_in_parent=Range(Position(12, 0), Position(21, 0)),
+            expected_range_in_file=Range(Position(12, 0), Position(21, 0)),
             provided_parent_position_in_file=deb822_file.position_in_file(
                 skip_leading_comments=False
             ),
@@ -1931,22 +1931,22 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             depends,
-            TEPosition(6, 0),
-            TEPosition(18, 0),
+            Position(6, 0),
+            Position(18, 0),
             _size(3),
-            expected_range_in_parent=TERange(TEPosition(6, 0), TEPosition(9, 0)),
-            expected_range_in_file=TERange(TEPosition(18, 0), TEPosition(21, 0)),
+            expected_range_in_parent=Range(Position(6, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(18, 0), Position(21, 0)),
             provided_parent_position_in_file=binary_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
         )
         _validate_pos_and_ranges(
             depends,
-            TEPosition(4, 0),
-            TEPosition(16, 0),
+            Position(4, 0),
+            Position(16, 0),
             _size(5),
-            expected_range_in_parent=TERange(TEPosition(4, 0), TEPosition(9, 0)),
-            expected_range_in_file=TERange(TEPosition(16, 0), TEPosition(21, 0)),
+            expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(16, 0), Position(21, 0)),
             provided_parent_position_in_file=binary_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
@@ -1960,32 +1960,32 @@ class TestFormatPreservingDeb822Parser:
         _validate_pos_and_ranges(
             foo.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(0, 1),
-            TEPosition(18, 9),
+            Position(0, 1),
+            Position(18, 9),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(0, 1), TEPosition(0, 4)),
-            expected_range_in_file=TERange(TEPosition(18, 9), TEPosition(18, 12)),
+            expected_range_in_parent=Range(Position(0, 1), Position(0, 4)),
+            expected_range_in_file=Range(Position(18, 9), Position(18, 12)),
             provided_parent_position_in_file=depends_value_pos,
         )
         _validate_pos_and_ranges(
             bar.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(0, 6),
-            TEPosition(18, 14),
+            Position(0, 6),
+            Position(18, 14),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(0, 6), TEPosition(0, 9)),
-            expected_range_in_file=TERange(TEPosition(18, 14), TEPosition(18, 17)),
+            expected_range_in_parent=Range(Position(0, 6), Position(0, 9)),
+            expected_range_in_file=Range(Position(18, 14), Position(18, 17)),
             provided_parent_position_in_file=depends_value_pos,
         )
 
         _validate_pos_and_ranges(
             baz.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(2, 2),
-            TEPosition(20, 2),
+            Position(2, 2),
+            Position(20, 2),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(2, 2), TEPosition(2, 5)),
-            expected_range_in_file=TERange(TEPosition(20, 2), TEPosition(20, 5)),
+            expected_range_in_parent=Range(Position(2, 2), Position(2, 5)),
+            expected_range_in_file=Range(Position(20, 2), Position(20, 5)),
             provided_parent_position_in_file=depends_value_pos,
         )
 
@@ -1996,8 +1996,8 @@ class TestFormatPreservingDeb822Parser:
             START_POSITION,
             START_POSITION,
             _size(1),
-            expected_range_in_parent=TERange(START_POSITION, TEPosition(1, 0)),
-            expected_range_in_file=TERange(START_POSITION, TEPosition(1, 0)),
+            expected_range_in_parent=Range(START_POSITION, Position(1, 0)),
+            expected_range_in_file=Range(START_POSITION, Position(1, 0)),
             provided_parent_position_in_file=deb822_file.position_in_file(
                 skip_leading_comments=False
             ),
@@ -2005,11 +2005,11 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             build_depends,
-            TEPosition(1, 0),
-            TEPosition(1, 0),
+            Position(1, 0),
+            Position(1, 0),
             _size(6),
-            expected_range_in_parent=TERange(TEPosition(1, 0), TEPosition(7, 0)),
-            expected_range_in_file=TERange(TEPosition(1, 0), TEPosition(7, 0)),
+            expected_range_in_parent=Range(Position(1, 0), Position(7, 0)),
+            expected_range_in_file=Range(Position(1, 0), Position(7, 0)),
             provided_parent_position_in_file=source_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
@@ -2020,11 +2020,11 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             source_element,
-            TEPosition(1, 0),
-            TEPosition(1, 0),
+            Position(1, 0),
+            Position(1, 0),
             _size(1),
-            expected_range_in_parent=TERange(TEPosition(1, 0), TEPosition(2, 0)),
-            expected_range_in_file=TERange(TEPosition(1, 0), TEPosition(2, 0)),
+            expected_range_in_parent=Range(Position(1, 0), Position(2, 0)),
+            expected_range_in_file=Range(Position(1, 0), Position(2, 0)),
             provided_parent_position_in_file=deb822_file.position_in_file(
                 skip_leading_comments=False
             ),
@@ -2032,11 +2032,11 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             build_depends,
-            TEPosition(2, 0),
-            TEPosition(2, 0),
+            Position(2, 0),
+            Position(2, 0),
             _size(6),
-            expected_range_in_parent=TERange(TEPosition(2, 0), TEPosition(8, 0)),
-            expected_range_in_file=TERange(TEPosition(2, 0), TEPosition(8, 0)),
+            expected_range_in_parent=Range(Position(2, 0), Position(8, 0)),
+            expected_range_in_file=Range(Position(2, 0), Position(8, 0)),
             provided_parent_position_in_file=source_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
@@ -2046,11 +2046,11 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             binary_paragraph,
-            TEPosition(12, 0),
-            TEPosition(12, 0),
+            Position(12, 0),
+            Position(12, 0),
             _size(9),
-            expected_range_in_parent=TERange(TEPosition(12, 0), TEPosition(21, 0)),
-            expected_range_in_file=TERange(TEPosition(12, 0), TEPosition(21, 0)),
+            expected_range_in_parent=Range(Position(12, 0), Position(21, 0)),
+            expected_range_in_file=Range(Position(12, 0), Position(21, 0)),
             provided_parent_position_in_file=deb822_file.position_in_file(
                 skip_leading_comments=False
             ),
@@ -2058,22 +2058,22 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             depends,
-            TEPosition(6, 0),
-            TEPosition(18, 0),
+            Position(6, 0),
+            Position(18, 0),
             _size(3),
-            expected_range_in_parent=TERange(TEPosition(6, 0), TEPosition(9, 0)),
-            expected_range_in_file=TERange(TEPosition(18, 0), TEPosition(21, 0)),
+            expected_range_in_parent=Range(Position(6, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(18, 0), Position(21, 0)),
             provided_parent_position_in_file=binary_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
         )
         _validate_pos_and_ranges(
             depends,
-            TEPosition(4, 0),
-            TEPosition(16, 0),
+            Position(4, 0),
+            Position(16, 0),
             _size(5),
-            expected_range_in_parent=TERange(TEPosition(4, 0), TEPosition(9, 0)),
-            expected_range_in_file=TERange(TEPosition(16, 0), TEPosition(21, 0)),
+            expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(16, 0), Position(21, 0)),
             provided_parent_position_in_file=binary_paragraph.position_in_file(
                 skip_leading_comments=False
             ),
@@ -2087,45 +2087,45 @@ class TestFormatPreservingDeb822Parser:
         _validate_pos_and_ranges(
             foo.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(0, 1),
-            TEPosition(18, 9),
+            Position(0, 1),
+            Position(18, 9),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(0, 1), TEPosition(0, 4)),
-            expected_range_in_file=TERange(TEPosition(18, 9), TEPosition(18, 12)),
+            expected_range_in_parent=Range(Position(0, 1), Position(0, 4)),
+            expected_range_in_file=Range(Position(18, 9), Position(18, 12)),
             provided_parent_position_in_file=depends_value_pos,
         )
         _validate_pos_and_ranges(
             bar.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(0, 6),
-            TEPosition(18, 14),
+            Position(0, 6),
+            Position(18, 14),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(0, 6), TEPosition(0, 9)),
-            expected_range_in_file=TERange(TEPosition(18, 14), TEPosition(18, 17)),
+            expected_range_in_parent=Range(Position(0, 6), Position(0, 9)),
+            expected_range_in_file=Range(Position(18, 14), Position(18, 17)),
             provided_parent_position_in_file=depends_value_pos,
         )
 
         _validate_pos_and_ranges(
             baz.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            TEPosition(2, 2),
-            TEPosition(20, 2),
+            Position(2, 2),
+            Position(20, 2),
             _size(0, 3),
-            expected_range_in_parent=TERange(TEPosition(2, 2), TEPosition(2, 5)),
-            expected_range_in_file=TERange(TEPosition(20, 2), TEPosition(20, 5)),
+            expected_range_in_parent=Range(Position(2, 2), Position(2, 5)),
+            expected_range_in_file=Range(Position(20, 2), Position(20, 5)),
             provided_parent_position_in_file=depends_value_pos,
         )
 
 
 def _validate_pos_and_ranges(
         locatable: Locatable,
-        start_position_in_parent: TEPosition,
-        start_position_in_file: TEPosition,
-        size: TERange,
+        start_position_in_parent: Position,
+        start_position_in_file: Position,
+        size: Range,
         *,
-        provided_parent_position_in_file: Optional[TEPosition],
-        expected_range_in_parent: Optional[TERange] = None,
-        expected_range_in_file: Optional[TERange] = None,
+        provided_parent_position_in_file: Optional[Position],
+        expected_range_in_parent: Optional[Range] = None,
+        expected_range_in_file: Optional[Range] = None,
         skip_leading_comments: bool = True,
 ) -> None:
     if expected_range_in_parent is None:
@@ -2138,7 +2138,7 @@ def _validate_pos_and_ranges(
 
     assert actual_pos_in_parent == start_position_in_parent
     assert actual_pos_in_file == start_position_in_file
-    assert locatable.te_size(skip_leading_comments=skip_leading_comments) == size
+    assert locatable.size(skip_leading_comments=skip_leading_comments) == size
     assert actual_range_in_parent == expected_range_in_parent
     if provided_parent_position_in_file is not None:
         pos_in_file_via_parent_pos = actual_pos_in_parent.relative_to(
@@ -2151,8 +2151,8 @@ def _validate_pos_and_ranges(
         assert range_in_file_via_parent_pos == expected_range_in_file
 
 
-def _size(line_span: int, char_offset: int = 0) -> TERange:
-    return TERange(
+def _size(line_span: int, char_offset: int = 0) -> Range:
+    return Range(
         START_POSITION,
-        TEPosition(line_span, char_offset),
+        Position(line_span, char_offset),
     )

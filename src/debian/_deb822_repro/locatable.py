@@ -18,7 +18,7 @@ if sys.version_info >= (3, 10):
 
 
 @dataclasses.dataclass(frozen=True, **_DATA_CLASS_OPTIONAL_ARGS)
-class TEPosition:
+class Position:
     """Describes a "cursor" position inside a file
 
     It consists of a line position (0-based line number) and a cursor position.  This is modelled
@@ -41,7 +41,7 @@ class TEPosition:
         """The line number as human would count it"""
         return self.line_position + 1
 
-    def relative_to(self, new_base: "TEPosition") -> "TEPosition":
+    def relative_to(self, new_base: "Position") -> "Position":
         """Offsets the position relative to another position
 
         This is useful to avoid the `position_in_file()` method by caching where
@@ -74,14 +74,14 @@ class TEPosition:
         else:
             line_number = self.line_position + new_base.line_position
             line_char_offset = self.cursor_position
-        return TEPosition(
+        return Position(
             line_number,
             line_char_offset,
         )
 
 
 @dataclasses.dataclass(frozen=True, **_DATA_CLASS_OPTIONAL_ARGS)
-class TERange:
+class Range:
     """Describes a range inside a file
 
     This can be useful to describe things like "from line 4, cursor position 2
@@ -94,8 +94,8 @@ class TERange:
 
     This is modelled after the "Range" in Language Server Protocol (LSP).
     """
-    start_pos: TEPosition
-    end_pos: TEPosition
+    start_pos: Position
+    end_pos: Position
 
     @property
     def start_line_position(self) -> int:
@@ -150,13 +150,13 @@ class TERange:
         return self.end_line_position - self.start_line_position
 
     @classmethod
-    def between(cls, a: TEPosition, b: TEPosition) -> "Self":
+    def between(cls, a: Position, b: Position) -> "Self":
         """Computes the range between two positions
 
         Unlike the constructor, this will always create a "positive" range.
         That is, the "earliest" position will always be the start position
         regardless of the order they were passed to `between`. When using
-        the TERange constructor, you have freedom to do "inverse" ranges
+        the Range constructor, you have freedom to do "inverse" ranges
         in case that is ever useful
         """
         if a.line_position > b.line_position or \
@@ -168,7 +168,7 @@ class TERange:
             b,
         )
 
-    def relative_to(self, new_base: TEPosition) -> "TERange":
+    def relative_to(self, new_base: Position) -> "Range":
         """Offsets the range relative to another position
 
         This is useful to avoid the `position_in_file()` method by caching where
@@ -193,12 +193,12 @@ class TERange:
         """
         if new_base == START_POSITION:
             return self
-        return TERange(
+        return Range(
             self.start_pos.relative_to(new_base),
             self.end_pos.relative_to(new_base),
         )
 
-    def as_size(self) -> "TERange":
+    def as_size(self) -> "Range":
         """Reduces the range to a "size"
 
         The returned range will always have its start position to (0, 0) and
@@ -216,16 +216,16 @@ class TERange:
         else:
             delta = self.end_cursor_position - self.start_cursor_position
             new_end_cursor_position = delta
-        return TERange(
+        return Range(
             START_POSITION,
-            TEPosition(
+            Position(
                 line_count,
                 new_end_cursor_position,
             )
         )
 
     @classmethod
-    def from_position_and_size(cls, base: TEPosition, size: "TERange") -> "Self":
+    def from_position_and_size(cls, base: Position, size: "Range") -> "Self":
         """Compute a range from a position and the size of another range
 
         This provides you with a range starting at the base position that has
@@ -250,14 +250,14 @@ class TERange:
             cursor_position += delta
         return cls(
             base,
-            TEPosition(
+            Position(
                 line_position,
                 cursor_position,
             )
         )
 
     @classmethod
-    def from_position_and_sizes(cls, base: TEPosition, sizes: Iterable["TERange"]) -> "Self":
+    def from_position_and_sizes(cls, base: Position, sizes: Iterable["Range"]) -> "Self":
         """Compute a range from a position and the size of number of ranges
 
         :param base: The desired starting position
@@ -280,18 +280,18 @@ class TERange:
                 cursor_position += delta
         return cls(
             base,
-            TEPosition(
+            Position(
                 line_position,
                 cursor_position,
             )
         )
 
 
-START_POSITION = TEPosition(0, 0)
-SECOND_CHAR_POS = TEPosition(0, 1)
-SECOND_LINE_POS = TEPosition(1, 0)
-ONE_CHAR_RANGE = TERange.between(START_POSITION, SECOND_CHAR_POS)
-ONE_LINE_RANGE = TERange.between(START_POSITION, SECOND_LINE_POS)
+START_POSITION = Position(0, 0)
+SECOND_CHAR_POS = Position(0, 1)
+SECOND_LINE_POS = Position(1, 0)
+ONE_CHAR_RANGE = Range.between(START_POSITION, SECOND_CHAR_POS)
+ONE_LINE_RANGE = Range.between(START_POSITION, SECOND_LINE_POS)
 
 
 class Locatable:
@@ -302,7 +302,7 @@ class Locatable:
         # type: () -> Optional[Deb822Element]
         raise NotImplementedError
 
-    def position_in_parent(self, *, skip_leading_comments: bool = True) -> TEPosition:
+    def position_in_parent(self, *, skip_leading_comments: bool = True) -> Position:
         """The start position of this token/element inside its parent
 
         This is operation is generally linear to the number of "parts" (elements/tokens)
@@ -312,7 +312,7 @@ class Locatable:
           that can be skipped will be excluded in the position of this locatable.
           This is useful if you want the position "semantic" content of a field
           without also highlighting a leading comment. Remember to align this
-          parameter with the `te_size` call, so the range does not "overshoot"
+          parameter with the `size` call, so the range does not "overshoot"
           into the next element (or falls short and only covers part of an
           element). Note that this option can only be used to filter out leading
           comments when the comments are a subset of the element. It has no
@@ -327,13 +327,13 @@ class Locatable:
         if parent is None:
             raise TypeError("Cannot determine the position since the object is detached")
         relevant_parts = itertools.takewhile(lambda x: x is not self, parent.iter_parts())
-        span = TERange.from_position_and_sizes(
+        span = Range.from_position_and_sizes(
             START_POSITION,
-            (x.te_size(skip_leading_comments=False) for x in relevant_parts),
+            (x.size(skip_leading_comments=False) for x in relevant_parts),
         )
         return span.end_pos
 
-    def range_in_parent(self, *, skip_leading_comments: bool = True) -> TERange:
+    def range_in_parent(self, *, skip_leading_comments: bool = True) -> Range:
         """The range of this token/element inside its parent
 
         This is operation is generally linear to the number of "parts" (elements/tokens)
@@ -343,19 +343,19 @@ class Locatable:
           that can be skipped will be excluded in the position of this locatable.
           This is useful if you want the position "semantic" content of a field
           without also highlighting a leading comment. Remember to align this
-          parameter with the `te_size` call, so the range does not "overshoot"
+          parameter with the `size` call, so the range does not "overshoot"
           into the next element (or falls short and only covers part of an
           element). Note that this option can only be used to filter out leading
           comments when the comments are a subset of the element. It has no
           effect on elements that are entirely made of comments.
         """
         pos = self.position_in_parent(skip_leading_comments=skip_leading_comments)
-        return TERange.from_position_and_size(
+        return Range.from_position_and_size(
             pos,
-            self.te_size(skip_leading_comments=skip_leading_comments)
+            self.size(skip_leading_comments=skip_leading_comments)
         )
 
-    def position_in_file(self, *, skip_leading_comments: bool = True) -> TEPosition:
+    def position_in_file(self, *, skip_leading_comments: bool = True) -> Position:
         """The start position of this token/element in this file
 
         This is an *expensive* operation and in many cases have to traverse
@@ -368,7 +368,7 @@ class Locatable:
           that can be skipped will be excluded in the position of this locatable.
           This is useful if you want the position "semantic" content of a field
           without also highlighting a leading comment. Remember to align this
-          parameter with the `te_size` call, so the range does not "overshoot"
+          parameter with the `size` call, so the range does not "overshoot"
           into the next element (or falls short and only covers part of an
           element). Note that this option can only be used to filter out leading
           comments when the comments are a subset of the element. It has no
@@ -383,7 +383,7 @@ class Locatable:
             position = position.relative_to(parent_position)
         return position
 
-    def te_size(self, *, skip_leading_comments: bool = True) -> TERange:
+    def size(self, *, skip_leading_comments: bool = True) -> Range:
         """Describe the objects size as a continuous range
 
         :param skip_leading_comments: If True, then if any leading comment that
