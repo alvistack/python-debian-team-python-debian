@@ -978,6 +978,14 @@ class Deb822Element(Locatable):
         return False
 
     @property
+    def is_whitespace(self) -> bool:
+        return False
+
+    @property
+    def is_separator(self) -> bool:
+        return False
+
+    @property
     def parent_element(self):
         # type: () -> Optional[Deb822Element]
         return resolve_ref(self._parent_element)

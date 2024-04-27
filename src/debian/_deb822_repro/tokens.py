@@ -142,6 +142,10 @@ class Deb822Token(Locatable):
         return False
 
     @property
+    def is_separator(self) -> bool:
+        return False
+
+    @property
     def text(self):
         # type: () -> str
         return self._text
@@ -232,12 +236,15 @@ class Deb822SpaceSeparatorToken(Deb822SemanticallySignificantWhiteSpace):
 
     __slots__ = ()
 
+    @property
+    def is_separator(self) -> bool:
+        return True
+
 
 class Deb822ErrorToken(Deb822Token):
     """Token that represents a syntactical error"""
 
     __slots__ = ()
-
 
     @property
     def is_error(self):
@@ -276,8 +283,12 @@ class Deb822SeparatorToken(Deb822Token):
 
     __slots__ = ()
 
+    @property
+    def is_separator(self) -> bool:
+        return True
 
-class Deb822FieldSeparatorToken(Deb822Token):
+
+class Deb822FieldSeparatorToken(Deb822SeparatorToken):
 
     __slots__ = ()
 
