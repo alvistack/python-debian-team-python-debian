@@ -1921,7 +1921,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         :param discard_comments_on_read: When getting a field value from the dict,
           this parameter decides how in-line comments are handled.  When setting
           the value, inline comments are still allowed and will be retained.
-          However, keep in mind that this option makes getter and setter assymetric
+          However, keep in mind that this option makes getter and setter asymmetric
           as a "get" following a "set" with inline comments will omit the comments
           even if they are there (see the code example).
         :param auto_map_initial_line_whitespace: Special-case the first value line
@@ -2808,7 +2808,7 @@ class Deb822FileElement(Deb822Element):
         """Inserts a paragraph into the file at the given "index" of paragraphs
 
         Note that if the index is between two paragraphs containing a "free
-        floating" comment (e.g. paragrah/start-of-file, empty line, comment,
+        floating" comment (e.g. paragraph/start-of-file, empty line, comment,
         empty line, paragraph) then it is unspecified which "side" of the
         comment the new paragraph will appear and this may change between
         versions of python-debian.

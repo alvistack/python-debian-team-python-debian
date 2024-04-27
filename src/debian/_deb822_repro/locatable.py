@@ -263,7 +263,7 @@ class Range:
         :param base: The desired starting position
         :param sizes: All the ranges that combined makes up the size of the
           desired position. Note that order can affect the end result. Particularly
-          the end character offset gets reset everytime a size spans a line.
+          the end character offset gets reset every time a size spans a line.
         :returns: A range at the provided base position that has the size of
           the provided range.
         """

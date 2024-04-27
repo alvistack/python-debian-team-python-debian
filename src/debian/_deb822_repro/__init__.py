@@ -53,7 +53,7 @@ Compared to debian.deb822
 -------------------------
 
 The round-trip safe API is primarily useful when your program is editing files
-and the file in question is (likely) to be hand-edited or formated directly by
+and the file in question is (likely) to be hand-edited or formatted directly by
 human maintainers.  This includes files like debian/control and the
 debian/copyright using the "DEP-5" format.
 
@@ -150,7 +150,7 @@ Deb822ParagraphElement.as_interpreted_dict_view method.
 Stability of this API
 ---------------------
 
-The API is subject to change based on feedback from early adoptors and beta
+The API is subject to change based on feedback from early adopters and beta
 testers.  That said, the code for valid files is unlikely to change in
 a backwards incompatible way.
 
