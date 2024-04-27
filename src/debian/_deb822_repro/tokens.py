@@ -460,6 +460,11 @@ def _value_line_tokenizer(func):
 def whitespace_split_tokenizer(v):
     # type: (str) -> Iterable[Deb822Token]
     assert "\n" not in v
+    if not v or v.isspace():
+        # Special-case: Empty field/whitespace only field
+        if v:
+            yield Deb822SpaceSeparatorToken(sys.intern(v))
+        return
     for match in _RE_WHITESPACE_SEPARATED_WORD_LIST.finditer(v):
         space_before, word, space_after = match.groups()
         if space_before:

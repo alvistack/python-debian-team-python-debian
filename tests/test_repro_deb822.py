@@ -1652,6 +1652,26 @@ class TestFormatPreservingDeb822Parser:
 
             arch_list.sort(key=_key_func)
 
+    def test_interpretation_empty(self):
+        # type: () -> None
+        original = textwrap.dedent('''\
+            Package: foo¶
+            Architecture: ¶
+            Empty-Field:¶
+        '''.replace("¶", ""))
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        stanza = next(iter(deb822_file))
+        arch = stanza.get_kvpair_element("Architecture")
+        assert arch is not None
+        v = arch.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
+        assert list(v) == []
+
+        empty_field = stanza.get_kvpair_element("Empty-Field")
+        assert empty_field is not None
+        v = empty_field.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
+        assert list(v) == []
+
+
     def test_interpretation_tab_preservation(self):
         # type: () -> None
 
