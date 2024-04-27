@@ -1808,7 +1808,7 @@ class TestFormatPreservingDeb822Parser:
 
         Package: foo
         # Some comment about architecture, which should not affect the position
-        # of later elements depending on the skip_leading_comments parameter
+        # of later elements depending on whether the comment is included or not
         Architecture: any
         # Some multiline comment
         # about the Depends field.
@@ -1822,9 +1822,7 @@ class TestFormatPreservingDeb822Parser:
         binary_paragraph = paragraphs[1]
 
         assert deb822_file.position_in_file() == START_POSITION
-        assert deb822_file.position_in_file(skip_leading_comments=False) == START_POSITION
         assert deb822_file.position_in_parent() == START_POSITION
-        assert deb822_file.position_in_parent(skip_leading_comments=False) == START_POSITION
 
         source_element = source_paragraph.get_kvpair_element("Source")
         build_depends = source_paragraph.get_kvpair_element("Build-Depends")
@@ -1836,9 +1834,7 @@ class TestFormatPreservingDeb822Parser:
             _size(1),
             expected_range_in_parent=Range(START_POSITION, Position(1, 0)),
             expected_range_in_file=Range(START_POSITION, Position(1, 0)),
-            provided_parent_position_in_file=deb822_file.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
         )
 
         _validate_pos_and_ranges(
@@ -1848,9 +1844,7 @@ class TestFormatPreservingDeb822Parser:
             _size(6),
             expected_range_in_parent=Range(Position(1, 0), Position(7, 0)),
             expected_range_in_file=Range(Position(1, 0), Position(7, 0)),
-            provided_parent_position_in_file=source_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
         )
 
         _validate_pos_and_ranges(
@@ -1860,9 +1854,7 @@ class TestFormatPreservingDeb822Parser:
             _size(9),
             expected_range_in_parent=Range(Position(11, 0), Position(20, 0)),
             expected_range_in_file=Range(Position(11, 0), Position(20, 0)),
-            provided_parent_position_in_file=source_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
         )
 
         depends = binary_paragraph.get_kvpair_element("Depends")
@@ -1874,42 +1866,16 @@ class TestFormatPreservingDeb822Parser:
 
         _validate_pos_and_ranges(
             depends,
-            Position(6, 0),
-            Position(17, 0),
-            _size(3),
-            expected_range_in_parent=Range(Position(6, 0), Position(9, 0)),
-            expected_range_in_file=Range(Position(17, 0), Position(20, 0)),
-            provided_parent_position_in_file=binary_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
-        )
-        _validate_pos_and_ranges(
-            depends,
             Position(4, 0),
             Position(15, 0),
             _size(5),
             expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
             expected_range_in_file=Range(Position(15, 0), Position(20, 0)),
-            provided_parent_position_in_file=binary_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
-            skip_leading_comments=False,
+            provided_parent_position_in_file=binary_paragraph.position_in_file(),
         )
 
-        depends_value_pos = depends.value_element.position_in_file(
-            skip_leading_comments=False
-        )
+        depends_value_pos = depends.value_element.position_in_file()
 
-        _validate_pos_and_ranges(
-            foo.locatable,
-            # Relative to the value part of the "depends" kvpair; not the kvpair itself
-            Position(0, 1),
-            Position(17, 9),
-            _size(0, 3),
-            expected_range_in_parent=Range(Position(0, 1), Position(0, 4)),
-            expected_range_in_file=Range(Position(17, 9), Position(17, 12)),
-            provided_parent_position_in_file=depends_value_pos,
-        )
         _validate_pos_and_ranges(
             bar.locatable,
             # Relative to the value part of the "depends" kvpair; not the kvpair itself
@@ -1944,22 +1910,9 @@ class TestFormatPreservingDeb822Parser:
             _size(9),
             expected_range_in_parent=Range(Position(12, 0), Position(21, 0)),
             expected_range_in_file=Range(Position(12, 0), Position(21, 0)),
-            provided_parent_position_in_file=deb822_file.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
         )
 
-        _validate_pos_and_ranges(
-            depends,
-            Position(6, 0),
-            Position(18, 0),
-            _size(3),
-            expected_range_in_parent=Range(Position(6, 0), Position(9, 0)),
-            expected_range_in_file=Range(Position(18, 0), Position(21, 0)),
-            provided_parent_position_in_file=binary_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
-        )
         _validate_pos_and_ranges(
             depends,
             Position(4, 0),
@@ -1967,15 +1920,10 @@ class TestFormatPreservingDeb822Parser:
             _size(5),
             expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
             expected_range_in_file=Range(Position(16, 0), Position(21, 0)),
-            provided_parent_position_in_file=binary_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
-            skip_leading_comments=False,
+            provided_parent_position_in_file=binary_paragraph.position_in_file(),
         )
 
-        depends_value_pos = depends.value_element.position_in_file(
-            skip_leading_comments=False
-        )
+        depends_value_pos = depends.value_element.position_in_file()
 
         _validate_pos_and_ranges(
             foo.locatable,
@@ -2018,9 +1966,7 @@ class TestFormatPreservingDeb822Parser:
             _size(1),
             expected_range_in_parent=Range(START_POSITION, Position(1, 0)),
             expected_range_in_file=Range(START_POSITION, Position(1, 0)),
-            provided_parent_position_in_file=deb822_file.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
         )
 
         _validate_pos_and_ranges(
@@ -2030,9 +1976,7 @@ class TestFormatPreservingDeb822Parser:
             _size(6),
             expected_range_in_parent=Range(Position(1, 0), Position(7, 0)),
             expected_range_in_file=Range(Position(1, 0), Position(7, 0)),
-            provided_parent_position_in_file=source_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
         )
 
         # ... until we rotate the field above them
@@ -2045,9 +1989,7 @@ class TestFormatPreservingDeb822Parser:
             _size(1),
             expected_range_in_parent=Range(Position(1, 0), Position(2, 0)),
             expected_range_in_file=Range(Position(1, 0), Position(2, 0)),
-            provided_parent_position_in_file=deb822_file.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
         )
 
         _validate_pos_and_ranges(
@@ -2057,9 +1999,7 @@ class TestFormatPreservingDeb822Parser:
             _size(6),
             expected_range_in_parent=Range(Position(2, 0), Position(8, 0)),
             expected_range_in_file=Range(Position(2, 0), Position(8, 0)),
-            provided_parent_position_in_file=source_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
         )
 
         # But for good measure, the binary fields remained unchanged
@@ -2071,22 +2011,9 @@ class TestFormatPreservingDeb822Parser:
             _size(9),
             expected_range_in_parent=Range(Position(12, 0), Position(21, 0)),
             expected_range_in_file=Range(Position(12, 0), Position(21, 0)),
-            provided_parent_position_in_file=deb822_file.position_in_file(
-                skip_leading_comments=False
-            ),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
         )
 
-        _validate_pos_and_ranges(
-            depends,
-            Position(6, 0),
-            Position(18, 0),
-            _size(3),
-            expected_range_in_parent=Range(Position(6, 0), Position(9, 0)),
-            expected_range_in_file=Range(Position(18, 0), Position(21, 0)),
-            provided_parent_position_in_file=binary_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
-        )
         _validate_pos_and_ranges(
             depends,
             Position(4, 0),
@@ -2094,15 +2021,10 @@ class TestFormatPreservingDeb822Parser:
             _size(5),
             expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
             expected_range_in_file=Range(Position(16, 0), Position(21, 0)),
-            provided_parent_position_in_file=binary_paragraph.position_in_file(
-                skip_leading_comments=False
-            ),
-            skip_leading_comments=False,
+            provided_parent_position_in_file=binary_paragraph.position_in_file(),
         )
 
-        depends_value_pos = depends.value_element.position_in_file(
-            skip_leading_comments=False
-        )
+        depends_value_pos = depends.value_element.position_in_file()
 
         _validate_pos_and_ranges(
             foo.locatable,
@@ -2146,19 +2068,18 @@ def _validate_pos_and_ranges(
         provided_parent_position_in_file: Optional[Position],
         expected_range_in_parent: Optional[Range] = None,
         expected_range_in_file: Optional[Range] = None,
-        skip_leading_comments: bool = True,
 ) -> None:
     if expected_range_in_parent is None:
         expected_range_in_parent = size.relative_to(start_position_in_parent)
     if expected_range_in_file is None:
         expected_range_in_file = size.relative_to(start_position_in_file)
-    actual_pos_in_parent = locatable.position_in_parent(skip_leading_comments=skip_leading_comments)
-    actual_pos_in_file = locatable.position_in_file(skip_leading_comments=skip_leading_comments)
-    actual_range_in_parent = locatable.range_in_parent(skip_leading_comments=skip_leading_comments)
+    actual_pos_in_parent = locatable.position_in_parent()
+    actual_pos_in_file = locatable.position_in_file()
+    actual_range_in_parent = locatable.range_in_parent()
 
     assert actual_pos_in_parent == start_position_in_parent
     assert actual_pos_in_file == start_position_in_file
-    assert locatable.size(skip_leading_comments=skip_leading_comments) == size
+    assert locatable.size() == size
     assert actual_range_in_parent == expected_range_in_parent
     if provided_parent_position_in_file is not None:
         pos_in_file_via_parent_pos = actual_pos_in_parent.relative_to(

@@ -151,8 +151,8 @@ class Deb822Token(Locatable):
         # type: () -> str
         return self._text
 
-    def size(self, *, skip_leading_comments: bool = False) -> Range:
-        # As tokens are an atomtic unit
+    def size(self) -> Range:
+        # As tokens are an atomic unit
         token_size = self._token_size
         if token_size is not None:
             return token_size
