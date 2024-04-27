@@ -340,8 +340,7 @@ class ArMember(object):
             return b''
         return buf
 
-    def readlines(self, sizehint=0):
-        # type: (int) -> List[bytes]
+    def readlines(self, sizehint: int = 0) -> List[bytes]:
         # pylint: disable=unused-argument
         buf = None
         lines = []
@@ -353,10 +352,8 @@ class ArMember(object):
 
         return lines
 
-    def seek(self, offset, whence=0):
-        # type: (int, int) -> None
-        if self.__cur < self.__offset:
-            self.__cur = self.__offset
+    def seek(self, offset: int, whence: int = 0) -> None:
+        self.__cur = max(self.__cur, self.__offset)
 
         if whence < 2 and offset + self.__cur < self.__offset:
             raise IOError("Can't seek at %d" % offset)
