@@ -221,6 +221,9 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         # type: () -> Iterator[VE]
         yield from (v for v in self._token_list if isinstance(v, self._vtype))
 
+    def iter_parts(self) -> Iterable[TokenOrElement]:
+        yield from self._token_list
+
     def _mark_changed(self):
         # type: () -> None
         self._changed = True
@@ -550,8 +553,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         # type: () -> str
         return "".join(t.text for t in self._iter_content_as_tokens())
 
-    def _update_field(self):
-        # type: () -> None
+    def _generate_kvpair(self) -> "Deb822KeyValuePairElement":
         kvpair_element = self._kvpair_element
         field_name = kvpair_element.field_name
         token_list = self._token_list
@@ -597,7 +599,17 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         assert isinstance(paragraph, Deb822NoDuplicateFieldsParagraphElement)
         new_kvpair_element = paragraph.get_kvpair_element(field_name)
         assert new_kvpair_element is not None
-        kvpair_element.value_element = new_kvpair_element.value_element
+        return new_kvpair_element
+
+    def convert_to_text(self, *, with_field_name: bool = False) -> str:
+        kvpair = self._generate_kvpair()
+        element = kvpair if with_field_name else kvpair.value_element
+        return element.convert_to_text()
+
+    def _update_field(self):
+        # type: () -> None
+        kvpair_element = self._kvpair_element
+        kvpair_element.value_element = self._generate_kvpair().value_element
         self._changed = False
 
     def sort_elements(self, *,
