@@ -488,8 +488,7 @@ class Deb822Dict(_Deb822Dict_base):
         for key in self.__keys:
             yield str(key)
 
-    def __len__(self):
-        # type: () -> int
+    def __len__(self) -> int:
         return len(self.__keys)
 
     def __setitem__(self, key, value):
@@ -572,8 +571,7 @@ class Deb822Dict(_Deb822Dict_base):
             key = default_field_sort_key
         self.__keys = OrderedSet(sorted(self.__keys, key=key))
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return '{%s}' % ', '.join(['%r: %r' % (k, v) for k, v in self.items()])
 
     def __eq__(self, other):
@@ -875,8 +873,7 @@ class Deb822(Deb822Dict):
                 entry = '%s: %s\n' % (key, value)
             yield entry
 
-    def _dump_str(self):
-        # type: () -> str
+    def _dump_str(self) -> str:
         return "".join(self._dump_format())
 
     def _dump_fd_b(self,
@@ -895,8 +892,7 @@ class Deb822(Deb822Dict):
             fd.write(entry)
 
     @overload
-    def dump(self):
-        # type: () -> str
+    def dump(self) -> str:
         pass
 
     @overload
@@ -1252,15 +1248,13 @@ class GpgInfo(_BaseGpgInfo):
         self.out = None  # type: Optional[List[str]]
         self.err = None  # type: Optional[List[str]]
 
-    def valid(self):
-        # type: () -> bool
+    def valid(self) -> bool:
         """Is the signature valid?"""
         return 'GOODSIG' in self or 'VALIDSIG' in self
 
 # XXX implement as a property?
 # XXX handle utf-8 %-encoding
-    def uid(self):
-        # type: () -> None
+    def uid(self) -> None:
         """Return the primary ID of the signee key, None is not available"""
 
     @classmethod
@@ -1919,8 +1913,7 @@ class Changes(_gpg_multivalued, _VersionAccessorMixin):
         "checksums-sha512": ["sha512", "size", "name"],
     }
 
-    def get_pool_path(self):
-        # type: () -> str
+    def get_pool_path(self) -> str:
         """Return the path in the pool where the files would be installed"""
 
         # This is based on the section listed for the first file.  While
@@ -2066,18 +2059,15 @@ class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
         # type: () -> Optional[List[str]]
         return self._get_array_value('Architecture')
 
-    def is_build_source(self):
-        # type: () -> bool
+    def is_build_source(self) -> bool:
         arches = [arch for arch in self.get_architecture()  # type: ignore
                   if arch == "source"]
         return len(arches) == 1
 
-    def is_build_arch_all(self):
-        # type: () -> bool
+    def is_build_arch_all(self) -> bool:
         return 'all' in self.get_architecture()  # type: ignore
 
-    def is_build_arch_any(self):
-        # type: () -> bool
+    def is_build_arch_any(self) -> bool:
         arches = [arch for arch in self.get_architecture()  # type: ignore
                   if arch not in ("all", "source")]
         return len(arches) == 1

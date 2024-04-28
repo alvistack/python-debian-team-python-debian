@@ -8,8 +8,7 @@ from debian.substvars import Substvars, Substvar
 
 class TestSubstvars:
 
-    def test_substvars(self):
-        # type: () -> None
+    def test_substvars(self) -> None:
         substvars = Substvars()
 
         assert substvars.substvars_path is None, None
@@ -38,15 +37,13 @@ class TestSubstvars:
         del substvars['foo']
         assert not ('foo' in substvars)
 
-    def test_save_raises(self):
-        # type: () -> None
+    def test_save_raises(self) -> None:
         s = Substvars()
         with pytest.raises(TypeError):
             # Should raise because it has no base file
             s.save()
 
-    def test_save(self):
-        # type: () -> None
+    def test_save(self) -> None:
         with TemporaryDirectory() as tmpdir:
             filename = os.path.join(tmpdir, "foo.substvars")
             # Obviously, this does not exist
@@ -64,8 +61,7 @@ class TestSubstvars:
                 assert svars['foo'] == "anything goes"
                 assert svars.as_substvar["foo"].assignment_operator == "?="
 
-    def test_equals(self):
-        # type: () -> None
+    def test_equals(self) -> None:
         foo_a = Substvar("foo", assignment_operator="=")
         foo_b = Substvar("foo", assignment_operator="=")
         foo_optional_a = Substvar("foo", assignment_operator="?=")

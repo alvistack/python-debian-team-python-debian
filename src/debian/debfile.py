@@ -394,8 +394,7 @@ class DebPart:
         # type: (Union[str, Path]) ->  Optional[Union[bytes, Text]]
         return self.get_content(fname)
 
-    def close(self):
-        # type: () -> None
+    def close(self) -> None:
         self.__member.close()
 
 
@@ -420,8 +419,7 @@ class DebControl(DebPart):
 
         return scripts
 
-    def debcontrol(self):
-        # type: () -> Deb822
+    def debcontrol(self) -> Deb822:
         """ Return the debian/control as a Deb822 (a Debian-specific dict-like
         class) object.
 
@@ -530,13 +528,11 @@ class DebFile(ArFile):
         self.__version = f.read().strip()
         f.close()
 
-    def __updatePkgName(self):
-        # type: () -> None
+    def __updatePkgName(self) -> None:
         self.__pkgname = self.debcontrol()['package']
 
     @property
-    def version(self):
-        # type: () -> bytes
+    def version(self) -> bytes:
         return self.__version
 
     @property
@@ -551,8 +547,7 @@ class DebFile(ArFile):
 
     # proxy methods for the appropriate parts
 
-    def debcontrol(self):
-        # type: () -> Deb822
+    def debcontrol(self) -> Deb822:
         """ See .control.debcontrol() """
         return self.control.debcontrol()
 
@@ -597,13 +592,11 @@ class DebFile(ArFile):
 
         return None
 
-    def close(self):
-        # type: () -> None
+    def close(self) -> None:
         self.control.close()
         self.data.close()
 
-    def __enter__(self):
-        # type: () -> DebFile
+    def __enter__(self) -> 'DebFile':
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

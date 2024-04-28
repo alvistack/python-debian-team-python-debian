@@ -103,8 +103,7 @@ class ValueReference(Generic[TE]):
         return node
 
     @property
-    def value(self):
-        # type: () -> str
+    def value(self) -> str:
         """Resolve the reference into a str"""
         return self._render(self._resolve_node().value)
 
@@ -125,13 +124,11 @@ class ValueReference(Generic[TE]):
             self._mutation_notifier()
 
     @property
-    def locatable(self):
-        # type: () -> Locatable
+    def locatable(self) -> Locatable:
         """Reference to a locatable that can be used to determine where this value is"""
         return self._resolve_node().value
 
-    def remove(self):
-        # type: () -> None
+    def remove(self) -> None:
         """Remove the underlying value
 
         This will invalidate the ValueReference (and any other ValueReferences pointing
@@ -202,8 +199,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         # type: () -> Iterator[str]
         yield from (self._render(v) for v in self.value_parts)
 
-    def __bool__(self):
-        # type: () -> bool
+    def __bool__(self) -> bool:
         return next(iter(self), None) is not None
 
     def __exit__(self,
@@ -224,8 +220,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
     def iter_parts(self) -> Iterable[TokenOrElement]:
         yield from self._token_list
 
-    def _mark_changed(self):
-        # type: () -> None
+    def _mark_changed(self) -> None:
         self._changed = True
 
     def iter_value_references(self):
@@ -436,13 +431,11 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         self._changed = True
         value_parts.append(vt)
 
-    def _previous_is_newline(self):
-        # type: () -> bool
+    def _previous_is_newline(self) -> bool:
         tail = self._token_list.tail
         return tail is not None and tail.convert_to_text().endswith("\n")
 
-    def append_newline(self):
-        # type: () -> None
+    def append_newline(self) -> None:
         if self._previous_is_newline():
             raise ValueError("Cannot add a newline after a token that ends on a newline")
         self._token_list.append(Deb822NewlineAfterValueToken())
@@ -456,8 +449,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         self._token_list.append(comment_token)
 
     @property
-    def _continuation_line_char(self):
-        # type: () -> str
+    def _continuation_line_char(self) -> str:
         char = self.__continuation_line_char
         if char is None:
             # Use ' ' by default but match the existing field if possible.
@@ -469,23 +461,19 @@ class Deb822ParsedTokenList(Generic[VE, ST],
             self.__continuation_line_char = char
         return char
 
-    def _append_continuation_line_token_if_necessary(self):
-        # type: () -> None
+    def _append_continuation_line_token_if_necessary(self) -> None:
         tail = self._token_list.tail
         if tail is not None and tail.convert_to_text().endswith("\n"):
             self._token_list.append(Deb822ValueContinuationToken(self._continuation_line_char))
 
-    def reformat_when_finished(self):
-        # type: () -> None
+    def reformat_when_finished(self) -> None:
         self._enable_reformatting()
         self._changed = True
 
-    def _enable_reformatting(self):
-        # type: () -> None
+    def _enable_reformatting(self) -> None:
         self._format_preserve_original_formatting = False
 
-    def no_reformatting_when_finished(self):
-        # type: () -> None
+    def no_reformatting_when_finished(self) -> None:
         self._format_preserve_original_formatting = True
 
     def value_formatter(self,
@@ -506,8 +494,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         if force_reformat:
             self._changed = True
 
-    def clear(self):
-        # type: () -> None
+    def clear(self) -> None:
         """Like list.clear() - removes all content (including comments and spaces)"""
         if self._token_list:
             self._changed = True
@@ -521,8 +508,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
             else:
                 yield te
 
-    def _generate_reformatted_field_content(self):
-        # type: () -> str
+    def _generate_reformatted_field_content(self) -> str:
         separator_token = self._default_separator_factory()
         vtype = self._vtype
         stype = self._stype
@@ -549,8 +535,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
                             _token_iter()
                             )
 
-    def _generate_field_content(self):
-        # type: () -> str
+    def _generate_field_content(self) -> str:
         return "".join(t.text for t in self._iter_content_as_tokens())
 
     def _generate_kvpair(self) -> "Deb822KeyValuePairElement":
@@ -606,8 +591,7 @@ class Deb822ParsedTokenList(Generic[VE, ST],
         element = kvpair if with_field_name else kvpair.value_element
         return element.convert_to_text()
 
-    def _update_field(self):
-        # type: () -> None
+    def _update_field(self) -> None:
         kvpair_element = self._kvpair_element
         kvpair_element.value_element = self._generate_kvpair().value_element
         self._changed = False
@@ -944,8 +928,7 @@ class Deb822Element(Locatable):
 
     __slots__ = ('_parent_element', '_full_size_cache', '__weakref__')
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
         self._full_size_cache = None  # type: Optional[Range]
 
@@ -1007,14 +990,12 @@ class Deb822Element(Locatable):
         # type: (Optional[Deb822Element]) -> None
         self._parent_element = weakref.ref(new_parent) if new_parent is not None else None
 
-    def _init_parent_of_parts(self):
-        # type: () -> None
+    def _init_parent_of_parts(self) -> None:
         for part in self.iter_parts():
             part.parent_element = self
 
     # Deliberately not a "text" property, to signal that it is not necessary cheap.
-    def convert_to_text(self):
-        # type: () -> str
+    def convert_to_text(self) -> str:
         return "".join(t.text for t in self.iter_tokens())
 
     def clear_parent_if_parent(self, parent):
@@ -1137,8 +1118,7 @@ class Deb822ValueLineElement(Deb822Element):
         # type: () -> Optional[Deb822WhitespaceToken]
         return self._newline_token
 
-    def add_newline_if_missing(self):
-        # type: () -> bool
+    def add_newline_if_missing(self) -> bool:
         if self._newline_token is None:
             self._newline_token = Deb822NewlineAfterValueToken()
             self._newline_token.parent_element = self
@@ -1162,8 +1142,7 @@ class Deb822ValueLineElement(Deb822Element):
             else:
                 yield part
 
-    def convert_content_to_text(self):
-        # type: () -> str
+    def convert_content_to_text(self) -> str:
         if len(self._value_tokens) == 1 \
                 and not self._leading_whitespace_token \
                 and not self._trailing_whitespace_token \
@@ -1207,8 +1186,7 @@ class Deb822ValueElement(Deb822Element):
         # type: () -> Iterable[TokenOrElement]
         yield from self._value_entry_elements
 
-    def add_final_newline_if_missing(self):
-        # type: () -> bool
+    def add_final_newline_if_missing(self) -> bool:
         if self._value_entry_elements:
             changed = self._value_entry_elements[-1].add_newline_if_missing()
             if changed:
@@ -1237,14 +1215,12 @@ class Deb822ParsedValueElement(Deb822Element):
             self._text_cached = None
             self._text_no_comments_cached = None
 
-    def convert_to_text(self):
-        # type: () -> str
+    def convert_to_text(self) -> str:
         if self._text_no_comments_cached is None:
             self._text_no_comments_cached = super().convert_to_text()
         return self._text_no_comments_cached
 
-    def convert_to_text_without_comments(self):
-        # type: () -> str
+    def convert_to_text_without_comments(self) -> str:
         if self._text_no_comments_cached is None:
             self._text_no_comments_cached = "".join(t.text
                                                     for t in self.iter_tokens()
@@ -1272,8 +1248,7 @@ class Deb822CommentElement(Deb822Element):
         # type: () -> bool
         return True
 
-    def __len__(self):
-        # type: () -> int
+    def __len__(self) -> int:
         return len(self._comment_tokens)
 
     def __getitem__(self, item):
@@ -1427,8 +1402,7 @@ else:
 class AutoResolvingMixin(Generic[T], _ParagraphMapping_Base[T]):
 
     @property
-    def _auto_resolve_ambiguous_fields(self):
-        # type: () -> bool
+    def _auto_resolve_ambiguous_fields(self) -> bool:
         return True
 
     @property
@@ -1436,8 +1410,7 @@ class AutoResolvingMixin(Generic[T], _ParagraphMapping_Base[T]):
         # type: () -> Deb822ParagraphElement
         raise NotImplementedError  # pragma: no cover
 
-    def __len__(self):
-        # type: () -> int
+    def __len__(self) -> int:
         return self._paragraph.kvpair_count
 
     def __contains__(self, item):
@@ -1473,23 +1446,19 @@ class Deb822ParagraphToStrWrapperMixin(AutoResolvingMixin[str],
                                        ABC):
 
     @property
-    def _auto_map_initial_line_whitespace(self):
-        # type: () -> bool
+    def _auto_map_initial_line_whitespace(self) -> bool:
         return True
 
     @property
-    def _discard_comments_on_read(self):
-        # type: () -> bool
+    def _discard_comments_on_read(self) -> bool:
         return True
 
     @property
-    def _auto_map_final_newline_in_multiline_values(self):
-        # type: () -> bool
+    def _auto_map_final_newline_in_multiline_values(self) -> bool:
         return True
 
     @property
-    def _preserve_field_comments_on_field_updates(self):
-        # type: () -> bool
+    def _preserve_field_comments_on_field_updates(self) -> bool:
         return True
 
     def _convert_value_to_str(self, kvpair_element):
@@ -1598,13 +1567,11 @@ class AbstractDeb822ParagraphWrapper(AutoResolvingMixin[T], ABC):
         return self.__paragraph
 
     @property
-    def _discard_comments_on_read(self):
-        # type: () -> bool
+    def _discard_comments_on_read(self) -> bool:
         return self.__discard_comments_on_read
 
     @property
-    def _auto_resolve_ambiguous_fields(self):
-        # type: () -> bool
+    def _auto_resolve_ambiguous_fields(self) -> bool:
         return self.__auto_resolve_ambiguous_fields
 
 
@@ -1652,18 +1619,15 @@ class Deb822DictishParagraphWrapper(AbstractDeb822ParagraphWrapper[str],
             auto_map_final_newline_in_multiline_values
 
     @property
-    def _auto_map_initial_line_whitespace(self):
-        # type: () -> bool
+    def _auto_map_initial_line_whitespace(self) -> bool:
         return self.__auto_map_initial_line_whitespace
 
     @property
-    def _preserve_field_comments_on_field_updates(self):
-        # type: () -> bool
+    def _preserve_field_comments_on_field_updates(self) -> bool:
         return self.__preserve_field_comments_on_field_updates
 
     @property
-    def _auto_map_final_newline_in_multiline_values(self):
-        # type: () -> bool
+    def _auto_map_final_newline_in_multiline_values(self) -> bool:
         return self.__auto_map_final_newline_in_multiline_values
 
 
@@ -1698,8 +1662,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         return Deb822DuplicateFieldsParagraphElement(kvpair_elements)
 
     @property
-    def has_duplicate_fields(self):
-        # type: () -> bool
+    def has_duplicate_fields(self) -> bool:
         """Tell whether this paragraph has duplicate fields"""
         return False
 
@@ -1962,8 +1925,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         raise NotImplementedError  # pragma: no cover
 
     @property
-    def kvpair_count(self):
-        # type: () -> int
+    def kvpair_count(self) -> int:
         raise NotImplementedError  # pragma: no cover
 
     def iter_keys(self):
@@ -2219,8 +2181,7 @@ class Deb822ParagraphElement(Deb822Element, Deb822ParagraphToStrWrapperMixin, AB
         pass
 
     @overload
-    def dump(self):
-        # type: () -> str
+    def dump(self) -> str:
         pass
 
     def dump(self,
@@ -2252,8 +2213,7 @@ class Deb822NoDuplicateFieldsParagraphElement(Deb822ParagraphElement):
         self._init_parent_of_parts()
 
     @property
-    def kvpair_count(self):
-        # type: () -> int
+    def kvpair_count(self) -> int:
         return len(self._kvpair_elements)
 
     def order_last(self, field):
@@ -2381,8 +2341,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         self._init_parent_of_parts()
 
     @property
-    def has_duplicate_fields(self):
-        # type: () -> bool
+    def has_duplicate_fields(self) -> bool:
         # Most likely, the answer is "True" but if the caller "fixes" the problem
         # then this can return "False"
         return len(self._kvpair_order) > len(self._kvpair_elements)
@@ -2516,8 +2475,7 @@ class Deb822DuplicateFieldsParagraphElement(Deb822ParagraphElement):
         yield from self._kvpair_order
 
     @property
-    def kvpair_count(self):
-        # type: () -> int
+    def kvpair_count(self) -> int:
         return len(self._kvpair_order)
 
     def iter_keys(self):
@@ -2747,8 +2705,7 @@ class Deb822FileElement(Deb822Element):
         return cls(LinkedList())
 
     @property
-    def is_valid_file(self):
-        # type: () -> bool
+    def is_valid_file(self) -> bool:
         """Returns true if the file is valid
 
         Invalid elements include error elements (Deb822ErrorElement) but also
@@ -2930,8 +2887,7 @@ class Deb822FileElement(Deb822Element):
         pass
 
     @overload
-    def dump(self):
-        # type: () -> str
+    def dump(self) -> str:
         pass
 
     def dump(self,

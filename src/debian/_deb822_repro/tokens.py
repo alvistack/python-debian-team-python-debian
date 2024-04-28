@@ -106,14 +106,12 @@ class Deb822Token(Locatable):
         self._token_size = None  # type: Optional[Range]
         self._verify_token_text()
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
                                             text=self._text.replace('\n', '\\n')
                                             )
 
-    def _verify_token_text(self):
-        # type: () -> None
+    def _verify_token_text(self) -> None:
         if '\n' in self._text:
             is_single_line_token = False
             if self.is_comment or self.is_error:
@@ -127,18 +125,15 @@ class Deb822Token(Locatable):
                                  " (only end on one)")
 
     @property
-    def is_whitespace(self):
-        # type: () -> bool
+    def is_whitespace(self) -> bool:
         return False
 
     @property
-    def is_comment(self):
-        # type: () -> bool
+    def is_comment(self) -> bool:
         return False
 
     @property
-    def is_error(self):
-        # type: () -> bool
+    def is_error(self) -> bool:
         return False
 
     @property
@@ -146,13 +141,11 @@ class Deb822Token(Locatable):
         return False
 
     @property
-    def text(self):
-        # type: () -> str
+    def text(self) -> str:
         return self._text
 
     # To support callers that want a simple interface for converting tokens and elements to text
-    def convert_to_text(self):
-        # type: () -> str
+    def convert_to_text(self) -> str:
         return self._text
 
     def size(self) -> Range:
@@ -201,8 +194,7 @@ class Deb822WhitespaceToken(Deb822Token):
     __slots__ = ()
 
     @property
-    def is_whitespace(self):
-        # type: () -> bool
+    def is_whitespace(self) -> bool:
         return True
 
 
@@ -220,8 +212,7 @@ class Deb822NewlineAfterValueToken(Deb822SemanticallySignificantWhiteSpace):
 
     __slots__ = ()
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         super().__init__('\n')
 
 
@@ -257,8 +248,7 @@ class Deb822CommentToken(Deb822Token):
     __slots__ = ()
 
     @property
-    def is_comment(self):
-        # type: () -> bool
+    def is_comment(self) -> bool:
         return True
 
 
@@ -292,8 +282,7 @@ class Deb822FieldSeparatorToken(Deb822SeparatorToken):
 
     __slots__ = ()
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         super().__init__(':')
 
 
@@ -302,8 +291,7 @@ class Deb822CommaToken(Deb822SeparatorToken):
 
     __slots__ = ()
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         super().__init__(',')
 
 
@@ -312,8 +300,7 @@ class Deb822PipeToken(Deb822SeparatorToken):
 
     __slots__ = ()
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         super().__init__('|')
 
 

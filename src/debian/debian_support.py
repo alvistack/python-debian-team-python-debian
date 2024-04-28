@@ -117,12 +117,10 @@ class ParseError(Exception):
         self.msg = msg
         super(ParseError, self).__init__(self)
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return self.msg
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return "ParseError(%r, %d, %r)" % (self.filename,
                                            self.lineno,
                                            self.msg)
@@ -219,8 +217,7 @@ class BaseVersion(object):
         private = "_BaseVersion__%s" % attr
         return getattr(self, private)  # type: ignore
 
-    def _update_full_version(self):
-        # type: () -> None
+    def _update_full_version(self) -> None:
         version = ""
         if self.__epoch is not None:
             version += self.__epoch + ":"
@@ -229,12 +226,10 @@ class BaseVersion(object):
             version += "-" + self.__debian_revision
         self.full_version = version
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return self.full_version if self.full_version is not None else ""
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return "%s('%s')" % (self.__class__.__name__, self)
 
     def _compare(self, other):
@@ -268,8 +263,7 @@ class BaseVersion(object):
         # type: (Any) -> bool
         return self._compare(other) > 0
 
-    def __hash__(self):
-        # type: () -> int
+    def __hash__(self) -> int:
         return hash(str(self))
 
 
@@ -468,8 +462,7 @@ class PackageFile:
         if pkg:
             yield pkg
 
-    def _aux_read_line(self):
-        # type: () -> str
+    def _aux_read_line(self) -> str:
         # Not always readline returns a byte object, also str
         # can be returned (i.e: StringIO)
         line = self.file.readline()
@@ -493,12 +486,10 @@ class PseudoEnum:
         self._name = name
         self._order = order
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return '%s(%r)' % (self.__class__.__name__, self._name)
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return self._name
 
     # TODO: Once we support only Python >= 2.7, we can simplify this using
@@ -528,8 +519,7 @@ class PseudoEnum:
         # type: (Any) -> Any
         return self._order > other._order
 
-    def __hash__(self):
-        # type: () -> int
+    def __hash__(self) -> int:
         return hash(self._order)
 
 

@@ -60,8 +60,7 @@ class QuadTupleDpkgArchitecture(_QuadTuple):
         return super().__contains__(item)
 
     @property
-    def is_wildcard(self):
-        # type: () -> bool
+    def is_wildcard(self) -> bool:
         return any(x == 'any' for x in self)
 
 

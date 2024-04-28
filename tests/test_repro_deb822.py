@@ -197,8 +197,7 @@ ROUND_TRIP_CASES = [
 
 class TestFormatPreservingDeb822Parser:
 
-    def test_round_trip_cases(self):
-        # type: () -> None
+    def test_round_trip_cases(self) -> None:
 
         for i, parse_case in enumerate(ROUND_TRIP_CASES, start=1):
             c = str(i)
@@ -256,8 +255,7 @@ class TestFormatPreservingDeb822Parser:
                                        " with newlines omitted"
             logging.info("Successfully passed case " + c)
 
-    def test_deb822_emulation(self):
-        # type: () -> None
+    def test_deb822_emulation(self) -> None:
 
         for i, parse_case in enumerate(ROUND_TRIP_CASES, start=1):
             if not parse_case.is_valid_file:
@@ -280,8 +278,7 @@ class TestFormatPreservingDeb822Parser:
                     av = repro_paragraph[k]
                     assert av == ev, "Ensure value for " + k + " is the same, case " + c
 
-    def test_regular_fields(self):
-        # type: () -> None
+    def test_regular_fields(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -352,8 +349,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving space + tab"
 
-    def test_empty_fields(self):
-        # type: () -> None
+    def test_empty_fields(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           Field: foo
@@ -383,8 +379,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked and generate a valid file"
 
-    def test_empty_fields_reorder(self):
-        # type: () -> None
+    def test_empty_fields_reorder(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           Field: foo
@@ -411,8 +406,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked and generate a valid file"
 
-    def test_case_preservation(self):
-        # type: () -> None
+    def test_case_preservation(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -479,8 +473,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving case"
 
-    def test_preserve_field_order_on_mutation(self):
-        # type: () -> None
+    def test_preserve_field_order_on_mutation(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           Section: bar
@@ -547,8 +540,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving field order"
 
-    def test_preserve_field_case_on_iter(self):
-        # type: () -> None
+    def test_preserve_field_case_on_iter(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           secTion: bar
@@ -573,8 +565,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected_keys == actual_keys, \
             "Keys returned by iterations should have original case"
 
-    def test_append_paragraph(self):
-        # type: () -> None
+    def test_append_paragraph(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -601,8 +592,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_append_paragraph_existing_trailing_newline(self):
-        # type: () -> None
+    def test_append_paragraph_existing_trailing_newline(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -630,8 +620,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_append_empty_paragraph(self):
-        # type: () -> None
+    def test_append_empty_paragraph(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -654,8 +643,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_append_tailing_comment(self):
-        # type: () -> None
+    def test_append_tailing_comment(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -684,8 +672,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_insert_paragraph(self):
-        # type: () -> None
+    def test_insert_paragraph(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -735,8 +722,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_insert_paragraph_with_comments(self):
-        # type: () -> None
+    def test_insert_paragraph_with_comments(self) -> None:
 
         # Note that it is unspecified where the "Package: bar"-paragraph is
         # inserted relative to the "# Initial comment"-comment.  This test case
@@ -800,8 +786,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_insert_paragraph_in_empty_file(self):
-        # type: () -> None
+    def test_insert_paragraph_in_empty_file(self) -> None:
 
         deb822_file = Deb822FileElement.new_empty_file()
         binary_paragraph = Deb822ParagraphElement.new_empty_paragraph()
@@ -819,8 +804,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_remove_paragraph(self):
-        # type: () -> None
+    def test_remove_paragraph(self) -> None:
         original = textwrap.dedent('''\
           Source: foo
           # Comment for RRR
@@ -904,8 +888,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Mutation should have worked while preserving comments"
 
-    def test_duplicate_fields(self):
-        # type: () -> None
+    def test_duplicate_fields(self) -> None:
 
         original = textwrap.dedent('''\
         Source: foo
@@ -973,8 +956,7 @@ class TestFormatPreservingDeb822Parser:
         assert expected == deb822_file.convert_to_text(), \
             "Fixed version should only have one Rules-Requires-Root field"
 
-    def test_sorting(self):
-        # type: () -> None
+    def test_sorting(self) -> None:
 
         name_order = {
             f: i
@@ -1060,8 +1042,7 @@ class TestFormatPreservingDeb822Parser:
         assert sorted_with_dups == deb822_file_with_dups.convert_to_text(), \
             "Sorting with duplicated fields work"
 
-    def test_reorder_nodups(self):
-        # type: () -> None
+    def test_reorder_nodups(self) -> None:
         content = textwrap.dedent("""
         Depends: bar
         Description: some-text
@@ -1109,8 +1090,7 @@ class TestFormatPreservingDeb822Parser:
         with pytest.raises(KeyError):
             paragraph.order_before('Architecture', 'Unknown-Field')
 
-    def test_reorder_dups(self):
-        # type: () -> None
+    def test_reorder_dups(self) -> None:
         content = textwrap.dedent("""
         Depends: bar
         Description: some-text
@@ -1261,8 +1241,7 @@ class TestFormatPreservingDeb822Parser:
         with pytest.raises(KeyError):
             paragraph.order_before('Architecture', 'Unknown-Field')
 
-    def test_interpretation(self):
-        # type: () -> None
+    def test_interpretation(self) -> None:
 
         original = textwrap.dedent('''\
         Package: foo
@@ -1652,8 +1631,7 @@ class TestFormatPreservingDeb822Parser:
 
             arch_list.sort(key=_key_func)
 
-    def test_interpretation_empty(self):
-        # type: () -> None
+    def test_interpretation_empty(self) -> None:
         original = textwrap.dedent('''\
             Package: foo¶
             Architecture: ¶
@@ -1671,10 +1649,7 @@ class TestFormatPreservingDeb822Parser:
         v = empty_field.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
         assert list(v) == []
 
-
-    def test_interpretation_tab_preservation(self):
-        # type: () -> None
-
+    def test_interpretation_tab_preservation(self) -> None:
         original = textwrap.dedent('''\
         Package: foo
         Architecture: amd64  i386
@@ -1766,8 +1741,7 @@ class TestFormatPreservingDeb822Parser:
             bd_list.append_newline()
             bd_list.append('bar (>= 1.0~)')
 
-    def test_mutate_field_preserves_whitespace(self):
-        # type: () -> None
+    def test_mutate_field_preserves_whitespace(self) -> None:
 
         original = textwrap.dedent('''\
         Package: foo

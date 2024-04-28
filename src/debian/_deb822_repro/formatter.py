@@ -73,8 +73,7 @@ class FormatterContentToken(object):
         return cls(text, _CONTENT_TYPE_VALUE)
 
     @property
-    def is_comment(self):
-        # type: () -> bool
+    def is_comment(self) -> bool:
         """True if this formatter token represent a comment
 
         This should be used for determining whether the token is a comment
@@ -104,8 +103,7 @@ class FormatterContentToken(object):
         return self._content_type is _CONTENT_TYPE_COMMENT
 
     @property
-    def is_value(self):
-        # type: () -> bool
+    def is_value(self) -> bool:
         """True if this formatter token represents a semantic value
 
         The formatter *MUST* preserve values as-in in its output.  It may
@@ -116,8 +114,7 @@ class FormatterContentToken(object):
         return self._content_type is _CONTENT_TYPE_VALUE
 
     @property
-    def is_separator(self):
-        # type: () -> bool
+    def is_separator(self) -> bool:
         """True if this formatter token represents a separator token
 
         The formatter is not required to preserve the provided separators but it
@@ -133,14 +130,12 @@ class FormatterContentToken(object):
         return self._content_type is _CONTENT_TYPE_SEPARATOR
 
     @property
-    def is_whitespace(self):
-        # type: () -> bool
+    def is_whitespace(self) -> bool:
         """True if this formatter token represents a whitespace token"""
         return self._content_type is _CONTENT_TYPE_SEPARATOR and self._text.isspace()
 
     @property
-    def text(self):
-        # type: () -> str
+    def text(self) -> str:
         """The actual context of the token
 
         This field *must not* be used to determine the type of token.  The
@@ -156,12 +151,10 @@ class FormatterContentToken(object):
         """
         return self._text
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return self._text
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return "{}({!r}, {}=True)".format(self.__class__.__name__, self._text, self._content_type)
 
 

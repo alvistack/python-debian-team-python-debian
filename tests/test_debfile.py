@@ -123,8 +123,7 @@ def find_test_file(filename):
 
 class TestToolsInstalled:
 
-    def test_ar_installed(self):
-        # type: () -> None
+    def test_ar_installed(self) -> None:
         """ test that ar is available from binutils (e.g. /usr/bin/ar) """
         # If test suite is running in FORBID_MISSING_AR mode where
         # having ar is mandatory, explicitly include a failing test to
@@ -132,8 +131,7 @@ class TestToolsInstalled:
         if FORBID_MISSING_AR and not _ar_path:
             pytest.fail("Required ar executable is not installed (tests run in FORBID_MISSING_AR mode)")
 
-    def test_dpkg_deb_installed(self):
-        # type: () -> None
+    def test_dpkg_deb_installed(self) -> None:
         """ test that dpkg-deb is available from dpkg (e.g. /usr/bin/dpkg-deb) """
         # If test suite is running in FORBID_MISSING_DPKG_DEB mode where
         # having dpkg-deb is mandatory, explicitly include a failing test to
@@ -141,8 +139,7 @@ class TestToolsInstalled:
         if FORBID_MISSING_DPKG_DEB and not _dpkg_deb_path:
             pytest.fail("Required dpkg-deb executable is not installed (tests run in FORBID_MISSING_DPKG_DEB mode)")
 
-    def test_zstd_installed(self):
-        # type: () -> None
+    def test_zstd_installed(self) -> None:
         """ test that zstd is available from zstd (e.g. /usr/bin/zstd) """
         # If test suite is running in FORBID_MISSING_ZSTD mode where
         # having zstd is mandatory, explicitly include a failing test to

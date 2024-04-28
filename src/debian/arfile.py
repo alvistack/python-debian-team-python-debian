@@ -94,8 +94,7 @@ class ArFile(object):
             self.__index_archive()
         # TODO write support
 
-    def __index_archive(self):
-        # type: () -> None
+    def __index_archive(self) -> None:
         if self.__fname:
             with open(self.__fname, "rb") as fp:
                 self.__collect_members(fp)
@@ -213,8 +212,7 @@ class ArMember(object):
         - size      size in bytes
         - fname     file name"""
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         # member name (i.e. filename) in the archive
         self.__name = None      # type: Optional[str]
         # last modification time
@@ -342,8 +340,7 @@ class ArMember(object):
             return b''
         return buf
 
-    def readlines(self, sizehint=0):
-        # type: (int) -> List[bytes]
+    def readlines(self, sizehint: int = 0) -> List[bytes]:
         # pylint: disable=unused-argument
         buf = None
         lines = []
@@ -355,10 +352,8 @@ class ArMember(object):
 
         return lines
 
-    def seek(self, offset, whence=0):
-        # type: (int, int) -> None
-        if self.__cur < self.__offset:
-            self.__cur = self.__offset
+    def seek(self, offset: int, whence: int = 0) -> None:
+        self.__cur = max(self.__cur, self.__offset)
 
         if whence < 2 and offset + self.__cur < self.__offset:
             raise IOError("Can't seek at %d" % offset)
@@ -370,24 +365,20 @@ class ArMember(object):
         elif whence == 2:
             self.__cur = self.__end + offset
 
-    def tell(self):
-        # type: () -> int
+    def tell(self) -> int:
         if self.__cur < self.__offset:
             return 0
         return self.__cur - self.__offset
 
-    def seekable(self):
-        # type: () -> bool
+    def seekable(self) -> bool:
         return True
 
-    def close(self):
-        # type: () -> None
+    def close(self) -> None:
         if self.__fp is not None and self.__fname is not None:
             self.__fp.close()
             self.__fp = None
 
-    def next(self):
-        # type: () -> bytes
+    def next(self) -> bytes:
         return self.readline()
 
     def __iter__(self):

@@ -82,8 +82,7 @@ class Substvar:
         self.assignment_operator = assignment_operator  # type: str
 
     @property
-    def assignment_operator(self):
-        # type: () -> str
+    def assignment_operator(self) -> str:
         return self._assignment_operator
 
     @assignment_operator.setter
@@ -103,8 +102,7 @@ class Substvar:
             self._value = {v.strip() for v in self._value.split(',')}
         self._value.add(dependency_clause)
 
-    def resolve(self):
-        # type: () -> str
+    def resolve(self) -> str:
         if isinstance(self._value, set):
             return ", ".join(sorted(self._value))
         return self._value
@@ -169,8 +167,7 @@ class Substvars(_Substvars_Base['Substvars']):
 
     __slots__ = ['_vars_dict', '_substvars_path']
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         self._vars_dict = OrderedDict()  # type: Dict[str, Substvar]
         self._substvars_path = None  # type: Optional[AnyPath]
 
@@ -330,8 +327,7 @@ class Substvars(_Substvars_Base['Substvars']):
             return False
         return self._vars == other._vars
 
-    def dump(self):
-        # type: () -> str
+    def dump(self) -> str:
         """Debug aid that generates a string representation of the content
 
         For persisting the contents, please consider `save()` or `write_substvars`.
@@ -340,8 +336,7 @@ class Substvars(_Substvars_Base['Substvars']):
                        for k, v in self._vars.items()
                        )
 
-    def save(self):
-        # type: () -> None
+    def save(self) -> None:
         """Save the substvars file
 
         Replace the path denoted by the `substvars_path` attribute with the
