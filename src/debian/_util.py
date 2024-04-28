@@ -38,8 +38,7 @@ class _CaseInsensitiveString(str):
         s.str_lower = str_.lower()
         return s
 
-    def __hash__(self):
-        # type: () -> int
+    def __hash__(self) -> int:
         return hash(self.str_lower)
 
     def __eq__(self, other):
@@ -53,8 +52,7 @@ class _CaseInsensitiveString(str):
         # type: (Any) -> Any
         return not self == other
 
-    def lower(self):
-        # type: () -> str
+    def lower(self) -> str:
         return self.str_lower
 
 
@@ -158,12 +156,10 @@ class LinkedList(Generic[T]):
         if values is not None:
             self.extend(values)
 
-    def __bool__(self):
-        # type: () -> bool
+    def __bool__(self) -> bool:
         return self.head_node is not None
 
-    def __len__(self):
-        # type: () -> int
+    def __len__(self) -> int:
         return self._size
 
     @property
@@ -171,8 +167,7 @@ class LinkedList(Generic[T]):
         # type: () -> Optional[T]
         return self.tail_node.value if self.tail_node is not None else None
 
-    def pop(self):
-        # type: () -> None
+    def pop(self) -> None:
         if self.tail_node is None:
             raise IndexError('pop from empty list')
         self.remove_node(self.tail_node)
@@ -272,8 +267,7 @@ class LinkedList(Generic[T]):
         for v in values:
             self.append(v)
 
-    def clear(self):
-        # type: () -> None
+    def clear(self) -> None:
         self.head_node = None
         self.tail_node = None
         self._size = 0
@@ -332,8 +326,7 @@ class OrderedSet:
         # Return an iterator of items in the opposite order they were added
         return iter(reversed(self.__order))
 
-    def __len__(self):
-        # type: () -> int
+    def __len__(self) -> int:
         return len(self.__order)
 
     def __contains__(self, item):

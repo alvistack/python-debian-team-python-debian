@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 import pickle
 import re
 
@@ -172,8 +174,7 @@ class DB:
     In-memory database mapping packages to tags and tags to packages.
     """
 
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         self.db = {}     # type: PkgTagDbType
         self.rdb = {}    # type: TagPkgDbType
 
@@ -212,24 +213,20 @@ class DB:
             else:
                 self.rdb[tag] = set((pkg))
 
-    def dump(self):
-        # type: () -> None
+    def dump(self) -> None:
         output(self.db)
 
-    def dump_reverse(self):
-        # type: () -> None
+    def dump_reverse(self) -> None:
         output(self.rdb)
 
-    def reverse(self):
-        # type: () -> DB
+    def reverse(self) -> DB:
         "Return the reverse collection, sharing tagsets with this one"
         res = DB()
         res.db = self.rdb
         res.rdb = self.db
         return res
 
-    def facet_collection(self):
-        # type: () -> DB
+    def facet_collection(self) -> DB:
         """
         Return a copy of this collection, but replaces the tag names
         with only their facets.
@@ -241,8 +238,7 @@ class DB:
             fcoll.insert(pkg, ftags)
         return fcoll
 
-    def copy(self):
-        # type: () -> DB
+    def copy(self) -> DB:
         """
         Return a copy of this collection, with the tagsets copied as
         well.
@@ -252,8 +248,7 @@ class DB:
         res.rdb = self.rdb.copy()
         return res
 
-    def reverse_copy(self):
-        # type: () -> DB
+    def reverse_copy(self) -> DB:
         """
         Return the reverse collection, with a copy of the tagsets of
         this one.
@@ -453,13 +448,11 @@ class DB:
         """Iterate over 2-tuples of (tag, pkgs)"""
         return self.rdb.items()
 
-    def package_count(self):
-        # type: () -> int
+    def package_count(self) -> int:
         """Return the number of packages"""
         return len(self.db)
 
-    def tag_count(self):
-        # type: () -> int
+    def tag_count(self) -> int:
         """Return the number of tags"""
         return len(self.rdb)
 

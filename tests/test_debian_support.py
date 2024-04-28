@@ -71,8 +71,7 @@ class TestVersion:
             assert v.debian_revision == debian, \
                              "%s: debian_revision broken" % cls
 
-    def testversions(self):
-        # type: () -> None
+    def testversions(self) -> None:
         self._test_version('1:1.4.1-1', '1', '1.4.1', '1')
         self._test_version('7.1.ds-1', None, '7.1.ds', '1')
         self._test_version('10.11.1.3-2', None, '10.11.1.3', '2')
@@ -102,8 +101,7 @@ class TestVersion:
             with pytest.raises(ValueError):
                 cls('a1:1.8.8-070403-1~priv1')
 
-    def test_version_updating(self):
-        # type: () -> None
+    def test_version_updating(self) -> None:
         for cls in self.test_classes:
             v = cls('1:1.4.1-1')
 
@@ -172,8 +170,7 @@ class TestVersion:
             assert truth_fn(v1, v2) == True, \
                             "%r %s %r != True" % (v1, cmp_oper, v2)
 
-    def test_comparisons(self):
-        # type: () -> None
+    def test_comparisons(self) -> None:
         """Test comparison against all combinations of Version classes"""
 
         self._test_comparison('0', '<', 'a')
@@ -202,8 +199,7 @@ class TestVersion:
 class TestRelease:
     """Tests for debian_support.Release"""
 
-    def test_comparison(self):
-        # type: () -> None
+    def test_comparison(self) -> None:
         assert intern_release('buzz') < intern_release('hamm')
         assert intern_release('sarge') < intern_release('etch')
         assert intern_release('lenny') < intern_release('squeeze')
@@ -212,16 +208,14 @@ class TestRelease:
 class TestHelperRoutine:
     """Tests for various debian_support helper routines"""
 
-    def test_read_lines_sha1(self):
-        # type: () -> None
+    def test_read_lines_sha1(self) -> None:
         empty = []  # type: List[bytes]
         assert read_lines_sha1(empty) == \
                          'da39a3ee5e6b4b0d3255bfef95601890afd80709'
         assert read_lines_sha1(['1\n', '23\n']) == \
                          '14293c9bd646a15dc656eaf8fba95124020dfada'
 
-    def test_patch_lines(self):
-        # type: () -> None
+    def test_patch_lines(self) -> None:
         file_a = ["%d\n" % x for x in range(1, 18)]
         file_b = ['0\n', '1\n', '<2>\n', '<3>\n', '4\n', '5\n', '7\n', '8\n',
                   '11\n', '12\n', '<13>\n', '14\n', '15\n', 'A\n', 'B\n',
@@ -232,8 +226,7 @@ class TestHelperRoutine:
         patch_lines(file_a, patches_from_ed_script(patch))
         assert ''.join(file_b) == ''.join(file_a)
 
-    def test_patch_lines_bytes(self):
-        # type: () -> None
+    def test_patch_lines_bytes(self) -> None:
         file_a = [b"%d\n" % x for x in range(1, 18)]
         file_b = [b'0\n', b'1\n', b'<2>\n', b'<3>\n', b'4\n', b'5\n', b'7\n', b'8\n',
                   b'11\n', b'12\n', b'<13>\n', b'14\n', b'15\n', b'A\n', b'B\n',
@@ -249,15 +242,13 @@ class TestHelperRoutine:
 class TestPdiff:
     """ Tests for functions dealing with pdiffs """
 
-    def test_download_gunzip_lines(self):
-        # type: () -> None
+    def test_download_gunzip_lines(self) -> None:
         filename = find_test_file('test_Packages.diff/test_Packages.1.gz')
         filename_uri = Path(filename).as_uri()
         lines = download_gunzip_lines(filename_uri)
         assert len(lines)
 
-    def test_update_file(self):
-        # type: () -> None
+    def test_update_file(self) -> None:
         # The original file
         original = find_test_file('test_Packages')
         # The 'remote' location from which the update will be made
@@ -288,8 +279,7 @@ class TestPdiff:
 class TestPackageFile:
     """ Tests for functions dealing with Packages and Sources """
 
-    def test_read_file(self):
-        # type: () -> None
+    def test_read_file(self) -> None:
         # test_Packages is ASCII
         packfile = find_test_file('test_Packages')
         pf = debian_support.PackageFile(packfile)
@@ -305,8 +295,7 @@ class TestPackageFile:
         assert len(pflist) == 4
         pf.file.close()
 
-    def test_read_fileobj(self):
-        # type: () -> None
+    def test_read_fileobj(self) -> None:
         packfile = find_test_file('test_Packages')
         with open(packfile, 'rb') as fhbin:
             pf = debian_support.PackageFile('ignored', file_obj=fhbin)

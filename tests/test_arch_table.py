@@ -33,8 +33,7 @@ else:
 
 class TestDpkgArchTable:
     
-    def test_matches_architecture(self):
-        # type: () -> None
+    def test_matches_architecture(self) -> None:
         arch_table = StubbedDpkgArchTable.load_arch_table()
         assert arch_table.matches_architecture("amd64", "linux-any")
         assert arch_table.matches_architecture("i386", "linux-any")
@@ -75,8 +74,7 @@ class TestDpkgArchTable:
         # another architecture, so the verification still works)
         assert not arch_table.matches_architecture('mipsel', 'any-mipsel')
 
-    def test_arch_equals(self):
-        # type: () -> None
+    def test_arch_equals(self) -> None:
         arch_table = StubbedDpkgArchTable.load_arch_table()
         assert arch_table.architecture_equals("linux-amd64", "amd64")
         assert not arch_table.architecture_equals("amd64", "linux-i386")
@@ -87,8 +85,7 @@ class TestDpkgArchTable:
         # Compatibility with dpkg: if the parameters are equal, then it always return True
         assert arch_table.architecture_equals("unknown", "unknown")
 
-    def test_architecture_is_concerned(self):
-        # type: () -> None
+    def test_architecture_is_concerned(self) -> None:
         arch_table = StubbedDpkgArchTable.load_arch_table()
         assert arch_table.architecture_is_concerned("linux-amd64", ["amd64", "i386"])
         assert not arch_table.architecture_is_concerned("amd64", ["!amd64", "!i386"])
@@ -105,8 +102,7 @@ class TestDpkgArchTable:
             allow_mixing_positive_and_negative=True
         )
 
-    def test_is_wildcard(self):
-        # type: () -> None
+    def test_is_wildcard(self) -> None:
         arch_table = StubbedDpkgArchTable.load_arch_table()
         assert arch_table.is_wildcard("linux-any")
         assert not arch_table.is_wildcard("amd64")
@@ -115,8 +111,7 @@ class TestDpkgArchTable:
         assert arch_table.is_wildcard("unknown-any")
 
     @pytest.mark.skipif(not HAS_REAL_DATA, reason="Missing real data")
-    def test_has_real_data(self):
-        # type: () -> None
+    def test_has_real_data(self) -> None:
         arch_table = DpkgArchTable.load_arch_table()
         # The tests here rely on the production data, so we can use mips (which is not present in
         # our stubbed data).

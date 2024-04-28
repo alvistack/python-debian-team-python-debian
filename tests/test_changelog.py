@@ -60,8 +60,7 @@ def open_utf8(filename, mode='r'):
 
 class TestChangelog:
 
-    def test_create_changelog(self):
-        # type: () -> None
+    def test_create_changelog(self) -> None:
         with open(find_test_file('test_changelog')) as f:
             c = f.read()
         cl = changelog.Changelog(c)
@@ -72,8 +71,7 @@ class TestChangelog:
             assert clines[i] == cslines[i]
         assert len(clines) == len(cslines), "Different lengths"
 
-    def test_create_changelog_single_block(self):
-        # type: () -> None
+    def test_create_changelog_single_block(self) -> None:
         with open(find_test_file('test_changelog')) as f:
             c = f.read()
         cl = changelog.Changelog(c, max_blocks=1)
@@ -96,8 +94,7 @@ class TestChangelog:
 
 """
 
-    def test_modify_changelog(self):
-        # type: () -> None
+    def test_modify_changelog(self) -> None:
         with open(find_test_file('test_modify_changelog1')) as f:
             c = f.read()
         cl = changelog.Changelog(c)
@@ -137,8 +134,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
 
         assert cl_text == bytes(cl)
 
-    def test_add_changelog_section(self):
-        # type: () -> None
+    def test_add_changelog_section(self) -> None:
         with open(find_test_file('test_modify_changelog2')) as f:
             c = f.read()
         cl = changelog.Changelog(c)
@@ -165,15 +161,13 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
             assert clines[i] == cslines[i]
         assert len(clines) == len(cslines), "Different lengths"
 
-    def test_strange_changelogs(self):
-        # type: () -> None
+    def test_strange_changelogs(self) -> None:
         """ Just opens and parses a strange changelog """
         with open(find_test_file('test_strange_changelog')) as f:
             c = f.read()
         cl = changelog.Changelog(c)
 
-    def test_set_version_with_string(self):
-        # type: () -> None
+    def test_set_version_with_string(self) -> None:
         with open(find_test_file('test_modify_changelog1')) as f:
             c1 = changelog.Changelog(f.read())
             f.seek(0)
@@ -186,8 +180,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         assert c1.upstream_version == c2.upstream_version
         assert c1.debian_version == c2.debian_version
 
-    def test_changelog_no_author(self):
-        # type: () -> None
+    def test_changelog_no_author(self) -> None:
         cl_no_author = """gnutls13 (1:1.4.1-1) unstable; urgency=low
 
   * New upstream release.
@@ -206,8 +199,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         with pytest.raises(changelog.ChangelogParseError):
             c2.parse_changelog(cl_no_author)
 
-    def test_magic_version_properties(self):
-        # type: () -> None
+    def test_magic_version_properties(self) -> None:
         with open(find_test_file('test_changelog')) as f:
             c = changelog.Changelog(f)
         assert c.debian_version == '1'
@@ -216,8 +208,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         assert c.epoch == '1'
         assert str(c.version) == c.full_version
 
-    def test_bugs_closed(self):
-        # type: () -> None
+    def test_bugs_closed(self) -> None:
         with open(find_test_file('test_changelog')) as f:
             c = iter(changelog.Changelog(f))
         # test bugs in a list
@@ -229,16 +220,14 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         assert block.bugs_closed == [375815]
         assert block.lp_bugs_closed == []
 
-    def test_allow_full_stops_in_distribution(self):
-        # type: () -> None
+    def test_allow_full_stops_in_distribution(self) -> None:
         with open(find_test_file('test_changelog_full_stops')) as f:
             c = changelog.Changelog(f)
         assert c.debian_version == None
         assert c.full_version == '1.2.3'
         assert str(c.version) == c.full_version
 
-    def test_str_consistent(self):
-        # type: () -> None
+    def test_str_consistent(self) -> None:
         # The parsing of the changelog (including the string representation)
         # should be consistent whether we give a single string, a list of
         # lines, or a file object to the Changelog initializer
@@ -251,8 +240,7 @@ haskell-src-exts (1.8.2-3) unstable; urgency=low
         for c in (c1, c2, c3):
             assert str(c) == cl_data
 
-    def test_utf8_encoded_file_input(self):
-        # type: () -> None
+    def test_utf8_encoded_file_input(self) -> None:
         f = open_utf8(find_test_file('test_changelog_unicode'))
         c = changelog.Changelog(f)
         f.close()
@@ -272,8 +260,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         assert u == expected_u
         assert bytes(c) == u.encode('utf-8')
 
-    def test_unicode_object_input(self):
-        # type: () -> None
+    def test_unicode_object_input(self) -> None:
         with open(find_test_file('test_changelog_unicode'), 'rb') as f:
             c_bytes = f.read()
         c_unicode = c_bytes.decode('utf-8')
@@ -281,8 +268,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         assert str(c) == c_unicode
         assert bytes(c) == c_bytes
 
-    def test_non_utf8_encoding(self):
-        # type: () -> None
+    def test_non_utf8_encoding(self) -> None:
         with open(find_test_file('test_changelog_unicode'), 'rb') as f:
             c_bytes = f.read()
         c_unicode = c_bytes.decode('utf-8')
@@ -316,14 +302,12 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
             'Tue, 27 Sep 2016 14:08:04 -0600'
         )]
 
-    def test_block_iterator(self):
-        # type: () -> None
+    def test_block_iterator(self) -> None:
         with open(find_test_file('test_changelog')) as f:
             c = changelog.Changelog(f)
         assert [str(b) for b in c._blocks] == [str(b) for b in c]
 
-    def test_block_access(self):
-        # type: () -> None
+    def test_block_access(self) -> None:
         """ test random access to changelog entries """
         with open(find_test_file('test_changelog')) as f:
             c = changelog.Changelog(f)
@@ -335,8 +319,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
                          '1.3.5-1.1', \
                          'access by Version object'
 
-    def test_len(self):
-        # type: () -> None
+    def test_len(self) -> None:
         with open(find_test_file('test_changelog')) as f:
             c = changelog.Changelog(f)
         assert len(c._blocks) == len(c)

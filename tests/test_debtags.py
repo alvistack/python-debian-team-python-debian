@@ -43,8 +43,7 @@ class TestDebtags:
             db.read(f)
         yield db
 
-    def test_insert(self):
-        # type: () -> None
+    def test_insert(self) -> None:
         db = debtags.DB()
         db.insert("test", set(("a", "b")));
         assert db.has_package("test")
@@ -59,8 +58,7 @@ class TestDebtags:
         assert db.package_count() == 1
         assert db.tag_count() == 2
 
-    def test_reverse(self):
-        # type: () -> None
+    def test_reverse(self) -> None:
         db = debtags.DB()
         db.insert("test", set(("a", "b")));
         db = db.reverse()

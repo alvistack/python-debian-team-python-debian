@@ -258,8 +258,7 @@ class Watch:
             opts = []
         self.options = opts
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return (
             "%s(%r, matching_pattern=%r, version=%r, script=%r, opts=%r)" % (
                 self.__class__.__name__, self.url, self.matching_pattern,

@@ -49,19 +49,16 @@ from debian.watch import (
 
 class TestParseWatchFile:
 
-    def test_parse_empty(self):
-        # type: () -> None
+    def test_parse_empty(self) -> None:
         assert WatchFile.from_lines(StringIO("")) is None
 
-    def test_parse_no_version(self):
-        # type: () -> None
+    def test_parse_no_version(self) -> None:
         with pytest.raises(MissingVersion):
             WatchFile.from_lines(StringIO("foo\n"))
         with pytest.raises(MissingVersion):
             WatchFile.from_lines(StringIO("foo=bar\n"))
 
-    def test_parse_with_spacing_around_version(self):
-        # type: () -> None
+    def test_parse_with_spacing_around_version(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version = 3
 https://samba.org/~jelmer/ blah-(\\d+).tar.gz
@@ -70,8 +67,7 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz
         assert wf.version == 3
         assert wf.entries == [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')]
 
-    def test_parse_with_script(self):
-        # type: () -> None
+    def test_parse_with_script(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 https://samba.org/~jelmer/ blah-(\\d+).tar.gz debian sh blah.sh
@@ -82,8 +78,7 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz debian sh blah.sh
             Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz', 'debian', 'sh blah.sh')
         ]
 
-    def test_parse_single(self):
-        # type: () -> None
+    def test_parse_single(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 https://samba.org/~jelmer/blah-(\\d+).tar.gz
@@ -92,8 +87,7 @@ https://samba.org/~jelmer/blah-(\\d+).tar.gz
         assert wf.version == 4
         assert wf.entries == [Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz')]
 
-    def test_parse_simple(self):
-        # type: () -> None
+    def test_parse_simple(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 https://samba.org/~jelmer/ blah-(\\d+).tar.gz
@@ -102,8 +96,7 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz
         assert wf.version == 4
         assert wf.entries == [Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')]
 
-    def test_parse_with_opts(self):
-        # type: () -> None
+    def test_parse_with_opts(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 opts=pgpmode=mangle https://samba.org/~jelmer/ blah-(\\d+).tar.gz
@@ -115,8 +108,7 @@ opts=pgpmode=mangle https://samba.org/~jelmer/ blah-(\\d+).tar.gz
             Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])
         ]
 
-    def test_parse_global_opts(self):
-        # type: () -> None
+    def test_parse_global_opts(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 opts=pgpmode=mangle
@@ -129,8 +121,7 @@ https://samba.org/~jelmer/ blah-(\\d+).tar.gz
             Watch('https://samba.org/~jelmer/', 'blah-(\\d+).tar.gz')
         ]
 
-    def test_parse_opt_quotes(self):
-        # type: () -> None
+    def test_parse_opt_quotes(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 opts="pgpmode=mangle" https://samba.org/~jelmer blah-(\\d+).tar.gz
@@ -141,8 +132,7 @@ opts="pgpmode=mangle" https://samba.org/~jelmer blah-(\\d+).tar.gz
             Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle'])
         ]
 
-    def test_parse_continued_leading_spaces_4(self):
-        # type: () -> None
+    def test_parse_continued_leading_spaces_4(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 opts=pgpmode=mangle,\\
@@ -154,8 +144,7 @@ opts=pgpmode=mangle,\\
             Watch('https://samba.org/~jelmer', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', 'foo=bar'])
         ]
 
-    def test_parse_continued_leading_spaces_3(self):
-        # type: () -> None
+    def test_parse_continued_leading_spaces_3(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=3
 opts=pgpmode=mangle,\\
@@ -167,8 +156,7 @@ opts=pgpmode=mangle,\\
             Watch('foo=bar', 'blah-(\\d+).tar.gz', opts=['pgpmode=mangle', ''])
         ]
 
-    def test_pattern_included(self):
-        # type: () -> None
+    def test_pattern_included(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version=4
 https://pypi.debian.net/case/case-(.+).tar.gz debian
@@ -179,8 +167,7 @@ https://pypi.debian.net/case/case-(.+).tar.gz debian
             Watch('https://pypi.debian.net/case', 'case-(.+).tar.gz', 'debian')
         ]
 
-    def test_parse_weird_quotes(self):
-        # type: () -> None
+    def test_parse_weird_quotes(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 # please also check https://pypi.debian.net/case/watch
 version=3
@@ -199,8 +186,7 @@ debian sh debian/repack.stub
         ]
 
 
-    def test_package_variable(self):
-        # type: () -> None
+    def test_package_variable(self) -> None:
         wf = WatchFile.from_lines(StringIO("""\
 version = 3
 https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
@@ -216,15 +202,13 @@ https://samba.org/~jelmer/@PACKAGE@ blah-(\\d+).tar.gz
 
 class TestDumpWatchFile:
 
-    def test_empty(self):
-        # type: () -> None
+    def test_empty(self) -> None:
         wf = WatchFile()
         f = StringIO()
         wf.dump(f)
         assert f.getvalue() == "version=4\n"
 
-    def test_simple(self):
-        # type: () -> None
+    def test_simple(self) -> None:
         wf = WatchFile()
         wf.entries = [
             Watch('https://pypi.debian.net/case', 'case-(.+).tar.gz')]
@@ -235,8 +219,7 @@ version=4
 https://pypi.debian.net/case case-(.+).tar.gz
 """
 
-    def test_opts(self):
-        # type: () -> None
+    def test_opts(self) -> None:
         wf = WatchFile()
         wf.entries = [
             Watch('https://samba.org/~jelmer',
@@ -250,8 +233,7 @@ opts=useragent=lynx
 opts=pgpmode=mangle https://samba.org/~jelmer blah-(\\d+).tar.gz
 """
 
-    def test_multiple_lines(self):
-        # type: () -> None
+    def test_multiple_lines(self) -> None:
         wf = WatchFile()
         wf.entries = [
             Watch('https://samba.org/~jelmer',
@@ -268,10 +250,8 @@ https://salsa.debian.org/python-team/blah-(.*).tar.gz
 
 class TestExpand:
 
-    def test_expand_package(self):
-        # type: () -> None
+    def test_expand_package(self) -> None:
         assert 'foo-1.2.3.tar.gz' == expand('@PACKAGE@-1.2.3.tar.gz', 'foo')
 
-    def test_static(self):
-        # type: () -> None
+    def test_static(self) -> None:
         assert r'foo-[-_]?(\d[\-+\.:\~\da-zA-Z]*)' == expand('foo-@ANY_VERSION@', 'foo')
