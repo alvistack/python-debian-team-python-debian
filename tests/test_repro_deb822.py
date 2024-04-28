@@ -22,7 +22,6 @@ import collections
 import contextlib
 import logging
 import textwrap
-from debian.deb822 import Deb822
 
 import pytest
 
@@ -32,13 +31,15 @@ from debian._deb822_repro import (parse_deb822_file,
                                   LIST_COMMA_SEPARATED_INTERPRETATION,
                                   Interpretation,
                                   )
-from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
-    Deb822FileElement, Deb822ParsedValueElement, LIST_UPLOADERS_INTERPRETATION
-from debian._deb822_repro.tokens import Deb822Token, Deb822ErrorToken
 from debian._deb822_repro._util import print_ast
+from debian._deb822_repro.locatable import Position, Range, START_POSITION, Locatable
+from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822ParsedTokenList, Deb822ParagraphElement, \
+    Deb822FileElement, LIST_UPLOADERS_INTERPRETATION
+from debian._deb822_repro.tokens import Deb822ErrorToken
+from debian.deb822 import Deb822
 
 try:
-    from typing import Any, Iterator, Tuple
+    from typing import Any, Iterator, Tuple, Optional
     from debian._deb822_repro.types import VE, ST
 except ImportError:
     pass
@@ -194,7 +195,6 @@ ROUND_TRIP_CASES = [
 ]
 
 
-
 class TestFormatPreservingDeb822Parser:
 
     def test_round_trip_cases(self) -> None:
@@ -239,7 +239,7 @@ class TestFormatPreservingDeb822Parser:
                 "Verify deb822_file correctly determines whether the field is invalid" \
                 " for case " + c
             assert case_input == deb822_file.convert_to_text(), \
-                             "Input of case " + c + " is round trip safe"
+                "Input of case " + c + " is round trip safe"
 
             newline_normalized_by_omission = parse_deb822_file(
                 case_input.splitlines(),
@@ -250,9 +250,9 @@ class TestFormatPreservingDeb822Parser:
             if not case_input_newline_normalized.endswith("\n") and len(case_input_newline_normalized.splitlines()) > 1:
                 case_input_newline_normalized += "\n"
             assert case_input_newline_normalized == \
-                             newline_normalized_by_omission.convert_to_text(), \
-                             "Input of case " + c + " is newline normalized round trip safe" \
-                                                    " with newlines omitted"
+                   newline_normalized_by_omission.convert_to_text(), \
+                "Input of case " + c + " is newline normalized round trip safe" \
+                                       " with newlines omitted"
             logging.info("Successfully passed case " + c)
 
     def test_deb822_emulation(self) -> None:
@@ -1055,31 +1055,31 @@ class TestFormatPreservingDeb822Parser:
 
         # Verify the starting state
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+               ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
         # no op
         paragraph.order_last('Recommends')
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+               ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
         # no op
         paragraph.order_first('Depends')
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
+               ['Depends', 'Description', 'Architecture', 'Package', 'Recommends']
 
         paragraph.order_first('Package')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Depends', 'Description', 'Architecture', 'Recommends']
+               ['Package', 'Depends', 'Description', 'Architecture', 'Recommends']
 
         paragraph.order_last('Description')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Depends', 'Architecture', 'Recommends', 'Description']
+               ['Package', 'Depends', 'Architecture', 'Recommends', 'Description']
 
         paragraph.order_after('Recommends', 'Depends')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Depends', 'Recommends', 'Architecture', 'Description']
+               ['Package', 'Depends', 'Recommends', 'Architecture', 'Description']
 
         paragraph.order_before('Architecture', 'Depends')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
+               ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
 
         with pytest.raises(ValueError):
             paragraph.order_after('Architecture', 'Architecture')
@@ -1106,23 +1106,23 @@ class TestFormatPreservingDeb822Parser:
         paragraph = next(iter(deb822_file))
         # Verify the starting state
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Description', 'Architecture', 'Package',
-                          'Package', 'Recommends']
+               ['Depends', 'Description', 'Description', 'Architecture', 'Package',
+                'Package', 'Recommends']
         # no op
         paragraph.order_last('Recommends')
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Description', 'Architecture', 'Package',
-                          'Package', 'Recommends']
+               ['Depends', 'Description', 'Description', 'Architecture', 'Package',
+                'Package', 'Recommends']
         # no op
         paragraph.order_first('Depends')
         assert list(paragraph.keys()) == \
-                         ['Depends', 'Description', 'Description', 'Architecture', 'Package',
-                          'Package', 'Recommends']
+               ['Depends', 'Description', 'Description', 'Architecture', 'Package',
+                'Package', 'Recommends']
 
         paragraph.order_first('Package')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package','Depends', 'Description', 'Description',
-                          'Architecture', 'Recommends']
+               ['Package', 'Package', 'Depends', 'Description', 'Description',
+                'Architecture', 'Recommends']
 
         # Relative order must be preserved in this case.
         assert paragraph["Package"] == "foo"
@@ -1132,8 +1132,8 @@ class TestFormatPreservingDeb822Parser:
         # Repeating order_first should be a noop
         paragraph.order_first('Package')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Depends', 'Description', 'Description',
-                          'Architecture', 'Recommends']
+               ['Package', 'Package', 'Depends', 'Description', 'Description',
+                'Architecture', 'Recommends']
 
         # Relative order must be preserved in this case.
         assert paragraph["Package"] == "foo"
@@ -1142,8 +1142,8 @@ class TestFormatPreservingDeb822Parser:
 
         paragraph.order_last('Description')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
-                          'Description', 'Description']
+               ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
+                'Description', 'Description']
         # Relative order must be preserved in this case.
         assert paragraph["Description"] == "some-text"
         assert paragraph[("Description", 0)] == "some-text"
@@ -1152,8 +1152,8 @@ class TestFormatPreservingDeb822Parser:
         # Repeating order_first should be a noop
         paragraph.order_last('Description')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
-                          'Description', 'Description']
+               ['Package', 'Package', 'Depends', 'Architecture', 'Recommends',
+                'Description', 'Description']
         # Relative order must be preserved in this case.
         assert paragraph["Description"] == "some-text"
         assert paragraph[("Description", 0)] == "some-text"
@@ -1161,21 +1161,21 @@ class TestFormatPreservingDeb822Parser:
 
         paragraph.order_after('Recommends', 'Depends')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Depends', 'Recommends', 'Architecture',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Depends', 'Recommends', 'Architecture',
+                'Description', 'Description', ]
 
         paragraph.order_before('Architecture', 'Depends')
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                'Description', 'Description', ]
 
         # And now, for some "fun stuff"
 
         # Lets move the last Description field in front of the first.
         paragraph.order_before(('Description', 1), ('Description', 0))
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                'Description', 'Description', ]
         # Verify the relocation was successful
         assert paragraph["Description"] == "some-more-text"
         assert paragraph[("Description", 0)] == "some-more-text"
@@ -1184,8 +1184,8 @@ class TestFormatPreservingDeb822Parser:
         # And swap their relative positions again
         paragraph.order_after(('Description', 0), ('Description', 1))
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                'Description', 'Description', ]
         # Verify the relocation was successful
         assert paragraph["Description"] == "some-text"
         assert paragraph[("Description", 0)] == "some-text"
@@ -1194,8 +1194,8 @@ class TestFormatPreservingDeb822Parser:
         # This should be a no-op
         paragraph.order_last(('Description', 1))
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                'Description', 'Description', ]
         assert paragraph["Description"] == "some-text"
         assert paragraph[("Description", 0)] == "some-text"
         assert paragraph[("Description", 1)] == "some-more-text"
@@ -1203,8 +1203,8 @@ class TestFormatPreservingDeb822Parser:
         # This should cause them to swap order
         paragraph.order_last(('Description', 0))
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                'Description', 'Description', ]
         # Verify the relocation was successful
         assert paragraph["Description"] == "some-more-text"
         assert paragraph[("Description", 0)] == "some-more-text"
@@ -1213,8 +1213,8 @@ class TestFormatPreservingDeb822Parser:
         # This should be a no-op
         paragraph.order_first(('Package', 0))
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                'Description', 'Description', ]
 
         # Relative order must be preserved in this case.
         assert paragraph["Package"] == "foo"
@@ -1224,8 +1224,8 @@ class TestFormatPreservingDeb822Parser:
         # This should cause them to swap order
         paragraph.order_first(('Package', 1))
         assert list(paragraph.keys()) == \
-                         ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
-                          'Description', 'Description', ]
+               ['Package', 'Package', 'Architecture', 'Depends', 'Recommends',
+                'Description', 'Description', ]
 
         # Verify the relocation was successful
         assert paragraph["Package"] == "foo2"
@@ -1277,10 +1277,10 @@ class TestFormatPreservingDeb822Parser:
 
         @contextlib.contextmanager
         def _field_mutation_test(
-                kvpair,           # type: Deb822KeyValuePairElement
-                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
+                kvpair,  # type: Deb822KeyValuePairElement
+                interpretation,  # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
                 expected_output,  # type: str
-                ):
+        ):
             # type: (...) -> Iterator[Deb822ParsedTokenList[VE, ST]]
             original_value_element = kvpair.value_element
             with kvpair.interpret_as(interpretation) as value_list:
@@ -1304,15 +1304,15 @@ class TestFormatPreservingDeb822Parser:
         multiline_comma_list_kvpair = source_paragraph.get_kvpair_element('Multiline-Comma-List')
         uploaders_kvpair = source_paragraph.get_kvpair_element('Uploaders')
         assert arch_kvpair is not None and comma_list_kvpair is not None \
-            and multiline_comma_list_kvpair is not None and uploaders_kvpair is not None
+               and multiline_comma_list_kvpair is not None and uploaders_kvpair is not None
         archs = arch_kvpair.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
         comma_list_misread = comma_list_kvpair.interpret_as(
             LIST_SPACE_SEPARATED_INTERPRETATION
         )
         assert ['amd64', 'i386', 'kfreebsd-amd64', 'kfreebsd-i386'] == \
-                         list(archs)
+               list(archs)
         assert [',', 'a,', 'b', ',', 'c', 'd,', 'e'] == \
-                         list(comma_list_misread)
+               list(comma_list_misread)
 
         comma_list_correctly_read = comma_list_kvpair.interpret_as(
             LIST_COMMA_SEPARATED_INTERPRETATION
@@ -1361,7 +1361,6 @@ class TestFormatPreservingDeb822Parser:
             "Margrete, I, Ruler <1@margrete.dk>",
             "Margrete, II, Queen\n# We could list additional names here\n  <2@margrete.dk>",
         ]
-
 
         # Interpretation must not change the content
         assert original == deb822_file.convert_to_text()
@@ -1632,8 +1631,25 @@ class TestFormatPreservingDeb822Parser:
 
             arch_list.sort(key=_key_func)
 
-    def test_interpretation_tab_preservation(self) -> None:
+    def test_interpretation_empty(self) -> None:
+        original = textwrap.dedent('''\
+            Package: foo¶
+            Architecture: ¶
+            Empty-Field:¶
+        '''.replace("¶", ""))
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        stanza = next(iter(deb822_file))
+        arch = stanza.get_kvpair_element("Architecture")
+        assert arch is not None
+        v = arch.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
+        assert list(v) == []
 
+        empty_field = stanza.get_kvpair_element("Empty-Field")
+        assert empty_field is not None
+        v = empty_field.interpret_as(LIST_SPACE_SEPARATED_INTERPRETATION)
+        assert list(v) == []
+
+    def test_interpretation_tab_preservation(self) -> None:
         original = textwrap.dedent('''\
         Package: foo
         Architecture: amd64  i386
@@ -1650,10 +1666,10 @@ class TestFormatPreservingDeb822Parser:
 
         @contextlib.contextmanager
         def _field_mutation_test(
-                kvpair,           # type: Deb822KeyValuePairElement
-                interpretation,   # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
+                kvpair,  # type: Deb822KeyValuePairElement
+                interpretation,  # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
                 expected_output,  # type: str
-                ):
+        ):
             # type: (...) -> Iterator[Deb822ParsedTokenList[VE, ST]]
             original_value_element = kvpair.value_element
             with kvpair.interpret_as(interpretation) as value_list:
@@ -1748,3 +1764,310 @@ class TestFormatPreservingDeb822Parser:
         source_paragraph = next(iter(deb822_file))
         source_paragraph['Build-Depends'] = ' \n debhelper-compat (= 11),\n uuid-dev'
         assert original == deb822_file.convert_to_text()
+
+    def test_positions(self):
+        # type: () -> None
+
+        original = textwrap.dedent('''\
+        Source: foo
+        Build-Depends:
+         debhelper-compat (= 11),
+        # A multine line comment
+        # about uuid-dev
+        # that happens to be 3 lines long
+         uuid-dev,
+        Standards-Version: 4.6.2
+
+        # Comment on line 7 - Position(6, 0) as it is 0-based
+
+        Package: foo
+        # Some comment about architecture, which should not affect the position
+        # of later elements depending on whether the comment is included or not
+        Architecture: any
+        # Some multiline comment
+        # about the Depends field.
+        Depends: foo, bar,
+        # Some comment related to baz
+          baz,
+        ''')
+        deb822_file = parse_deb822_file(original.splitlines(keepends=True))
+        paragraphs = list(deb822_file)
+        source_paragraph = paragraphs[0]
+        binary_paragraph = paragraphs[1]
+
+        assert deb822_file.position_in_file() == START_POSITION
+        assert deb822_file.position_in_parent() == START_POSITION
+
+        source_element = source_paragraph.get_kvpair_element("Source")
+        build_depends = source_paragraph.get_kvpair_element("Build-Depends")
+        assert source_element is not None and build_depends is not None
+        _validate_pos_and_ranges(
+            source_element,
+            START_POSITION,
+            START_POSITION,
+            _size(1),
+            expected_range_in_parent=Range(START_POSITION, Position(1, 0)),
+            expected_range_in_file=Range(START_POSITION, Position(1, 0)),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
+        )
+
+        _validate_pos_and_ranges(
+            build_depends,
+            Position(1, 0),
+            Position(1, 0),
+            _size(6),
+            expected_range_in_parent=Range(Position(1, 0), Position(7, 0)),
+            expected_range_in_file=Range(Position(1, 0), Position(7, 0)),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
+        )
+
+        _validate_pos_and_ranges(
+            binary_paragraph,
+            Position(11, 0),
+            Position(11, 0),
+            _size(9),
+            expected_range_in_parent=Range(Position(11, 0), Position(20, 0)),
+            expected_range_in_file=Range(Position(11, 0), Position(20, 0)),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
+        )
+
+        depends = binary_paragraph.get_kvpair_element("Depends")
+        assert depends
+        depends_list = list(depends.interpret_as(LIST_COMMA_SEPARATED_INTERPRETATION).iter_value_references())
+        foo = depends_list[0]
+        bar = depends_list[1]
+        baz = depends_list[2]
+
+        _validate_pos_and_ranges(
+            depends,
+            Position(4, 0),
+            Position(15, 0),
+            _size(5),
+            expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(15, 0), Position(20, 0)),
+            provided_parent_position_in_file=binary_paragraph.position_in_file(),
+        )
+
+        depends_value_pos = depends.value_element.position_in_file()
+
+        _validate_pos_and_ranges(
+            bar.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(0, 6),
+            Position(17, 14),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(0, 6), Position(0, 9)),
+            expected_range_in_file=Range(Position(17, 14), Position(17, 17)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+
+        _validate_pos_and_ranges(
+            baz.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(2, 2),
+            Position(19, 2),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(2, 2), Position(2, 5)),
+            expected_range_in_file=Range(Position(19, 2), Position(19, 5)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+
+        source_paragraph["Rules-Requires-Root"] = "no"
+
+        # As a consequence, all of these should have shifted a line in the file,
+        # but not in their parent (except for the paragraph itself)
+
+        _validate_pos_and_ranges(
+            binary_paragraph,
+            Position(12, 0),
+            Position(12, 0),
+            _size(9),
+            expected_range_in_parent=Range(Position(12, 0), Position(21, 0)),
+            expected_range_in_file=Range(Position(12, 0), Position(21, 0)),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
+        )
+
+        _validate_pos_and_ranges(
+            depends,
+            Position(4, 0),
+            Position(16, 0),
+            _size(5),
+            expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(16, 0), Position(21, 0)),
+            provided_parent_position_in_file=binary_paragraph.position_in_file(),
+        )
+
+        depends_value_pos = depends.value_element.position_in_file()
+
+        _validate_pos_and_ranges(
+            foo.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(0, 1),
+            Position(18, 9),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(0, 1), Position(0, 4)),
+            expected_range_in_file=Range(Position(18, 9), Position(18, 12)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+        _validate_pos_and_ranges(
+            bar.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(0, 6),
+            Position(18, 14),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(0, 6), Position(0, 9)),
+            expected_range_in_file=Range(Position(18, 14), Position(18, 17)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+
+        _validate_pos_and_ranges(
+            baz.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(2, 2),
+            Position(20, 2),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(2, 2), Position(2, 5)),
+            expected_range_in_file=Range(Position(20, 2), Position(20, 5)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+
+        # However, the Source fields should remain unchanged (as they are before the change)
+
+        _validate_pos_and_ranges(
+            source_element,
+            START_POSITION,
+            START_POSITION,
+            _size(1),
+            expected_range_in_parent=Range(START_POSITION, Position(1, 0)),
+            expected_range_in_file=Range(START_POSITION, Position(1, 0)),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
+        )
+
+        _validate_pos_and_ranges(
+            build_depends,
+            Position(1, 0),
+            Position(1, 0),
+            _size(6),
+            expected_range_in_parent=Range(Position(1, 0), Position(7, 0)),
+            expected_range_in_file=Range(Position(1, 0), Position(7, 0)),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
+        )
+
+        # ... until we rotate the field above them
+        source_paragraph.order_first("Rules-Requires-Root")
+
+        _validate_pos_and_ranges(
+            source_element,
+            Position(1, 0),
+            Position(1, 0),
+            _size(1),
+            expected_range_in_parent=Range(Position(1, 0), Position(2, 0)),
+            expected_range_in_file=Range(Position(1, 0), Position(2, 0)),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
+        )
+
+        _validate_pos_and_ranges(
+            build_depends,
+            Position(2, 0),
+            Position(2, 0),
+            _size(6),
+            expected_range_in_parent=Range(Position(2, 0), Position(8, 0)),
+            expected_range_in_file=Range(Position(2, 0), Position(8, 0)),
+            provided_parent_position_in_file=source_paragraph.position_in_file(),
+        )
+
+        # But for good measure, the binary fields remained unchanged
+
+        _validate_pos_and_ranges(
+            binary_paragraph,
+            Position(12, 0),
+            Position(12, 0),
+            _size(9),
+            expected_range_in_parent=Range(Position(12, 0), Position(21, 0)),
+            expected_range_in_file=Range(Position(12, 0), Position(21, 0)),
+            provided_parent_position_in_file=deb822_file.position_in_file(),
+        )
+
+        _validate_pos_and_ranges(
+            depends,
+            Position(4, 0),
+            Position(16, 0),
+            _size(5),
+            expected_range_in_parent=Range(Position(4, 0), Position(9, 0)),
+            expected_range_in_file=Range(Position(16, 0), Position(21, 0)),
+            provided_parent_position_in_file=binary_paragraph.position_in_file(),
+        )
+
+        depends_value_pos = depends.value_element.position_in_file()
+
+        _validate_pos_and_ranges(
+            foo.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(0, 1),
+            Position(18, 9),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(0, 1), Position(0, 4)),
+            expected_range_in_file=Range(Position(18, 9), Position(18, 12)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+        _validate_pos_and_ranges(
+            bar.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(0, 6),
+            Position(18, 14),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(0, 6), Position(0, 9)),
+            expected_range_in_file=Range(Position(18, 14), Position(18, 17)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+
+        _validate_pos_and_ranges(
+            baz.locatable,
+            # Relative to the value part of the "depends" kvpair; not the kvpair itself
+            Position(2, 2),
+            Position(20, 2),
+            _size(0, 3),
+            expected_range_in_parent=Range(Position(2, 2), Position(2, 5)),
+            expected_range_in_file=Range(Position(20, 2), Position(20, 5)),
+            provided_parent_position_in_file=depends_value_pos,
+        )
+
+
+def _validate_pos_and_ranges(
+        locatable: Locatable,
+        start_position_in_parent: Position,
+        start_position_in_file: Position,
+        size: Range,
+        *,
+        provided_parent_position_in_file: Optional[Position],
+        expected_range_in_parent: Optional[Range] = None,
+        expected_range_in_file: Optional[Range] = None,
+) -> None:
+    if expected_range_in_parent is None:
+        expected_range_in_parent = size.relative_to(start_position_in_parent)
+    if expected_range_in_file is None:
+        expected_range_in_file = size.relative_to(start_position_in_file)
+    actual_pos_in_parent = locatable.position_in_parent()
+    actual_pos_in_file = locatable.position_in_file()
+    actual_range_in_parent = locatable.range_in_parent()
+
+    assert actual_pos_in_parent == start_position_in_parent
+    assert actual_pos_in_file == start_position_in_file
+    assert locatable.size() == size
+    assert actual_range_in_parent == expected_range_in_parent
+    if provided_parent_position_in_file is not None:
+        pos_in_file_via_parent_pos = actual_pos_in_parent.relative_to(
+            provided_parent_position_in_file
+        )
+        range_in_file_via_parent_pos = actual_range_in_parent.relative_to(
+            provided_parent_position_in_file
+        )
+        assert pos_in_file_via_parent_pos == start_position_in_file
+        assert range_in_file_via_parent_pos == expected_range_in_file
+
+
+def _size(line_span: int, char_offset: int = 0) -> Range:
+    return Range(
+        START_POSITION,
+        Position(line_span, char_offset),
+    )

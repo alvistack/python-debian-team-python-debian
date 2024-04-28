@@ -1,10 +1,12 @@
 import re
 import sys
-from weakref import ReferenceType
 import weakref
+from weakref import ReferenceType
 
-from debian._util import resolve_ref, _strI
 from debian._deb822_repro._util import BufferingIterator
+from debian._deb822_repro.locatable import Locatable, START_POSITION, \
+    Range, ONE_CHAR_RANGE, ONE_LINE_RANGE, Position
+from debian._util import resolve_ref, _strI
 
 try:
     from typing import Optional, cast, TYPE_CHECKING, Iterable, Union, Dict, Callable
@@ -84,7 +86,7 @@ _RE_FIELD_LINE = re.compile(r'''
 ''', re.VERBOSE)
 
 
-class Deb822Token:
+class Deb822Token(Locatable):
     """A token is an atomic syntactical element from a deb822 file
 
     A file is parsed into a series of tokens.  If these tokens are converted to
@@ -93,7 +95,7 @@ class Deb822Token:
     Deb822Token.
     """
 
-    __slots__ = ('_text', '_parent_element', '__weakref__')
+    __slots__ = ('_text', '_parent_element', '_token_size', '__weakref__')
 
     def __init__(self, text):
         # type: (str) -> None
@@ -101,6 +103,7 @@ class Deb822Token:
             raise ValueError("Tokens must have content")
         self._text = text  # type: str
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
+        self._token_size = None  # type: Optional[Range]
         self._verify_token_text()
 
     def __repr__(self) -> str:
@@ -111,7 +114,7 @@ class Deb822Token:
     def _verify_token_text(self) -> None:
         if '\n' in self._text:
             is_single_line_token = False
-            if self.is_comment or isinstance(self, Deb822ErrorToken):
+            if self.is_comment or self.is_error:
                 is_single_line_token = True
             if not is_single_line_token and not self.is_whitespace:
                 raise ValueError("Only whitespace, error and comment tokens may contain newlines")
@@ -130,12 +133,38 @@ class Deb822Token:
         return False
 
     @property
+    def is_error(self) -> bool:
+        return False
+
+    @property
+    def is_separator(self) -> bool:
+        return False
+
+    @property
     def text(self) -> str:
         return self._text
 
     # To support callers that want a simple interface for converting tokens and elements to text
     def convert_to_text(self) -> str:
         return self._text
+
+    def size(self) -> Range:
+        # As tokens are an atomic unit
+        token_size = self._token_size
+        if token_size is not None:
+            return token_size
+        token_len = len(self._text)
+        if token_len == 1:
+            # The indirection with `r` because mypy gets confused and thinks that `token_size`
+            # cannot have any type at all.
+            token_size = ONE_CHAR_RANGE if self._text != "\n" else ONE_LINE_RANGE
+        else:
+            new_lines = self._text.count("\n")
+            assert not new_lines or self._text[-1] == "\n"
+            end_pos = Position(new_lines, 0) if new_lines else Position(0, token_len)
+            token_size = Range(START_POSITION, end_pos)
+        self._token_size = token_size
+        return token_size
 
     @property
     def parent_element(self):
@@ -198,11 +227,20 @@ class Deb822SpaceSeparatorToken(Deb822SemanticallySignificantWhiteSpace):
 
     __slots__ = ()
 
+    @property
+    def is_separator(self) -> bool:
+        return True
+
 
 class Deb822ErrorToken(Deb822Token):
     """Token that represents a syntactical error"""
 
     __slots__ = ()
+
+    @property
+    def is_error(self):
+        # type: () -> bool
+        return True
 
 
 class Deb822CommentToken(Deb822Token):
@@ -235,8 +273,12 @@ class Deb822SeparatorToken(Deb822Token):
 
     __slots__ = ()
 
+    @property
+    def is_separator(self) -> bool:
+        return True
 
-class Deb822FieldSeparatorToken(Deb822Token):
+
+class Deb822FieldSeparatorToken(Deb822SeparatorToken):
 
     __slots__ = ()
 
@@ -416,6 +458,11 @@ def _value_line_tokenizer(func):
 def whitespace_split_tokenizer(v):
     # type: (str) -> Iterable[Deb822Token]
     assert "\n" not in v
+    if not v or v.isspace():
+        # Special-case: Empty field/whitespace only field
+        if v:
+            yield Deb822SpaceSeparatorToken(sys.intern(v))
+        return
     for match in _RE_WHITESPACE_SEPARATED_WORD_LIST.finditer(v):
         space_before, word, space_after = match.groups()
         if space_before:
