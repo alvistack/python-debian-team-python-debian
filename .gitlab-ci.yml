@@ -156,7 +156,6 @@ unit-tests-wine:
   - export WENV_PYTHONVERSION=$(py3versions -v -d).0
   - wenv init
   - wenv python -m pip install chardet setuptools pytest
-  - rm -f /usr/bin/ar /usr/bin/gpgv
   script:
   - wenv python -m pytest
   variables:
