@@ -25,6 +25,7 @@ import os
 import os.path
 import pickle
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -71,11 +72,8 @@ except ImportError:
 
 # Only run tests that rely on the gpgv signature validation executable if
 # it is installed
-#
-# TODO: For portability, should we use shutil.which()? and set
-# deb822.GPGV_EXECUTABLE to match that?
-_have_gpgv = os.path.exists('/usr/bin/gpgv')
-
+_gpgv_path = shutil.which('gpgv') or ""
+deb822.GPGV_EXECUTABLE = _gpgv_path
 
 # Deterministic tests are good; automatically skipping tests because optional
 # dependencies are not available is a way of accidentally missing problems.
@@ -440,7 +438,7 @@ class TestDeb822:
         # If test suite is running in FORBID_MISSING_GPGV mode where
         # having gpgv is mandatory, explicitly include a failing test to
         # highlight this problem.
-        if FORBID_MISSING_GPGV and not _have_gpgv:
+        if FORBID_MISSING_GPGV and not _gpgv_path:
             pytest.fail("Required gpgv executable is not installed (tests run in FORBID_MISSING_GPGV mode)")
 
     def test_parser(self) -> None:
@@ -573,7 +571,7 @@ with open("test_deb822.pickle", "wb") as fh:
             deb822_ = deb822.Deb822(unparsed_with_gpg.splitlines())
             self.assertWellParsed(deb822_, PARSED_PACKAGE)
 
-    @pytest.mark.skipif(not _have_gpgv, reason="gpgv not installed")
+    @pytest.mark.skipif(not _gpgv_path, reason="gpgv not installed")
     def test_gpg_info(self) -> None:
         unparsed_with_gpg = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
         deb822_from_str = deb822.Dsc(unparsed_with_gpg)
@@ -595,14 +593,14 @@ with open("test_deb822.pickle", "wb") as fh:
         for result in result_from_str, result_from_file, result_from_lines:
             # The second part of the GOODSIG field could change if the primary
             # uid changes, so avoid checking that.  Also, the first part of the
-            # SIG_ID field has undergone at least one algorithm changein gpg,
+            # SIG_ID field has undergone at least one algorithm change in gpg,
             # so don't bother testing that either.
             assert set(result.keys()) == set(valid.keys())
             assert result['GOODSIG'][0] == valid['GOODSIG'][0]
             assert result['VALIDSIG'] == valid['VALIDSIG']
             assert result['SIG_ID'][1:] == valid['SIG_ID'][1:]
 
-    @pytest.mark.skipif(not _have_gpgv, reason="gpgv not installed")
+    @pytest.mark.skipif(not _gpgv_path, reason="gpgv not installed")
     def test_gpg_info2(self) -> None:
         with open(find_test_file('test_Dsc.badsig'), mode='rb') as f:
             dsc = deb822.Dsc(f)
@@ -1660,7 +1658,7 @@ class TestVersionAccessor:
         assert isinstance(p['Version'], str)
 
 
-@pytest.mark.skipif(not _have_gpgv, reason="gpgv not installed")
+@pytest.mark.skipif(not _gpgv_path, reason="gpgv not installed")
 class TestGpgInfo:
 
     SampleData = namedtuple('SampleData', [
