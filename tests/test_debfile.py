@@ -310,17 +310,32 @@ class TestDebFile:
         yield from self._generate_deb(data=data)
 
     @pytest.fixture()
+    def sample_deb_binnmu(self, request: Any) -> Generator[str, None, None]:
+        def control_binnmu() -> str:
+            return CONTROL_FILE.replace(
+                "Version",
+                "Source: hellosrc (1.2.3)\nVersion"
+            )
+        yield from self._generate_deb(control_generator=control_binnmu)
+
+    @pytest.fixture()
     def sample_deb(self, request: Any) -> Generator[str, None, None]:
-        compressions = getattr(request, "param", (None, None))
-        control = compressions[0] or 'gztar'
-        data = compressions[1] or 'gztar'
-        yield from self._generate_deb(control=control, data=data)
+        config = getattr(request, "param", (None, None, None))
+        control = config[0] or 'gztar'
+        data = config[1] or 'gztar'
+        control_generator = config[2] or None
+        yield from self._generate_deb(
+            control=control,
+            data=data,
+            control_generator=control_generator
+        )
 
     def _generate_deb(
         self,
-        filename:str = "test.deb",
+        filename: str = "test.deb",
         control: str = "gztar",
-        data: str = "gztar"
+        data: str = "gztar",
+        control_generator: Optional[Callable[[], str]] = None
     ) -> Generator[str, None, None]:
         """ Creates a test deb within a contextmanager for artefact cleanup
 
@@ -337,6 +352,7 @@ class TestDebFile:
             of the .deb file; allowable values are from
             `shutil.make_archive`: `gztar`, `bztar`, `xztar`, `zsttar`
         """
+        control_generator = control_generator or (lambda: CONTROL_FILE)
         with tempfile.TemporaryDirectory(prefix="test_debfile.") as tempdir:
             tpath = Path(tempdir)
             tempdeb = str(tpath / filename)
@@ -393,7 +409,7 @@ class TestDebFile:
             controlpath = tpath / "control"
             controlpath.mkdir()
             with open(str(controlpath / "control"), "w") as fh:
-                fh.write(CONTROL_FILE)
+                fh.write(control_generator())
             with open(str(controlpath / "md5sums"), "w") as fh:
                 for f in self.example_data_files:
                     with open(str(examplespath / f), 'rb') as hashfh:
@@ -621,6 +637,14 @@ class TestDebFile:
                 assert ctrl is not None
                 assert ctrl.decode("utf-8") == filecontrol
                 assert deb.control.get_content("control", encoding="utf-8") == filecontrol
+
+    def test_binnmu_control(self, sample_deb_binnmu: str) -> None:
+        """ test for control contents equality """
+        with debfile.DebFile(sample_deb_binnmu) as deb:
+            ctrl = deb.debcontrol()
+            assert ctrl.source == "hellosrc"
+            assert ctrl.source_version == "1.2.3"
+            assert ctrl['Version'] == "2.10-2"
 
     def test_md5sums(self, sample_deb: str) -> None:
         """test md5 extraction from .debs"""
