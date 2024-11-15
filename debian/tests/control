@@ -4,6 +4,7 @@ Depends:
  binutils,
  python3-all,
  python3-apt,
+ python3-charset-normalizer,
  python3-debian,
  python3-pytest,
  debian-keyring,
@@ -15,6 +16,7 @@ Restrictions: allow-stderr
 Depends:
  binutils,
  python3-all,
+ python3-charset-normalizer,
  python3-debian,
  python3-pytest,
  debian-keyring,
