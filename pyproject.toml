@@ -30,7 +30,7 @@ classifiers = [
 ]
 keywords = ["debian", "linux", "metadata", "packages", "packaging"]
 dependencies = [
-    "chardet",
+    "charset-normalizer",
 ]
 
 [project.urls]

@@ -240,7 +240,6 @@ import re
 import subprocess
 import warnings
 
-import chardet
 
 try:
     # pylint: disable=unused-import,deprecated-class
@@ -327,6 +326,19 @@ try:
     _have_apt_pkg = True
 except (ImportError, AttributeError):
     _have_apt_pkg = False
+
+
+try:
+    import charset_normalizer
+    _have_charset_normalizer = True
+    _have_chardet = False
+except ImportError:
+    _have_charset_normalizer = False
+    try:
+        import chardet
+        _have_chardet = True
+    except ImportError:
+        _have_chardet = False
 
 
 def _has_fileno(f):
@@ -2583,12 +2595,31 @@ class _AutoDecoder:
         try:
             return value.decode(self.encoding)
         except UnicodeDecodeError as e:
+            if not _have_charset_normalizer and not _have_chardet:
+                logger.error(
+                    'decoding from %s failed; please install charset_normalizer or '
+                    'chardet for automated detection of encoding',
+                    self.encoding
+                )
+                raise e
+
             # Evidently, the value wasn't encoded with the encoding the
             # user specified.  Try detecting it.
             logger.warning('decoding from %s failed; attempting to detect '
                            'the true encoding', self.encoding)
-            result = chardet.detect(value)
-            encoding = result['encoding']
+
+            if _have_charset_normalizer:
+                # Try detect few encodings, not using full charset_normalizer
+                # capabilities as there are many encodings which are unlikely
+                # (for example Mac or Windows specific)
+                result = charset_normalizer.from_bytes(
+                    value,
+                    cp_isolation=[f"iso-8859-{n}" for n in (1, 2, 7, 8, 9)]
+                ).best()
+                encoding = result.encoding
+            else:  # try fallback to chardet
+                result = chardet.detect(value)   # pylint: disable=used-before-assignment
+                encoding = result['encoding']
             if encoding is None:
                 raise
             try:

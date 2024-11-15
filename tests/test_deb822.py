@@ -41,6 +41,20 @@ try:
 except (ImportError, AttributeError):
     _have_apt_pkg = False
 
+
+try:
+    import charset_normalizer
+    _have_charset_normalizer = True
+except ImportError:
+    _have_charset_normalizer = False
+
+try:
+    import chardet
+    _have_chardet = True
+except ImportError:
+    _have_chardet = False
+
+
 from debian import deb822
 from debian.debian_support import Version
 
@@ -84,10 +98,16 @@ deb822.GPGV_EXECUTABLE = _gpgv_path
 #   any non-empty value for the environment variable FORBID_MISSING_APT_PKG
 #   will mean that tests fail if apt_pkg (from python-apt) can't be found
 #
+# FORBID_MISSING_CHARSET_NORMALIZER:
+#   any non-empty value for the environment variable
+#   FORBID_MISSING_CHARSET_NORMALIZER will mean that tests fail if the
+#   charset_normalizer module (from charset-normalizer) can't be found
+#
 # FORBID_MISSING_GPGV:
 #   any non-empty value for the environment variable FORBID_MISSING_GPGV
 #   will mean that tests fail if the gpgv program can't be found
 FORBID_MISSING_APT_PKG = os.environ.get("FORBID_MISSING_APT_PKG", None)
+FORBID_MISSING_CHARSET_NORMALIZER = os.environ.get("FORBID_MISSING_CHARSET_NORMALIZER", None)
 FORBID_MISSING_GPGV = os.environ.get("FORBID_MISSING_GPGV", None)
 
 
@@ -433,6 +453,13 @@ class TestDeb822:
         # highlight this problem.
         if FORBID_MISSING_APT_PKG and not _have_apt_pkg:
             pytest.fail("Required apt_pkg from python-apt is not installed (tests run in FORBID_MISSING_APT_PKG mode)")
+
+    def test_charset_normalizer_installed(self) -> None:
+        # If test suite is running in FORBID_MISSING_CHARSET_NORMALIZER mode
+        # where charset-normalizer is mandatory, explicitly include a failing
+        # test to highlight this problem.
+        if FORBID_MISSING_CHARSET_NORMALIZER and not _have_charset_normalizer:
+            pytest.fail("Required charset-normalizer is not installed (tests run in FORBID_MISSING_CHARSET_NORMALIZER mode)")
 
     def test_gpgv_installed(self) -> None:
         # If test suite is running in FORBID_MISSING_GPGV mode where
@@ -1117,6 +1144,8 @@ Description: python modules to work with Debian-related data formats
         assert utf8_contents == latin1_to_utf8.getvalue()
         assert latin1_contents == utf8_to_latin1.getvalue()
 
+    @pytest.mark.skipif(not _have_charset_normalizer and not _have_chardet,
+                        reason="apt_pkg is not available")
     def test_mixed_encodings(self) -> None:
         """Test that we can handle a simple case of mixed encodings
 
