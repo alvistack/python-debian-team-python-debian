@@ -1923,6 +1923,7 @@ class Changes(_gpg_multivalued, _VersionAccessorMixin):
         "checksums-sha1": ["sha1", "size", "name"],
         "checksums-sha256": ["sha256", "size", "name"],
         "checksums-sha512": ["sha512", "size", "name"],
+        "package-list": ["package", "package-type", "section", "priority", "key-value-list"],
     }
 
     def get_pool_path(self) -> str:
