@@ -2608,6 +2608,7 @@ class _AutoDecoder:
             logger.warning('decoding from %s failed; attempting to detect '
                            'the true encoding', self.encoding)
 
+            encoding: Optional[str] = None
             if _have_charset_normalizer:
                 # Try detect few encodings, not using full charset_normalizer
                 # capabilities as there are many encodings which are unlikely
@@ -2616,10 +2617,11 @@ class _AutoDecoder:
                     value,
                     cp_isolation=[f"iso-8859-{n}" for n in (1, 2, 7, 8, 9)]
                 ).best()
-                encoding = result.encoding
+                if result:
+                    encoding = result.encoding
             else:  # try fallback to chardet
-                result = chardet.detect(value)   # pylint: disable=used-before-assignment
-                encoding = result['encoding']
+                result_cd = chardet.detect(value)   # pylint: disable=used-before-assignment
+                encoding = result_cd['encoding']
             if encoding is None:
                 raise
             try:

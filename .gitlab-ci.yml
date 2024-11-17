@@ -211,7 +211,7 @@ style:
   script:
   - ./debian/rules qa
   variables:
-    JOB_DEPS: pylint mypy
+    JOB_DEPS: pylint mypy python3-charset-normalizer
 
 ### Documentation: build and deploy
 
