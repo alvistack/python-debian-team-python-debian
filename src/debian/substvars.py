@@ -1,8 +1,8 @@
 """ Facilities for reading and writing Debian substvars files
 
 The aim of this module is to provide programmatic access to Debian substvars
-files to query and manipulate them. The format for the changelog is defined in
-`deb-substvars(5)
+files to query and manipulate them. The format for the substvars files is
+defined in `deb-substvars(5)
 <https://manpages.debian.org/unstable/dpkg-dev/deb-substvars.5.html>`_
 
 Overview
