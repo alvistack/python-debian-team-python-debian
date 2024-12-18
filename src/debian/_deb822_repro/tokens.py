@@ -238,8 +238,7 @@ class Deb822ErrorToken(Deb822Token):
     __slots__ = ()
 
     @property
-    def is_error(self):
-        # type: () -> bool
+    def is_error(self) -> bool:
         return True
 
 

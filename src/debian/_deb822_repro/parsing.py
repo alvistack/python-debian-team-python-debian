@@ -963,13 +963,11 @@ class Deb822Element(Locatable):
                 yield from part.iter_recurse(only_element_or_token_type=only_element_or_token_type)
 
     @property
-    def is_error(self):
-        # type: () -> bool
+    def is_error(self) -> bool:
         return False
 
     @property
-    def is_comment(self):
-        # type: () -> bool
+    def is_comment(self) -> bool:
         return False
 
     @property
@@ -1069,8 +1067,7 @@ class Deb822ErrorElement(Deb822Element):
         yield from self._parts
 
     @property
-    def is_error(self):
-        # type: () -> bool
+    def is_error(self) -> bool:
         return True
 
 
@@ -1244,8 +1241,7 @@ class Deb822CommentElement(Deb822Element):
         self._init_parent_of_parts()
 
     @property
-    def is_comment(self):
-        # type: () -> bool
+    def is_comment(self) -> bool:
         return True
 
     def __len__(self) -> int:

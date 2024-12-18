@@ -67,8 +67,7 @@ class WatchFileFormatError(ValueError):
     """
 
 
-def expand(text, package):
-    # type: (str, str) -> str
+def expand(text: str, package: str) -> str:
     """Apply substitutions to a string.
 
     :param text: text to apply substitutions to
@@ -84,8 +83,7 @@ def expand(text, package):
     return text
 
 
-def _complain(msg, strict):
-    # type: (str, bool) -> None
+def _complain(msg: str, strict: bool) -> None:
     if strict:
         raise WatchFileFormatError(msg)
     logger.warning(msg)

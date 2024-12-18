@@ -97,8 +97,7 @@ class MachineReadableFormatError(Error, ValueError):
     """
 
 
-def _complain(msg, strict):
-    # type: (str, bool) -> None
+def _complain(msg: str, strict: bool) -> None:
     if strict:
         raise MachineReadableFormatError(msg)
     logger.warning(msg)
@@ -293,8 +292,7 @@ class Copyright:
         return s
 
 
-def _single_line(s):
-    # type: (str) -> str
+def _single_line(s: str) -> str:
     """Returns s if it is a single line; otherwise raises MachineReadableFormatError."""
     if '\n' in s:
         raise MachineReadableFormatError('must be single line')
@@ -377,8 +375,7 @@ class _SpaceSeparated:
 
 # TODO(jsw): Move multiline formatting/parsing elsewhere?
 
-def format_multiline(s):
-    # type: (Optional[str]) -> Optional[str]
+def format_multiline(s: Optional[str]) -> Optional[str]:
     """Formats multiline text for insertion in a Deb822ParagraphElement field.
 
     Each line except for the first one is prefixed with a single space.  Lines
@@ -418,8 +415,7 @@ def parse_multiline(s):
     return '\n'.join(parse_multiline_as_lines(s))
 
 
-def parse_multiline_as_lines(s):
-    # type: (str) -> List[str]
+def parse_multiline_as_lines(s: str) -> List[str]:
     """Same as parse_multiline, but returns a list of lines.
 
     (This is the inverse of format_multiline_lines.)
