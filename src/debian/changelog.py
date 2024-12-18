@@ -147,8 +147,7 @@ class ChangelogParseError(Exception):
     """Indicates that the changelog could not be parsed"""
     is_user_error = True
 
-    def __init__(self, line):
-        # type: (str) -> None
+    def __init__(self, line: str) -> None:
         self._line = line
         super(ChangelogParseError, self).__init__()
 
@@ -166,12 +165,11 @@ class VersionError(Exception):
 
     is_user_error = True
 
-    def __init__(self, version):
-        # type: (str) -> None
+    def __init__(self, version: str) -> None:
         self._version = version
         super(VersionError, self).__init__()
 
-    def __str__(self):  # type: () -> str
+    def __str__(self) -> str:
         return "Could not parse version: " + self._version
 
 
@@ -260,18 +258,15 @@ class ChangeBlock:
             norm_dict[key] = value
         return norm_dict
 
-    def changes(self):
-        # type: () -> List[str]
+    def changes(self) -> List[str]:
         """ Get the changelog entries for this block as a list of str """
         return self._changes
 
-    def add_trailing_line(self, line):
-        # type: (str) -> None
+    def add_trailing_line(self, line: str) -> None:
         """ Add a sign-off (trailer) line to the block """
         self._trailing.append(line)
 
-    def add_change(self, change):
-        # type: (str) -> None
+    def add_change(self, change: str) -> None:
         """ Append a change entry to the block """
         if not self._changes:
             self._changes = [change]
@@ -302,14 +297,12 @@ class ChangeBlock:
         return bugs
 
     @property
-    def bugs_closed(self):
-        # type: () -> List[int]
+    def bugs_closed(self) -> List[int]:
         """ List of (Debian) bugs closed by the block """
         return self._get_bugs_closed_generic(closes)
 
     @property
-    def lp_bugs_closed(self):
-        # type: () -> List[int]
+    def lp_bugs_closed(self) -> List[int]:
         """ List of Launchpad bugs closed by the block """
         return self._get_bugs_closed_generic(closeslp)
 
@@ -484,8 +477,7 @@ class Changelog:
                 strict=strict)
 
     @staticmethod
-    def _parse_error(message, strict):
-        # type: (str, bool) -> None
+    def _parse_error(message: str, strict: bool) -> None:
         if strict:
             raise ChangelogParseError(message)
         logger.warning(message)
@@ -734,13 +726,11 @@ class Changelog:
         doc="The upstream part of the version number of the last version."
     )
 
-    def get_package(self):
-        # type: () -> Optional[str]
+    def get_package(self) -> Optional[str]:
         """Returns the name of the package in the last entry."""
         return self._blocks[0].package
 
-    def set_package(self, package):
-        # type: (str) -> None
+    def set_package(self, package: str) -> None:
         """ set the name of the package in the last entry. """
         self._blocks[0].package = package
 
@@ -802,8 +792,7 @@ class Changelog:
     def __len__(self) -> int:
         return len(self._blocks)
 
-    def set_distributions(self, distributions):
-        # type: (str) -> None
+    def set_distributions(self, distributions: str) -> None:
         self._blocks[0].distributions = distributions
 
     distributions = property(
@@ -813,8 +802,7 @@ A string indicating the distributions that the package will be uploaded to
 in the most recent version."""
     )
 
-    def set_urgency(self, urgency):
-        # type: (str) -> None
+    def set_urgency(self, urgency: str) -> None:
         self._blocks[0].urgency = urgency
 
     urgency = property(
@@ -824,8 +812,7 @@ A string indicating the urgency with which the most recent version will
 be uploaded."""
     )
 
-    def add_change(self, change):
-        # type: (str) -> None
+    def add_change(self, change: str) -> None:
         """ and a new dot point to a changelog entry
 
         Adds a change entry to the most recent version. The change entry
@@ -849,8 +836,7 @@ be uploaded."""
         This should be a properly formatted name/email pair."""
     )
 
-    def set_date(self, date):
-        # type: (str) -> None
+    def set_date(self, date: str) -> None:
         """ set the date of the top changelog entry
 
         :param date: str
@@ -984,8 +970,7 @@ def get_maintainer():
     return (maintainer, email_address)
 
 
-def format_date(timestamp=None, localtime=True):
-    # type: (Optional[float], bool) -> str
+def format_date(timestamp: Optional[float] = None, localtime: bool = True) -> str:
     """ format a datestamp in the required format for the changelog
 
     :param timestamp: float, optional. The timestamp (seconds since epoch)

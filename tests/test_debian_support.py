@@ -45,8 +45,7 @@ except ImportError:
     pass
 
 
-def find_test_file(filename):
-    # type: (str) -> str
+def find_test_file(filename: str) -> str:
     """ find a test file that is located within the test suite """
     return os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
 
@@ -59,8 +58,12 @@ class TestVersion:
     else:
         test_classes = [NativeVersion]
 
-    def _test_version(self, full_version, epoch, upstream, debian):
-        # type: (str, Optional[str], str, Optional[str]) -> None
+    def _test_version(
+        self,
+        full_version: str,
+        epoch: Optional[str],
+        upstream: str,
+        debian: Optional[str]) -> None:
         for cls in self.test_classes:
             v = cls(full_version)
             assert v.full_version == full_version, \
@@ -126,8 +129,7 @@ class TestVersion:
             assert v.debian_version == '1'
 
     @staticmethod
-    def _get_truth_fn(cmp_oper):
-        # type: (str) -> Any
+    def _get_truth_fn(cmp_oper: str) -> Any:
         if cmp_oper == "<":
             return lambda a, b: a < b
         elif cmp_oper == "<=":
@@ -141,8 +143,7 @@ class TestVersion:
         else:
             raise ValueError("invalid operator %s" % cmp_oper)
 
-    def _test_comparison(self, v1_str, cmp_oper, v2_str):
-        # type: (str, str, str) -> None
+    def _test_comparison(self, v1_str: str, cmp_oper: str, v2_str: str) -> None:
         """Test comparison against all combinations of Version classes
 
         This is does the real work for test_comparisons.
@@ -209,7 +210,7 @@ class TestHelperRoutine:
     """Tests for various debian_support helper routines"""
 
     def test_read_lines_sha1(self) -> None:
-        empty = []  # type: List[bytes]
+        empty: List[bytes] = []
         assert read_lines_sha1(empty) == \
                          'da39a3ee5e6b4b0d3255bfef95601890afd80709'
         assert read_lines_sha1(['1\n', '23\n']) == \

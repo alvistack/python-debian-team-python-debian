@@ -1765,8 +1765,7 @@ class TestFormatPreservingDeb822Parser:
         source_paragraph['Build-Depends'] = ' \n debhelper-compat (= 11),\n uuid-dev'
         assert original == deb822_file.convert_to_text()
 
-    def test_positions(self):
-        # type: () -> None
+    def test_positions(self) -> None:
 
         original = textwrap.dedent('''\
         Source: foo

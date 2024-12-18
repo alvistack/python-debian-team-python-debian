@@ -341,8 +341,7 @@ except ImportError:
         _have_chardet = False
 
 
-def _has_fileno(f):
-    # type: (Any) -> bool
+def _has_fileno(f: Any) -> bool:
     """ test that a file-like object is really a filehandle
 
     Only filehandles can be given to apt_pkg.TagFile.
@@ -404,13 +403,11 @@ class TagSectionWrapper(_TagSectionWrapper_base):
             if not key.startswith('#'):
                 yield key
 
-    def __len__(self):
-        # type: (...) -> int
+    def __len__(self) -> int:
         return len([key for key in self.__section.keys()
                     if not key.startswith('#')])
 
-    def __getitem__(self, key):
-        # type: (str) -> str
+    def __getitem__(self, key: str) -> str:
         # find_raw may give str or bytes depending on how it goes with decoding
         # and how it is set up by the TagFile iterator
         sraw = self.__section.find_raw(key)
@@ -546,25 +543,21 @@ class Deb822Dict(_Deb822Dict_base):
 
     # ### END collections.abc.MutableMapping methods
 
-    def order_last(self, field):
-        # type: (str) -> None
+    def order_last(self, field: str) -> None:
         """Re-order the given field so it is "last" in the paragraph"""
         self.__keys.order_last(_strI(field))
 
-    def order_first(self, field):
-        # type: (str) -> None
+    def order_first(self, field: str) -> None:
         """Re-order the given field so it is "first" in the paragraph"""
         self.__keys.order_first(_strI(field))
 
-    def order_before(self, field, reference_field):
-        # type: (str, str) -> None
+    def order_before(self, field: str, reference_field: str) -> None:
         """Re-order the given field so appears directly after the reference field in the paragraph
 
         The reference field must be present."""
         self.__keys.order_before(_strI(field), _strI(reference_field))
 
-    def order_after(self, field, reference_field):
-        # type: (str, str) -> None
+    def order_after(self, field: str, reference_field: str) -> None:
         """Re-order the given field so appears directly before the reference field in the paragraph
 
         The reference field must be present.
@@ -586,8 +579,7 @@ class Deb822Dict(_Deb822Dict_base):
     def __repr__(self) -> str:
         return '{%s}' % ', '.join(['%r: %r' % (k, v) for k, v in self.items()])
 
-    def __eq__(self, other):
-        # type: (Any) -> bool
+    def __eq__(self, other: Any) -> bool:
         mykeys = sorted(self)
         otherkeys = sorted(other)
         if not mykeys == otherkeys:

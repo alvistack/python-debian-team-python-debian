@@ -27,8 +27,7 @@ class _CaseInsensitiveString(str):
 
     if TYPE_CHECKING:  # pragma: no cover
         # neither pylint nor mypy cope with str_lower being defined in __new__
-        def __init__(self, s):
-            # type: (str) -> None
+        def __init__(self, s: str) -> None:
             super(_CaseInsensitiveString, self).__init__(s)   # type: ignore
             self.str_lower = ''
 
@@ -41,15 +40,13 @@ class _CaseInsensitiveString(str):
     def __hash__(self) -> int:
         return hash(self.str_lower)
 
-    def __eq__(self, other):
-        # type: (Any) -> Any
+    def __eq__(self, other: Any) -> Any:
         try:
             return self.str_lower == other.lower()
         except AttributeError:
             return False
 
-    def __ne__(self, other):
-        # type: (Any) -> Any
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def lower(self) -> str:
@@ -59,8 +56,7 @@ class _CaseInsensitiveString(str):
 _strI = _CaseInsensitiveString
 
 
-def default_field_sort_key(x):
-    # type: (str) -> Any
+def default_field_sort_key(x: str) -> str:
     return x.lower()
 
 
@@ -294,8 +290,7 @@ class OrderedSet:
         for item in iterable:
             self.add(item)
 
-    def add(self, item):
-        # type: (str) -> None
+    def add(self, item: str) -> None:
         if item not in self:
             # We rely on the dict to raise an exception if the item is unhashable
             # Unfortunately, we need to add it to the linked list first (to obtain
@@ -308,29 +303,25 @@ class OrderedSet:
                 self.__order.remove_node(node)
                 raise
 
-    def remove(self, item):
-        # type: (str) -> None
+    def remove(self, item: str) -> None:
         # The dict will raise KeyError, so we don't need to handle that
         # ourselves
         node = self.__table[item]
         del self.__table[item]
         self.__order.remove_node(node)
 
-    def __iter__(self):
-        # type: () -> Iterator[str]
+    def __iter__(self) -> Iterator[str]:
         # Return an iterator of items in the order they were added
         return iter(self.__order)
 
-    def __reversed__(self):
-        # type: () -> Iterator[str]
+    def __reversed__(self) -> Iterator[str]:
         # Return an iterator of items in the opposite order they were added
         return iter(reversed(self.__order))
 
     def __len__(self) -> int:
         return len(self.__order)
 
-    def __contains__(self, item):
-        # type: (str) -> bool
+    def __contains__(self, item: str) -> bool:
         # This is what makes OrderedSet faster than using a list to keep track
         # of keys.  Lookup in a dict is O(1) instead of O(n) for a list.
         return item in self.__table
@@ -344,26 +335,22 @@ class OrderedSet:
             self.add(item)
 
     # ### methods specialized for Deb822 usage
-    def order_last(self, item):
-        # type: (str) -> None
+    def order_last(self, item: str) -> None:
         """Re-order the given item so it is "last" in the set"""
         self._reorder(item, self.__order.append)
 
-    def order_first(self, item):
-        # type: (str) -> None
+    def order_first(self, item: str) -> None:
         """Re-order the given item so it is "first" in the set"""
         self._reorder(item, self.__order.insert_at_head)
 
-    def order_before(self, item, reference_item):
-        # type: (str, str) -> None
+    def order_before(self, item: str, reference_item: str) -> None:
         """Re-order the given item so appears directly after the reference item in the sequence"""
         if item == reference_item:
             raise ValueError("Cannot re-order an item relative to itself")
         reference_node = self.__table[reference_item]
         self._reorder(item, lambda x: self.__order.insert_before(x, reference_node))
 
-    def order_after(self, item, reference_item):
-        # type: (str, str) -> None
+    def order_after(self, item: str, reference_item: str) -> None:
         """Re-order the given item so appears directly before the reference item in the sequence"""
         if item == reference_item:
             raise ValueError("Cannot re-order an item relative to itself")

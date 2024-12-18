@@ -115,8 +115,7 @@ Description: example package based on GNU hello
 """
 
 
-def find_test_file(filename):
-    # type: (str) -> str
+def find_test_file(filename: str) -> str:
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
 
@@ -153,8 +152,7 @@ class TestArFile:
     fromfp = False
 
     @pytest.fixture()
-    def sample_archive(self):
-        # type: () -> Generator[None, None, None]
+    def sample_archive(self) -> Generator[None, None, None]:
         subprocess.check_call(
             [
                 _ar_path,
@@ -251,8 +249,7 @@ class TestArFileFileObj(TestArFile):
     fromfp = True
 
 
-def _make_archive(dir_path, compression):
-    # type: (str, str) -> str
+def _make_archive(dir_path: str, compression: str) -> str:
     """ Create an archive from a directory with a given compression algorithm.
 
     :returns: the path to the created archive
@@ -303,27 +300,28 @@ class TestDebFile:
     ]
 
     @pytest.fixture()
-    def sample_deb_control(self, request):
-        # type: (Any) -> Generator[str, None, None]
+    def sample_deb_control(self, request: Any) -> Generator[str, None, None]:
         control = getattr(request, "param", "gztar")
         yield from self._generate_deb(control=control)
 
     @pytest.fixture()
-    def sample_deb_data(self, request):
-        # type: (Any) -> Generator[str, None, None]
+    def sample_deb_data(self, request: Any) -> Generator[str, None, None]:
         data = getattr(request, "param", "gztar")
         yield from self._generate_deb(data=data)
 
     @pytest.fixture()
-    def sample_deb(self, request):
-        # type: (Any) -> Generator[str, None, None]
+    def sample_deb(self, request: Any) -> Generator[str, None, None]:
         compressions = getattr(request, "param", (None, None))
         control = compressions[0] or 'gztar'
         data = compressions[1] or 'gztar'
         yield from self._generate_deb(control=control, data=data)
 
-    def _generate_deb(self, filename="test.deb", control="gztar", data="gztar"):
-        # type: (str, str, str) -> Generator[str, None, None]
+    def _generate_deb(
+        self,
+        filename:str = "test.deb",
+        control: str = "gztar",
+        data: str = "gztar"
+    ) -> Generator[str, None, None]:
         """ Creates a test deb within a contextmanager for artefact cleanup
 
         :param filename:
@@ -430,8 +428,7 @@ class TestDebFile:
                 # everything else that was left around
 
     @pytest.mark.parametrize('part', ['control.tar.gz', 'data.tar.gz'])
-    def test_missing_members(self, sample_deb, part):
-        # type: (str, str) -> None
+    def test_missing_members(self, sample_deb: str, part: str) -> None:
         """ test that broken .deb files raise exceptions """
         # break the .deb by deleting a required member
         subprocess.check_call(
@@ -443,8 +440,7 @@ class TestDebFile:
             debfile.DebFile(sample_deb)
 
     @pytest.mark.parametrize("sample_deb_data", compressions, indirect=["sample_deb_data"])
-    def test_data_compression(self, sample_deb_data):
-        # type: (str) -> None
+    def test_data_compression(self, sample_deb_data: str) -> None:
         """ test various compression schemes for the data member """
         with debfile.DebFile(sample_deb_data) as deb:
             # random test on the data part, just to check that content access
@@ -458,8 +454,7 @@ class TestDebFile:
                 "Data part failed on compression"
 
     @pytest.mark.parametrize("sample_deb_control", compressions, indirect=["sample_deb_control"])
-    def test_control_compression(self, sample_deb_control):
-        # type: (str) -> None
+    def test_control_compression(self, sample_deb_control: str) -> None:
         """ test various compression schemes for the control member """
         with debfile.DebFile(sample_deb_control) as deb:
             # random test on the control part
@@ -471,8 +466,7 @@ class TestDebFile:
                 "Control part failed on compression"
 
     @pytest.mark.skipif(not _dpkg_deb_path, reason="dpkg-deb not installed")
-    def test_data_names(self, sample_deb):
-        # type: (str) -> None
+    def test_data_names(self, sample_deb: str) -> None:
         """ test for file list equality """
         with debfile.DebFile(sample_deb) as deb:
             tgz = deb.data.tgz()
@@ -498,8 +492,7 @@ class TestDebFile:
                     assert origdata == debdata
                     dfh.close()
 
-    def test_data_has_file(self, sample_deb):
-        # type: (str) -> None
+    def test_data_has_file(self, sample_deb: str) -> None:
         """ test for round-trip of a data file """
         # also test some variations on how the root directory is stored
         with debfile.DebFile(sample_deb) as deb:
@@ -514,8 +507,7 @@ class TestDebFile:
             assert not deb.data.has_file("/usr/share/doc/nosuchfile")
             assert not deb.data.has_file("/nosuchdir/nosuchfile")
 
-    def test_data_has_file_symlinks(self, sample_deb):
-        # type: (str) -> None
+    def test_data_has_file_symlinks(self, sample_deb: str) -> None:
         """ test for round-trip of a data file """
         def path(*args):
             # type: (Union[str, Path]) -> str
@@ -567,8 +559,7 @@ class TestDebFile:
             assert not deb.data.has_file(debdatafile, follow_symlinks=False)
             assert not deb.data.has_file(debdatafile, follow_symlinks=True)
 
-    def test_data_get_file(self, sample_deb):
-        # type: (str) -> None
+    def test_data_get_file(self, sample_deb: str) -> None:
         """ test for round-trip of a data file """
         datafile = self.example_data_files[-1]
         debdatafile = self.example_data_dir / self.example_data_files[-1]
@@ -587,8 +578,7 @@ class TestDebFile:
         with pytest.raises(debfile.DebError):
             self._test_file_contents(sample_deb, "./nosuchdir/nosuchfile", find_test_file(datafile))
 
-    def test_data_get_file_symlinks(self, sample_deb):
-        # type: (str) -> None
+    def test_data_get_file_symlinks(self, sample_deb: str) -> None:
         """ test for traversing symlinks in the package
 
         links that are within the same directory get automatically resolved
@@ -620,8 +610,7 @@ class TestDebFile:
             self._test_file_contents(sample_deb, cleanlinkname, targetdata, follow_symlinks=True)
 
     @pytest.mark.skipif(not _dpkg_deb_path, reason="dpkg-deb not installed")
-    def test_control(self, sample_deb):
-        # type: (str) -> None
+    def test_control(self, sample_deb: str) -> None:
         """ test for control contents equality """
         with os.popen("dpkg-deb -f %s" % sample_deb) as dpkg_deb:
             filecontrol = "".join(dpkg_deb.readlines())
@@ -633,8 +622,7 @@ class TestDebFile:
                 assert ctrl.decode("utf-8") == filecontrol
                 assert deb.control.get_content("control", encoding="utf-8") == filecontrol
 
-    def test_md5sums(self, sample_deb):
-        # type: (str) -> None
+    def test_md5sums(self, sample_deb: str) -> None:
         """test md5 extraction from .debs"""
         with debfile.DebFile(sample_deb) as deb:
             md5b = deb.md5sums()
@@ -647,16 +635,14 @@ class TestDebFile:
                 assert md5b[str(f).encode('UTF-8')] == h
                 assert md5[str(f)] == h
 
-    def test_contextmanager(self, sample_deb):
-        # type: (str) -> None
+    def test_contextmanager(self, sample_deb: str) -> None:
         """test use of DebFile as a contextmanager"""
         with debfile.DebFile(sample_deb) as deb:
             all_files = deb.data.tgz().getnames()
             assert all_files
             assert deb.control.get_content("control")
 
-    def test_open_directly(self, sample_deb):
-        # type: (str) -> None
+    def test_open_directly(self, sample_deb: str) -> None:
         """test use of DebFile without the contextmanager"""
         with debfile.DebFile(sample_deb) as deb:
             all_files = deb.data.tgz().getnames()

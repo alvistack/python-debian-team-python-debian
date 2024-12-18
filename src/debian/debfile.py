@@ -87,8 +87,7 @@ class _NormedFilePath(str):
     the file "control"
     """
 
-    def __eq__(self, value):
-        # type: (Any) -> bool
+    def __eq__(self, value: Any) -> bool:
         s1 = str(self)
         s2 = str(value)
         if s1 == ".":
@@ -123,12 +122,10 @@ class _NormedTarInfo(tarfile.TarInfo):
 
     _name: Optional[str] = None
 
-    def _get_name(self):
-        # type: () -> Optional[str]
+    def _get_name(self) -> Optional[str]:
         return self._name
 
-    def _set_name(self, name):
-        # type: (str) -> None
+    def _set_name(self, name: str) -> None:
         self._name = _NormedFilePath(name)
 
     name = property(_get_name, _set_name)  # type: ignore
@@ -235,8 +232,7 @@ class DebPart:
 
         return './' + fname
 
-    def __resolve_symlinks(self, path):
-        # type: (str) -> Optional[str]
+    def __resolve_symlinks(self, path: str) -> Optional[str]:
         """ walk the path following symlinks
 
         returns:
@@ -405,12 +401,11 @@ class DebData(DebPart):
 
 class DebControl(DebPart):
 
-    def scripts(self):
-        # type: () -> Dict[str, bytes]
+    def scripts(self) -> Dict[str, bytes]:
         """ Return a dictionary of maintainer scripts (postinst, prerm, ...)
         mapping script names to script text. """
 
-        scripts = {}    # type: Dict[str, bytes]
+        scripts: Dict[str, bytes] = {}
         for fname in MAINT_SCRIPTS:
             if self.has_file(fname):
                 data = self.get_content(fname)
@@ -434,8 +429,7 @@ class DebControl(DebPart):
         pass
 
     @overload
-    def md5sums(self, encoding, errors=None):
-        # type: (str, Optional[str]) -> Dict[str, str]
+    def md5sums(self, encoding: str, errors: Optional[str] = None) -> Dict[str, str]:
         pass
 
     def md5sums(self, encoding=None, errors=None):
@@ -455,9 +449,9 @@ class DebControl(DebPart):
                 "'%s' file not found, can't list MD5 sums" % MD5_FILE)
 
         md5_file = self.get_file(MD5_FILE, encoding=encoding, errors=errors)
-        sums = {}  # type:  Dict[Any, str]
+        sums: Dict[Any, str] = {}
 
-        newline = '\r\n'     # type: Union[str, bytes]
+        newline: Union[str, bytes] = '\r\n'
         if encoding is None:
             newline = b'\r\n'
 
@@ -493,8 +487,7 @@ class DebFile(ArFile):
         ArFile.__init__(self, filename, mode, fileobj)
         actual_names = set(self.getnames())
 
-        def compressed_part_name(basename):
-            # type: (str) -> str
+        def compressed_part_name(basename: str) -> str:
             candidates = ['%s.%s' % (basename, ext) for ext in PART_EXTS]
             # also permit uncompressed data.tar and control.tar
             if basename in (DATA_PART, CTRL_PART):
@@ -551,8 +544,7 @@ class DebFile(ArFile):
         """ See .control.debcontrol() """
         return self.control.debcontrol()
 
-    def scripts(self):
-        # type: () -> Dict[str, bytes]
+    def scripts(self) -> Dict[str, bytes]:
         """ See .control.scripts() """
         return self.control.scripts()
 
@@ -562,8 +554,7 @@ class DebFile(ArFile):
         pass
 
     @overload
-    def md5sums(self, encoding, errors=None):
-        # type: (str, Optional[str]) -> Dict[str, str]
+    def md5sums(self, encoding: str, errors: Optional[str]=None) -> Dict[str, str]:
         pass
 
     def md5sums(self, encoding=None, errors=None):
@@ -599,8 +590,7 @@ class DebFile(ArFile):
     def __enter__(self) -> 'DebFile':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # type: (Any, Any, Any) -> None
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
 
