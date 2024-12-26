@@ -1,3 +1,9 @@
+python-debian (0.1.52) experimental; urgency=medium
+
+  * Ensure that gpgv is not gpgv-from-sq for now.
+
+ -- Stuart Prescott <stuart@debian.org>  Fri, 27 Dec 2024 00:38:26 +1100
+
 python-debian (0.1.51) experimental; urgency=medium
 
   * Add build-dependency on gpgv.
