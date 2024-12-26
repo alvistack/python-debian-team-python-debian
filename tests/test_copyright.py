@@ -167,6 +167,18 @@ License: GPL-2+
 """
 
 
+MULTIPLE_FILES = """\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: X Solitaire
+
+Files:
+ foo
+ bar
+Copyright: Copyright 1999 Jane Doe <janedoe@example.com>
+License: GPL-2+
+"""
+
+
 NOT_MACHINE_READABLE = """\
 This is the Debian GNU prepackaged version of the FSF's GNU hello
 
@@ -490,6 +502,16 @@ License: Apache
 """
 
     @no_type_check
+    def test_multiple_files_listed(self) -> None:
+        # see https://bugs.debian.org/1062437
+        c = copyright.Copyright(sequence=MULTIPLE_FILES.splitlines(True))
+        paragraphs = list(c.all_files_paragraphs())
+        assert paragraphs[0] is c.find_files_paragraph('foo')
+        assert paragraphs[0] is c.find_files_paragraph('bar')
+        assert c.find_files_paragraph('foo bar') is None
+        assert c.find_files_paragraph('quux') is None
+
+    @no_type_check
     def test_all_license_paragraphs(self) -> None:
         c = copyright.Copyright(sequence=SIMPLE.splitlines(True))
         assert [] == list(c.all_license_paragraphs())
@@ -695,60 +717,60 @@ class TestGlobsToRe:
 
     def test_empty(self) -> None:
         self.assertReEqual(
-            re.compile(r'\Z', self.flags), copyright.globs_to_re([]))
+            re.compile('', self.flags), copyright.globs_to_re([]))
 
     def test_star(self) -> None:
         pat = copyright.globs_to_re(['*'])
-        self.assertReEqual(re.compile(r'.*\Z', self.flags), pat)
-        assert pat.match('foo')
-        assert pat.match('foo/bar/baz')
+        self.assertReEqual(re.compile(r'.*', self.flags), pat)
+        assert pat.fullmatch('foo')
+        assert pat.fullmatch('foo/bar/baz')
 
     def test_star_prefix(self) -> None:
         e = re.escape
         pat = copyright.globs_to_re(['*.in'])
-        expected = re.compile('.*' + e('.in') + r'\Z', self.flags)
+        expected = re.compile('.*' + e('.in'), self.flags)
         self.assertReEqual(expected, pat)
-        assert not pat.match('foo')
-        assert not pat.match('in')
-        assert pat.match('Makefile.in')
-        assert not pat.match('foo/bar/in')
-        assert pat.match('foo/bar/Makefile.in')
+        assert not pat.fullmatch('foo')
+        assert not pat.fullmatch('in')
+        assert pat.fullmatch('Makefile.in')
+        assert not pat.fullmatch('foo/bar/in')
+        assert pat.fullmatch('foo/bar/Makefile.in')
 
     def test_star_prefix_with_slash(self) -> None:
         e = re.escape
         pat = copyright.globs_to_re(['*/Makefile.in'])
-        expected = re.compile('.*' + e('/Makefile.in') + r'\Z', self.flags)
+        expected = re.compile('.*' + e('/Makefile.in'), self.flags)
         self.assertReEqual(expected, pat)
-        assert not pat.match('foo')
-        assert not pat.match('in')
-        assert not pat.match('foo/bar/in')
-        assert pat.match('foo/Makefile.in')
-        assert pat.match('foo/bar/Makefile.in')
+        assert not pat.fullmatch('foo')
+        assert not pat.fullmatch('in')
+        assert not pat.fullmatch('foo/bar/in')
+        assert pat.fullmatch('foo/Makefile.in')
+        assert pat.fullmatch('foo/bar/Makefile.in')
 
     def test_question_mark(self) -> None:
         e = re.escape
         pat = copyright.globs_to_re(['foo/messages.??_??.txt'])
         expected = re.compile(
-            e('foo/messages.') + '..' + e('_') + '..' + e('.txt') + r'\Z',
+            e('foo/messages.') + '..' + e('_') + '..' + e('.txt'),
             self.flags)
         self.assertReEqual(expected, pat)
-        assert not pat.match('messages.en_US.txt')
-        assert pat.match('foo/messages.en_US.txt')
-        assert pat.match('foo/messages.ja_JP.txt')
-        assert not pat.match('foo/messages_ja_JP.txt')
+        assert not pat.fullmatch('messages.en_US.txt')
+        assert pat.fullmatch('foo/messages.en_US.txt')
+        assert pat.fullmatch('foo/messages.ja_JP.txt')
+        assert not pat.fullmatch('foo/messages_ja_JP.txt')
 
     def test_multi_literal(self) -> None:
         e = re.escape
         pat = copyright.globs_to_re(['Makefile.in', 'foo/bar'])
         expected = re.compile(
-            e('Makefile.in') + '|' + e('foo/bar') + r'\Z', self.flags)
+            e('Makefile.in') + '|' + e('foo/bar'), self.flags)
         self.assertReEqual(expected, pat)
-        assert pat.match('Makefile.in')
-        assert not pat.match('foo/Makefile.in')
-        assert pat.match('foo/bar')
-        assert not pat.match('foo/barbaz')
-        assert not pat.match('foo/bar/baz')
-        assert not pat.match('a/foo/bar')
+        assert pat.fullmatch('Makefile.in')
+        assert not pat.fullmatch('foo/Makefile.in')
+        assert pat.fullmatch('foo/bar')
+        assert not pat.fullmatch('foo/barbaz')
+        assert not pat.fullmatch('foo/bar/baz')
+        assert not pat.fullmatch('a/foo/bar')
 
     def test_multi_wildcard(self) -> None:
         e = re.escape
@@ -756,29 +778,29 @@ class TestGlobsToRe:
             ['debian/*', '*.Debian', 'translations/fr_??/*'])
         expected = re.compile(
             e('debian/') + '.*|.*' + e('.Debian') + '|' +
-            e('translations/fr_') + '..' + e('/') + r'.*\Z',
+            e('translations/fr_') + '..' + e('/') + '.*',
             self.flags)
         self.assertReEqual(expected, pat)
-        assert pat.match('debian/rules')
-        assert not pat.match('other/debian/rules')
-        assert pat.match('README.Debian')
-        assert pat.match('foo/bar/README.Debian')
-        assert pat.match('translations/fr_FR/a.txt')
-        assert pat.match('translations/fr_BE/a.txt')
-        assert not pat.match('translations/en_US/a.txt')
+        assert pat.fullmatch('debian/rules')
+        assert not pat.fullmatch('other/debian/rules')
+        assert pat.fullmatch('README.Debian')
+        assert pat.fullmatch('foo/bar/README.Debian')
+        assert pat.fullmatch('translations/fr_FR/a.txt')
+        assert pat.fullmatch('translations/fr_BE/a.txt')
+        assert not pat.fullmatch('translations/en_US/a.txt')
 
     def test_literal_backslash(self) -> None:
         e = re.escape
         pat = copyright.globs_to_re([r'foo/bar\\baz.c', r'bar/quux\\'])
         expected = re.compile(
-            e(r'foo/bar\baz.c') + '|' + e('bar/quux\\') + r'\Z', self.flags)
+            e(r'foo/bar\baz.c') + '|' + e('bar/quux\\'), self.flags)
         self.assertReEqual(expected, pat)
 
-        assert not pat.match('foo/bar.baz.c')
-        assert not pat.match('foo/bar/baz.c')
-        assert pat.match(r'foo/bar\baz.c')
-        assert not pat.match('bar/quux')
-        assert pat.match('bar/quux\\')
+        assert not pat.fullmatch('foo/bar.baz.c')
+        assert not pat.fullmatch('foo/bar/baz.c')
+        assert pat.fullmatch(r'foo/bar\baz.c')
+        assert not pat.fullmatch('bar/quux')
+        assert pat.fullmatch('bar/quux\\')
 
     @no_type_check
     def test_illegal_backslash(self) -> None:

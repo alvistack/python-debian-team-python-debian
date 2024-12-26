@@ -479,6 +479,9 @@ def globs_to_re(globs):
 
     Empty globs match nothing.
 
+    The pattern should be used with the `re.fullmatch` function to provide
+    anchoring.
+
     Raises MachineReadableFormatError if any of the globs is illegal.
     """
     buf = io.StringIO()
@@ -509,9 +512,6 @@ def globs_to_re(globs):
             else:
                 buf.write(re.escape(c))
 
-    # Patterns must be anchored at the end of the string.  (We use \Z instead
-    # of $ so that this works correctly for filenames including \n.)
-    buf.write(r'\Z')
     return re.compile(buf.getvalue(), re.MULTILINE | re.DOTALL)
 
 
@@ -749,7 +749,7 @@ class FilesParagraph(_RestrictedWrapper):
         pat = self.files_pattern()
         if pat is None:
             return False
-        return pat.match(filename) is not None
+        return pat.fullmatch(filename) is not None
 
     files = RestrictedField(
         'Files', from_str=_SpaceSeparated.from_str,
