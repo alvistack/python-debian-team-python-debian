@@ -60,7 +60,7 @@ except ImportError:
 
 from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
 from debian.changelog import Changelog
-from debian.deb822 import Deb822
+import debian.deb822
 
 
 DATA_PART = 'data.tar'      # w/o extension
@@ -414,14 +414,14 @@ class DebControl(DebPart):
 
         return scripts
 
-    def debcontrol(self) -> Deb822:
-        """ Return the debian/control as a Deb822 (a Debian-specific dict-like
+    def debcontrol(self) -> debian.deb822.DebControl:
+        """ Return the debian/control as a deb822.DebControl (a Debian-specific dict-like
         class) object.
 
         For a string representation of debian/control try
         .get_content('control') """
 
-        return Deb822(self.get_content(CONTROL_FILE))
+        return debian.deb822.DebControl(self.get_content(CONTROL_FILE))
 
     @overload
     def md5sums(self, encoding=None, errors=None):
@@ -540,7 +540,7 @@ class DebFile(ArFile):
 
     # proxy methods for the appropriate parts
 
-    def debcontrol(self) -> Deb822:
+    def debcontrol(self) -> debian.deb822.DebControl:
         """ See .control.debcontrol() """
         return self.control.debcontrol()
 

@@ -2393,6 +2393,14 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
         return debian.debian_support.Version(version)
 
 
+class DebControl(Packages):
+    """Represent an Debian binary package control file
+
+    This class is a thin wrapper around the parsing of :class:`Deb822`,
+    using the field parsing of :class:`_PkgRelationMixin`.
+    """
+
+
 class RestrictedField(collections.namedtuple(
         'RestrictedField', 'name from_str to_str allow_none')):
     """Placeholder for a property providing access to a restricted field.
