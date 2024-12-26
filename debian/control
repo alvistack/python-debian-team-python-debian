@@ -23,6 +23,8 @@ Build-Depends:
  python3-setuptools,
  python3-setuptools-scm,
  zstd <!nocheck>,
+Build-Conflicts:
+  gpgv-from-sq,
 Standards-Version: 4.7.0
 Vcs-Browser: https://salsa.debian.org/python-debian-team/python-debian
 Vcs-Git: https://salsa.debian.org/python-debian-team/python-debian.git
