@@ -1,3 +1,9 @@
+python-debian (0.1.51) experimental; urgency=medium
+
+  * Add build-dependency on gpgv.
+
+ -- Stuart Prescott <stuart@debian.org>  Thu, 26 Dec 2024 17:11:02 +1100
+
 python-debian (0.1.50) experimental; urgency=medium
 
   [ Stuart Prescott ]
