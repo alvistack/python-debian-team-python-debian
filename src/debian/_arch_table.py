@@ -25,7 +25,7 @@ other people.  Copyright years imported from the sources.
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import os
 from os import PathLike
-from typing import Iterable, Optional, IO, List, Dict, Union
+from typing import Iterable, Optional, IO, List, Dict, Union, Tuple
 
 import collections.abc
 
@@ -62,9 +62,15 @@ class QuadTupleDpkgArchitecture(_QuadTuple):
 
 class DpkgArchTable:
 
-    def __init__(self, arch2tuple):
-        # type: (Dict[str, QuadTupleDpkgArchitecture]) -> None
+    def __init__(self,
+                 arch2tuple, # type: Dict[str, QuadTupleDpkgArchitecture]
+                 cputable,   # type: Dict[str, Tuple[str, ...]]
+                 ostable     # type: Dict[str, Tuple[str, ...]]
+                ):
+                # type: (...) -> None
         self._arch2table = arch2tuple
+        self._cputable = cputable
+        self._ostable = ostable
         self._wildcard_cache = {
             'any': QuadTupleDpkgArchitecture('any', 'any', 'any', 'any')
         }  # type: Dict[str, QuadTupleDpkgArchitecture]
@@ -89,6 +95,7 @@ class DpkgArchTable:
           "cputable")
         """
         tupletable_path = os.path.join(path, 'tupletable')
+        ostable_path = os.path.join(path, 'ostable')
         cputable_path = os.path.join(path, 'cputable')
         triplet_compat = False
         if not os.path.exists(tupletable_path):
@@ -98,14 +105,23 @@ class DpkgArchTable:
                 tupletable_path = triplettable_path
 
         with open(tupletable_path, encoding='utf-8') as tuple_fd,\
+                open(ostable_path, encoding='utf-8') as os_fd,\
                 open(cputable_path, encoding='utf-8') as cpu_fd:
-            return cls._from_file(tuple_fd, cpu_fd, triplet_compat=triplet_compat)
+            return cls._from_file(tuple_fd, os_fd, cpu_fd, triplet_compat=triplet_compat)
 
     @classmethod
-    def _from_file(cls, tuple_table_fd, cpu_table_fd, triplet_compat=False):
-        # type: (IO[str], IO[str], bool) -> DpkgArchTable
+    def _from_file(cls, tuple_table_fd, os_table_fd, cpu_table_fd, triplet_compat=False):
+        # type: (IO[str], IO[str], IO[str], bool) -> DpkgArchTable
         arch2tuple = {}  # type: Dict[str, QuadTupleDpkgArchitecture]
-        cpu_list = [x[0] for x in _parse_table_file(cpu_table_fd)]
+        cputable = {} # Dict[str, Tuple[str, ...]]
+        ostable = {} # Dict[str, Tuple[str, ...]]
+
+        for row in _parse_table_file(os_table_fd):
+            ostable[row[0]] = tuple(row[1:])
+        for row in _parse_table_file(cpu_table_fd):
+            cputable[row[0]] = tuple(row[1:])
+
+        cpu_list = list(cputable.keys())
         for row in _parse_table_file(tuple_table_fd):
             # Manual unpack (so we support new columns)
             dpkg_tuple = row[0]
@@ -118,12 +134,13 @@ class DpkgArchTable:
                 for cpu_name in cpu_list:
                     debtuple_cpu = dpkg_tuple.replace('<cpu>', cpu_name)
                     dpkg_arch_cpu = dpkg_arch.replace('<cpu>', cpu_name)
-                    arch2tuple[dpkg_arch_cpu] = QuadTupleDpkgArchitecture(
-                        *debtuple_cpu.split('-', 3)
-                    )
+                    if dpkg_arch_cpu not in arch2tuple:
+                        arch2tuple[dpkg_arch_cpu] = QuadTupleDpkgArchitecture(
+                            *debtuple_cpu.split('-', 3)
+                        )
             else:
                 arch2tuple[dpkg_arch] = QuadTupleDpkgArchitecture(*dpkg_tuple.split('-', 3))
-        return DpkgArchTable(arch2tuple)
+        return DpkgArchTable(arch2tuple, cputable, ostable)
 
     def _dpkg_wildcard_to_tuple(self, arch):
         # type: (str) -> QuadTupleDpkgArchitecture
@@ -150,6 +167,35 @@ class DpkgArchTable:
             dpkg_arch = dpkg_arch[6:]
 
         return self._arch2table[dpkg_arch]
+
+    def dpkg_arch_to_multiarch(self, dpkg_arch):
+        # type: (str) -> str
+        """Return the multiarch name for a given dpkg architecture [debarch_to_multiarch]
+
+        This method is the closest match to dpkg's Dpkg::Arch::debarch_to_multiarch function.
+
+        >>> arch_table = DpkgArchTable.load_arch_table()
+        >>> arch_table.dpkg_arch_to_multiarch("amd64")
+        'x86_64-linux-gnu'
+        >>> arch_table.dpkg_arch_to_multiarch("armhf")
+        'arm-linux-gnueabihf'
+
+        :param dpkg_arch: A string representing a dpkg architecture.
+        :returns: The multiarch name corresponding to the dpkg architecture.
+        """
+        debtuple = self._arch2table[dpkg_arch]
+        abi = debtuple.api_name
+        libc = debtuple.libc_name
+        osname = debtuple.os_name
+        cpu = debtuple.cpu_name
+
+        assert cpu in self._cputable
+        assert f'{abi}-{libc}-{osname}' in self._ostable
+        gnutriplet = '-'.join((
+                             self._cputable[cpu][0],
+                             self._ostable[f'{abi}-{libc}-{osname}'][0]
+                         ))
+        return gnutriplet.replace('i686', 'i386')
 
     def matches_architecture(self, architecture, alias):
         # type: (str, str) -> bool
