@@ -26,24 +26,18 @@
 
 import logging
 import os.path
+from typing import (
+    Any,
+    IO,
+    Optional,
+    Text,
+)
 
 import pytest
 
 from debian import changelog
 from debian import debian_support
 
-
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Any,
-        IO,
-        Optional,
-        Text,
-    )
-except ImportError:
-    # Missing types aren't important at runtime
-    pass
 
 
 def find_test_file(filename):

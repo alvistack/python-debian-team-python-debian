@@ -29,34 +29,24 @@ import sys
 import os.path
 from pathlib import Path
 
+from typing import (
+    Any,
+    BinaryIO,
+    Dict,
+    IO,
+    Iterator,
+    List,
+    Optional,
+    Text,
+    Union,
+    overload,
+)
 try:
-    # pylint: disable=unused-import,deprecated-class
-    from typing import (
-        Any,
-        BinaryIO,
-        Dict,
-        IO,
-        Iterator,
-        List,
-        Optional,
-        Text,
-        TypeVar,
-        Union,
-        overload,
-        TYPE_CHECKING,
-    )
     from typing_extensions import (
         Literal,
     )
 except ImportError:
-    # Missing types aren't important at runtime
-    TYPE_CHECKING = False
-
-    if not TYPE_CHECKING:
-        # this block also hides the definition from mypy
-        # pylint: disable=unnecessary-lambda-assignment
-        overload = lambda f: None
-
+    pass
 
 from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
 from debian.changelog import Changelog

@@ -5,23 +5,17 @@ import sys
 import textwrap
 from abc import ABC
 
-try:
-    from typing import (
-        Optional, Union, Iterable, Callable, TYPE_CHECKING, Iterator,
-        Type, cast, List, Generic,
+from typing import (
+    Optional, Union, Iterable, Callable, TYPE_CHECKING, Iterator,
+    Type, cast, List, Generic,
 )
-    from debian._util import T
-    from debian._deb822_repro.types import TE, R, TokenOrElement
+from debian._util import T
+from debian._deb822_repro.types import TE, R, TokenOrElement
 
-    _combine_parts_ret_type = Callable[
-        [Iterable[Union[TokenOrElement, TE]]],
-        Iterable[Union[TokenOrElement, R]]
-    ]
-except ImportError:
-    # pylint: disable=unnecessary-lambda-assignment
-    TYPE_CHECKING = False
-    cast = lambda t, v: v
-
+_combine_parts_ret_type = Callable[
+    [Iterable[Union[TokenOrElement, TE]]],
+    Iterable[Union[TokenOrElement, R]]
+]
 
 if TYPE_CHECKING:
     from debian._deb822_repro.parsing import Deb822Element

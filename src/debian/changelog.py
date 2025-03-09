@@ -103,42 +103,35 @@ import os
 import re
 import socket
 
+from typing import (
+    Dict,
+    Iterable,
+    Iterator,
+    IO,
+    List,
+    Optional,
+    Pattern,
+    Union,
+    Text,
+    Tuple,
+)
+
 # pwd is only available on Unix platforms.
 try:
     import pwd
 except ImportError:
     pass
 
-
-try:
-    # pylint: disable=unused-import,deprecated-class
-    from typing import (
-        Any,
-        Dict,
-        Iterable,
-        Iterator,
-        IO,
-        List,
-        Optional,
-        Pattern,
-        Union,
-        Text,
-        Tuple,
-        TypeVar,
-    )
-    IterableDataSource = Union[
-        bytes,
-        Text,
-        IO[Text],
-        Iterable[Text],
-        Iterable[bytes],
-    ]
-except ImportError:
-    # Missing types aren't important at runtime
-    pass
-
 from debian.debian_support import Version
 
+
+IterableDataSource = Union[
+    bytes,
+    Text,
+    IO[Text],
+    Iterable[Text],
+    Iterable[bytes],
+]
 
 logger = logging.getLogger('debian.changelog')
 

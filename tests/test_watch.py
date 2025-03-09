@@ -17,27 +17,13 @@
 
 """Tests for debian.watch."""
 
+from io import StringIO
+from typing import (
+    Optional,
+    TypeVar,
+)
+
 import pytest
-
-try:
-    from StringIO import StringIO  # type: ignore
-except ImportError:
-    from io import StringIO
-
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Optional,
-        TypeVar,
-    )
-except ImportError:
-    # Missing types aren't important at runtime
-    TYPE_CHECKING = False
-
-    # Fake some definitions
-    if not TYPE_CHECKING:
-        TypeVar = lambda t: None
-
 
 from debian.watch import (
     expand,

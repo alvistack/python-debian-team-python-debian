@@ -20,20 +20,14 @@
 import logging
 import re
 
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Iterable,
-        Iterator,
-        List,
-        Optional,
-        Sequence,
-        TextIO,
-        Tuple,
-        )
-except ImportError:
-    # Lack of typing is not important at runtime
-    pass
+from typing import (
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    TextIO,
+)
 
 # The default watch file version to use for new files.
 DEFAULT_VERSION = 4

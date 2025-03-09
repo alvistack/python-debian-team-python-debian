@@ -22,29 +22,24 @@ import os
 import os.path
 import re
 
-try:
-    # pylint: disable=unused-import,deprecated-class
-    from typing import (
-        Any,
-        AnyStr,
-        BinaryIO,
-        Dict,
-        Iterable,
-        Iterator,
-        Generator,
-        List,
-        Match,
-        NoReturn,
-        Optional,
-        Pattern,
-        Text,
-        TextIO,
-        Tuple,
-        Union,
-    )
-except ImportError:
-    # Lack of typing is not important at runtime
-    pass
+from typing import (
+    Any,
+    AnyStr,
+    BinaryIO,
+    Dict,
+    Iterable,
+    Iterator,
+    Generator,
+    List,
+    Match,
+    NoReturn,
+    Optional,
+    Pattern,
+    Text,
+    TextIO,
+    Tuple,
+    Union,
+)
 
 try:
     import apt_pkg

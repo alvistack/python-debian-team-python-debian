@@ -1,19 +1,23 @@
 import operator
+from typing import Iterator, Union
+
+try:
+    from typing_extensions import (
+        Literal,
+    )
+except ImportError:
+    pass
 
 from debian._deb822_repro._util import BufferingIterator
 from debian._deb822_repro.tokens import Deb822Token
+from debian._deb822_repro.types import TokenOrElement, FormatterCallback
+
 
 # Consider these "opaque" enum-like values.  The actual value was chosen to
 # make repr easier to implement, but they are subject to change.
 _CONTENT_TYPE_VALUE = "is_value"
 _CONTENT_TYPE_COMMENT = "is_comment"
 _CONTENT_TYPE_SEPARATOR = "is_separator"
-
-try:
-    from typing import Iterator, Union, Literal
-    from debian._deb822_repro.types import TokenOrElement, FormatterCallback
-except ImportError:
-    pass
 
 
 class FormatterContentToken(object):

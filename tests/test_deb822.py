@@ -59,29 +59,20 @@ from debian import deb822
 from debian.debian_support import Version
 
 
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Any,
-        Callable,
-        Dict,
-        Generator,
-        IO,
-        List,
-        Optional,
-        Union,
-        Text,
-        Tuple,
-        Type,
-        TypeVar,
-    )
-except ImportError:
-    # Missing types aren't important at runtime
-    TYPE_CHECKING = False
-
-    # Fake some definitions
-    if not TYPE_CHECKING:
-        TypeVar = lambda t: None
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    IO,
+    List,
+    Optional,
+    Union,
+    Text,
+    Tuple,
+    Type,
+    TypeVar,
+)
 
 
 # Only run tests that rely on the gpgv signature validation executable if

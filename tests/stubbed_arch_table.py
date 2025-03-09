@@ -1,9 +1,6 @@
 from io import StringIO
-try:
-    from os import PathLike
-    from typing import Union
-except ImportError:
-    pass
+from os import PathLike
+from typing import Union
 
 from debian._arch_table import DpkgArchTable
 

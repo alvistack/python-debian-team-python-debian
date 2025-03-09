@@ -24,12 +24,8 @@ other people.  Copyright years imported from the sources.
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import os
-
-try:
-    from typing import Iterable, Optional, IO, List, Dict, Union
-    from os import PathLike
-except ImportError:
-    pass
+from os import PathLike
+from typing import Iterable, Optional, IO, List, Dict, Union
 
 import collections.abc
 

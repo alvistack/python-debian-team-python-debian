@@ -21,28 +21,23 @@ from __future__ import annotations
 import pickle
 import re
 
-try:
-    # pylint: disable=unused-import,deprecated-class
-    from typing import (
-        Callable,
-        Dict,
-        IO,
-        Iterable,
-        Iterator,
-        List,
-        Optional,
-        Set,
-        Text,
-        Tuple,
-    )
-    PkgTagDbType = Dict[str, Set[str]]
-    TagPkgDbType = Dict[str, Set[str]]
-    PkgFilterType = Callable[[Text], bool]
-    TagFilterType = Callable[[Text], bool]
-    PkgTagFilterType = Callable[[Tuple[Text, Set[Text]]], bool]
-except ImportError:
-    # Lack of typing is not important at runtime
-    pass
+from typing import (
+    Callable,
+    Dict,
+    IO,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Text,
+    Tuple,
+)
+PkgTagDbType = Dict[str, Set[str]]
+TagPkgDbType = Dict[str, Set[str]]
+PkgFilterType = Callable[[Text], bool]
+TagFilterType = Callable[[Text], bool]
+PkgTagFilterType = Callable[[Tuple[Text, Set[Text]]], bool]
 
 
 def parse_tags(input_data):
