@@ -1,5 +1,6 @@
 import re
 import sys
+from typing import Optional, cast, TYPE_CHECKING, Iterable, Union, Dict, Callable
 import weakref
 from weakref import ReferenceType
 
@@ -8,12 +9,6 @@ from debian._deb822_repro.locatable import Locatable, START_POSITION, \
     Range, ONE_CHAR_RANGE, ONE_LINE_RANGE, Position
 from debian._util import resolve_ref, _strI
 
-try:
-    from typing import Optional, cast, TYPE_CHECKING, Iterable, Union, Dict, Callable
-except ImportError:
-    # pylint: disable=unnecessary-lambda-assignment
-    TYPE_CHECKING = False
-    cast = lambda t, v: v
 
 if TYPE_CHECKING:
     from debian._deb822_repro.parsing import Deb822Element

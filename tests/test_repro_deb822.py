@@ -38,11 +38,9 @@ from debian._deb822_repro.parsing import Deb822KeyValuePairElement, Deb822Parsed
 from debian._deb822_repro.tokens import Deb822ErrorToken
 from debian.deb822 import Deb822
 
-try:
-    from typing import Any, Iterator, Tuple, Optional
-    from debian._deb822_repro.types import VE, ST
-except ImportError:
-    pass
+from typing import Any, Iterator, Tuple, Optional
+from debian._deb822_repro.types import VE, ST
+
 
 RoundTripParseCase = collections.namedtuple('RoundTripParseCase',
                                             ['input',

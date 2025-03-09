@@ -32,29 +32,20 @@ import logging
 import io
 import re
 
-try:
-    # pylint: disable=unused-import,deprecated-class
-    from typing import (
-        Any,
-        Callable,
-        FrozenSet,
-        IO,
-        Iterable,
-        Iterator,
-        List,
-        Optional,
-        Pattern,
-        Text,
-        Tuple,
-        Union,
-        TYPE_CHECKING, cast,
+from typing import (
+    Any,
+    FrozenSet,
+    IO,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Pattern,
+    Text,
+    Tuple,
+    Union,
+    cast,
 )
-
-    ParagraphTypes = Union["FilesParagraph", "LicenseParagraph"]
-    AllParagraphTypes = Union["Header", "FilesParagraph", "LicenseParagraph"]
-except ImportError:
-    # Lack of typing is not important at runtime
-    TYPE_CHECKING = False
 
 from debian._deb822_repro import (
     parse_deb822_file,
@@ -69,6 +60,11 @@ try:
     from debian.deb822 import Deb822ValueType
 except ImportError:
     pass
+
+
+ParagraphTypes = Union["FilesParagraph", "LicenseParagraph"]
+AllParagraphTypes = Union["Header", "FilesParagraph", "LicenseParagraph"]
+
 
 _CURRENT_FORMAT = (
     'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/')

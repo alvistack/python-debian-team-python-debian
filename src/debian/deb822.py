@@ -230,6 +230,7 @@ Deb822 Classes
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import builtins    # pylint: disable=unused-import
 import collections.abc
 import datetime
 import email.utils
@@ -238,74 +239,38 @@ import logging
 import io
 import re
 import subprocess
+from typing import (
+    Any,
+    Callable,
+    cast,
+    Dict,
+    Generator,
+    Iterator,
+    Iterable,
+    IO,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    overload,
+    Protocol,
+    Text,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    TYPE_CHECKING,
+)
 import warnings
 
-
 try:
-    # pylint: disable=unused-import,deprecated-class
-    from typing import (
-        Any,
-        Callable,
-        cast,
-        Dict,
-        FrozenSet,
-        Generator,
-        Iterator,
-        Iterable,
-        IO,
-        List,
-        Mapping,
-        MutableMapping,
-        Optional,
-        overload,
-        #Pattern,
-        Protocol,
-        Set,
-        Text,
-        Tuple,
-        Type,
-        TypeVar,
-        Union,
-        TYPE_CHECKING,
-    )
-    IterableInputDataType = Union[
-        IO[Text],
-        IO[bytes],
-        Iterable[Text],
-        Iterable[bytes],
-    ]
-    InputDataType = Union[
-        bytes,
-        Text,
-        IterableInputDataType,
-    ]
-
-    Deb822ValueType = Any    # this really is Union[str, List] but that is a can of worms
-    Deb822Mapping = Mapping[str, Deb822ValueType]
-    Deb822MutableMapping = MutableMapping[str, Deb822ValueType]
-    import builtins    # pylint: disable=unused-import
-    T_Deb822Dict = TypeVar('T_Deb822Dict', bound='Deb822Dict')
-
     from typing_extensions import (
         Literal,
         TypedDict,
     )
 except ImportError:
-    # Lack of typing is not important at runtime
-    TYPE_CHECKING = False
+    pass
 
-    # Fake some definitions
-    if not TYPE_CHECKING:
-        # this block also hides the definitions from mypy
-        # pylint: disable=unnecessary-lambda-assignment
-        overload = lambda f: None
-        cast = lambda t, v: v
-        IO = {
-            bytes: None,
-            str: None,
-        }
-        Deb822Mapping = None
-        InputDataType = None
 
 # We re-export OrderedSet in case someone used it externally.  The others look
 # sufficiently internal that we do not bother with backwards compatibility.
@@ -317,6 +282,26 @@ from debian._util import (
 )
 import debian.debian_support
 import debian.changelog
+
+
+IterableInputDataType = Union[
+    IO[Text],
+    IO[bytes],
+    Iterable[Text],
+    Iterable[bytes],
+]
+InputDataType = Union[
+    bytes,
+    Text,
+    IterableInputDataType,
+]
+
+Deb822ValueType = Any    # this really is Union[str, List] but that is a can of worms
+Deb822Mapping = Mapping[str, Deb822ValueType]
+Deb822MutableMapping = MutableMapping[str, Deb822ValueType]
+T_Deb822Dict = TypeVar('T_Deb822Dict', bound='Deb822Dict')
+
+
 
 
 try:

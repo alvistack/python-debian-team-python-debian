@@ -1,18 +1,14 @@
 import weakref
 from weakref import ReferenceType
 
-try:
-    from typing import (
-        Iterable, Optional, Generic, Dict, Iterator, TypeVar, TYPE_CHECKING, Any,
-        Callable,
-    )
+from typing import (
+    Iterable, Optional, Generic, Dict, Iterator, TypeVar, TYPE_CHECKING, Any,
+    Callable,
+)
 
-    # Used a generic type for any case where we need a generic type without any bounds
-    # (e.g. for the LinkedList interface and some super-classes/mixins).
-    T = TypeVar('T')
-
-except ImportError:  # pragma: no cover
-    TYPE_CHECKING = False
+# Used a generic type for any case where we need a generic type without any bounds
+# (e.g. for the LinkedList interface and some super-classes/mixins).
+T = TypeVar('T')
 
 
 def resolve_ref(ref):

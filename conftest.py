@@ -1,7 +1,4 @@
-try:
-    from typing import Dict, Any
-except ImportError:
-    pass
+from typing import Dict, Any
 
 import pytest
 

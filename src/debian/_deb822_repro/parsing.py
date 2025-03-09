@@ -7,6 +7,10 @@ import textwrap
 import weakref
 from abc import ABC
 from types import TracebackType
+from typing import (
+    Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
+    cast, overload, Mapping, TYPE_CHECKING, Sequence,
+)
 from weakref import ReferenceType
 
 from debian._deb822_repro._util import (combine_into_replacement, BufferingIterator,
@@ -28,32 +32,17 @@ from debian._util import (
     resolve_ref, LinkedList, LinkedListNode, OrderedSet, _strI, default_field_sort_key,
 )
 
-try:
-    from typing import (
-        Iterable, Iterator, List, Union, Dict, Optional, Callable, Any, Generic, Type, Tuple, IO,
-        cast, overload, Mapping, TYPE_CHECKING, Sequence,
+from debian._util import T
+# for some reason, pylint does not see that Commentish is used in typing
+from debian._deb822_repro.types import (  # pylint: disable=unused-import
+    ST, VE, TE,
+    ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
+    FormatterCallback,
 )
-    from debian._util import T
-    # for some reason, pylint does not see that Commentish is used in typing
-    from debian._deb822_repro.types import (  # pylint: disable=unused-import
-        ST, VE, TE,
-        ParagraphKey, TokenOrElement, Commentish, ParagraphKeyBase,
-        FormatterCallback,
-    )
 
-    if TYPE_CHECKING:
-        StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
-        StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
-        KVPNode = LinkedListNode['Deb822KeyValuePairElement']
-    else:
-        StreamingValueParser = None
-        StrToValueParser = None
-        KVPNode = None
-except ImportError:
-    if not TYPE_CHECKING:
-        # pylint: disable=unnecessary-lambda-assignment
-        cast = lambda t, v: v
-        overload = lambda f: None
+StreamingValueParser = Callable[[Deb822Token, BufferingIterator[Deb822Token]], VE]
+StrToValueParser = Callable[[str], Iterable[Union['Deb822Token', VE]]]
+KVPNode = LinkedListNode['Deb822KeyValuePairElement']
 
 
 class ValueReference(Generic[TE]):

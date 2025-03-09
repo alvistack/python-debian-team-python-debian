@@ -25,24 +25,17 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+from typing import (
+    Any,
+    List,
+    Optional,
+)
 import urllib.parse
 
 import pytest
 
 from debian import debian_support
 from debian.debian_support import *
-
-
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Any,
-        List,
-        Optional,
-    )
-except ImportError:
-    # Missing types aren't important at runtime
-    pass
 
 
 def find_test_file(filename: str) -> str:

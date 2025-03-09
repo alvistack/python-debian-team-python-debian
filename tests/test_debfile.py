@@ -36,30 +36,22 @@ from debian import arfile
 from debian import debfile
 
 
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Any,
-        Callable,
-        Dict,
-        Generator,
-        IO,
-        Iterator,
-        List,
-        Optional,
-        Union,
-        Text,
-        Tuple,
-        Type,
-        TypeVar,
-    )
-except ImportError:
-    # Missing types aren't important at runtime
-    TYPE_CHECKING = False
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    IO,
+    Iterator,
+    List,
+    Optional,
+    Union,
+    Text,
+    Tuple,
+    Type,
+    TypeVar,
+)
 
-    # Fake some definitions
-    if not TYPE_CHECKING:
-        TypeVar = lambda t: None
 
 
 # Only run tests that rely on ar to make archives if it installed.

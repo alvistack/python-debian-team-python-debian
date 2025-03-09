@@ -25,23 +25,16 @@ packages.
 from pathlib import Path
 import sys
 
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Any,
-        BinaryIO,
-        Dict,
-        Generator,
-        IO,
-        Iterator,
-        List,
-        NoReturn,
-        Optional,
-        Union,
-    )
-except ImportError:
-    # Missing types aren't important at runtime
-    pass
+from typing import (
+    BinaryIO,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    NoReturn,
+    Optional,
+    Union,
+)
 
 
 GLOBAL_HEADER = b"!<arch>\n"

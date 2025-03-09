@@ -28,21 +28,16 @@ from debian import deb822
 from debian._deb822_repro import parse_deb822_file, Deb822ParagraphElement
 
 
-try:
-    # pylint: disable=unused-import
-    from typing import (
-        Any,
-        Generator,
-        List,
-        Pattern,
-        Sequence,
-        Text,
-        no_type_check,
-        TYPE_CHECKING,
-    )
-except ImportError:
-    # Lack of typing is not important at runtime
-    TYPE_CHECKING = False
+from typing import (
+    Any,
+    Generator,
+    List,
+    Pattern,
+    Sequence,
+    Text,
+    no_type_check,
+    TYPE_CHECKING,
+)
 
 
 SIMPLE = """\
