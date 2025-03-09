@@ -23,6 +23,7 @@ import io
 import logging
 import os
 import os.path
+from pathlib import Path
 import pickle
 import re
 import shutil
@@ -694,6 +695,30 @@ with open("test_deb822.pickle", "wb") as fh:
 
         for d in deb822.Deb822.iter_paragraphs(binary):
             self.assertWellParsed(d, PARSED_PACKAGE)
+
+    @pytest.mark.skipif(not _have_apt_pkg, reason="apt_pkg is not available")
+    def test_iter_paragraphs_filename_apt_pkg(self, tmp_path: Path) -> None:
+        self._test_iter_paragraphs_filename(tmp_path, True)
+
+    def test_iter_paragraphs_filename_no_apt_pkg(self, tmp_path: Path) -> None:
+        self._test_iter_paragraphs_filename(tmp_path, False)
+
+    def _test_iter_paragraphs_filename(self, tmp_path: Path, use_apt_pkg: bool) -> None:
+        text = (UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
+        tmp = tmp_path / "Packages"
+
+        with open(tmp, "wt", encoding="UTF-8") as fh:
+            fh.write(text)
+
+        for d in deb822.Deb822.iter_paragraphs(tmp, use_apt_pkg=use_apt_pkg):
+            self.assertWellParsed(d, PARSED_PACKAGE)
+
+        assert len(list(deb822.Deb822.iter_paragraphs(tmp, use_apt_pkg=use_apt_pkg))) == 2
+
+        for d in deb822.Deb822.iter_paragraphs(str(tmp), use_apt_pkg=use_apt_pkg):
+            self.assertWellParsed(d, PARSED_PACKAGE)
+
+        assert len(list(deb822.Deb822.iter_paragraphs(str(tmp), use_apt_pkg=use_apt_pkg))) == 2
 
     def _test_iter_paragraphs_count(self, filename, cmd, expected, *args, **kwargs):
         # type: (str, Callable[..., Any], int, *Any, **Any) -> None
