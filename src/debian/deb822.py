@@ -1337,8 +1337,8 @@ class GpgInfo(_BaseGpgInfo):
                 inp = cls._get_full_bytes(sequence)
             out, err = p.communicate(inp)
 
-        return cls.from_output(out.decode('utf-8'),
-                               err.decode('utf-8'))
+        return cls.from_output(out.decode('unicode-escape'),
+                               err.decode('unicode-escape'))
 
     @staticmethod
     def _get_full_bytes(sequence):
