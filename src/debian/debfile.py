@@ -41,9 +41,12 @@ from typing import (
     Union,
     overload,
 )
-from typing_extensions import (
-    Literal,
-)
+try:
+    from typing_extensions import (
+        Literal,
+    )
+except ImportError:
+    pass
 
 from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
 from debian.changelog import Changelog

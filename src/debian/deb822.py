@@ -253,7 +253,6 @@ from typing import (
     MutableMapping,
     Optional,
     overload,
-    Protocol,
     Text,
     Tuple,
     Type,
@@ -266,6 +265,7 @@ import warnings
 try:
     from typing_extensions import (
         Literal,
+        Protocol,
         TypedDict,
     )
 except ImportError:

@@ -1,5 +1,12 @@
 import operator
-from typing import Iterator, Union, Literal
+from typing import Iterator, Union
+
+try:
+    from typing_extensions import (
+        Literal,
+    )
+except ImportError:
+    pass
 
 from debian._deb822_repro._util import BufferingIterator
 from debian._deb822_repro.tokens import Deb822Token
