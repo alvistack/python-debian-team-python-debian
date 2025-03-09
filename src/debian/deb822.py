@@ -301,9 +301,6 @@ Deb822Mapping = Mapping[str, Deb822ValueType]
 Deb822MutableMapping = MutableMapping[str, Deb822ValueType]
 T_Deb822Dict = TypeVar('T_Deb822Dict', bound='Deb822Dict')
 
-
-
-
 try:
     import apt_pkg
     # This module uses apt_pkg only for its TagFile interface.
