@@ -5,14 +5,14 @@ the files is also available for some formats.
 
 Currently supported are:
 
-  * Debtags information (:mod:`debian.debtags` module)
-  * debian/changelog (:mod:`debian.changelog` module)
-  * Packages files, pdiffs (:mod:`debian.debian_support` module)
+  * Debtags information (`debian.debtags` module)
+  * debian/changelog (`debian.changelog` module)
+  * Packages files, pdiffs (`debian.debian_support` module)
   * Control files of single or multiple RFC822-style paragraphs, e.g.
     debian/control, .changes, .dsc, Packages, Sources, Release, etc.
-    (:mod:`debian.deb822` module)
+    (`debian.deb822` module)
   * Raw .deb and .ar files, with (read-only) access to contained
-    files and meta-information (:mod:`debian.debfile` module)
+    files and meta-information (`debian.debfile` module)
 
 `API documentation`_, can be found online and throughout the code. There
 are examples both within the code and in the examples_ directory.
@@ -31,7 +31,7 @@ module's capabilities. If you have a module that is for manipulation or
 interrogation of Debian specific data then consider adding it to this package.
 Please discuss your ideas on the `mailing list`_,
 make merge requests via the `salsa repository`_,
-and see the :ref:`Contributing` section of this documentation.
+and see the Contributing section of the documentation.
 
 .. _mailing list: mailto:pkg-python-debian-maint@lists.alioth.debian.org
 
