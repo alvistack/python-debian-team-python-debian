@@ -120,8 +120,10 @@ Input
 =====
 
 Deb822 objects are normally initialized from a file object (from which
-at most one paragraph is read) or a string. Alternatively, any sequence
-that returns one line of input at a time may be used, e.g a list of strings.
+at most one paragraph is read), a multiline string of Deb822 format, a
+string representing a filename, or a pathlib.Path object.
+Alternatively, any sequence that returns one line of input at a time
+may be used, e.g a list of strings.
 
 PGP signatures, if present, will be stripped.
 
@@ -237,6 +239,7 @@ import email.utils
 import functools
 import logging
 import io
+from pathlib import Path
 import re
 import subprocess
 from typing import (
@@ -591,7 +594,8 @@ class Deb822(Deb822Dict):
     """ Generic Deb822 data
 
     :param sequence: a string, or any object that returns a line of
-        input each time, normally a file.  Alternately, sequence can
+        input each time, normally a file.  Or a filename (as a str) or a
+        `pathlib.Path` object. Alternately, sequence can
         be a dict that contains the initial key-value pairs. When
         python-apt is present, sequence can also be a compressed object,
         for example a file object associated to something.gz.
@@ -635,7 +639,7 @@ class Deb822(Deb822Dict):
     """
 
     def __init__(self,
-                 sequence=None,     # type: Optional[Union[InputDataType, Deb822Mapping]]
+                 sequence=None,     # type: Optional[Union[InputDataType, Deb822Mapping, Path]]
                  fields=None,       # type: Optional[List[str]]
                  _parsed=None,      # type: Optional[Union[Deb822, TagSectionWrapper]]
                  encoding="utf-8",  # type: str
@@ -667,7 +671,7 @@ class Deb822(Deb822Dict):
 
     @classmethod
     def iter_paragraphs(cls,                     # type: Type[T_Deb822]
-                        sequence,                # type: InputDataType
+                        sequence,                # type: Union[InputDataType, Path]
                         fields=None,             # type: Optional[List[str]]
                         use_apt_pkg=False,       # type: bool
                         shared_storage=False,    # type: bool
@@ -699,7 +703,14 @@ class Deb822(Deb822Dict):
         """
         # pylint: disable=unused-argument
 
-        apt_pkg_allowed = use_apt_pkg and _has_fileno(sequence)
+        is_filename_like = (
+            isinstance(sequence, Path) or
+            (isinstance(sequence, str) and "\n" not in sequence and Path(sequence).exists())
+        )
+
+        apt_pkg_allowed = use_apt_pkg and (
+            _has_fileno(sequence) or is_filename_like
+        )
 
         if use_apt_pkg and not _have_apt_pkg:
             # warn that apt_pkg was requested but not installed
@@ -720,6 +731,8 @@ class Deb822(Deb822Dict):
 
         if _have_apt_pkg and apt_pkg_allowed:
             # pylint: disable=no-member
+            if isinstance(sequence, Path):
+                sequence = str(sequence)
             parser = apt_pkg.TagFile(sequence, bytes=True)
             for section in parser:
                 paragraph = cls(fields=fields,
@@ -732,18 +745,28 @@ class Deb822(Deb822Dict):
             # Split this into multiple conditionals so that type checking
             # can follow the types through
             iterable = [] # type: IterableInputDataType
-            if isinstance(sequence, str):
-                iterable = iter(sequence.splitlines())
-            elif isinstance(sequence, bytes):
-                iterable = iter(sequence.splitlines())
-            else:
-                # StringIO/list can be iterated directly
-                iterable = iter(sequence)  # type: ignore
-            while True:
-                x = cls(iterable, fields, encoding=encoding, strict=strict)
-                if not x:
-                    break
-                yield x
+            close_fh = False
+            try:
+                if is_filename_like:
+                    # pylint: disable=consider-using-with
+                    assert isinstance(sequence, (str, Path))
+                    iterable = iter(open(sequence, "rt", encoding=encoding))
+                    close_fh = True
+                elif isinstance(sequence, str):
+                    iterable = iter(sequence.splitlines())
+                elif isinstance(sequence, bytes):  # repetition for mypy
+                    iterable = iter(sequence.splitlines())
+                else:
+                    # StringIO/list can be iterated directly
+                    iterable = iter(sequence)  # type: ignore
+                while True:
+                    x = cls(iterable, fields, encoding=encoding, strict=strict)
+                    if not x:
+                        break
+                    yield x
+            finally:
+                if close_fh:
+                    iterable.close()   # type: ignore
 
     ###
 
@@ -2274,7 +2297,7 @@ class Sources(Dsc, _PkgRelationMixin):
 
     @classmethod
     def iter_paragraphs(cls,
-                        sequence,                # type: InputDataType
+                        sequence,                # type: Union[InputDataType, Path]
                         fields=None,             # type: Optional[List[str]]
                         use_apt_pkg=True,        # type: bool
                         shared_storage=False,    # type: bool
@@ -2316,7 +2339,7 @@ class Packages(Deb822, _PkgRelationMixin, _VersionAccessorMixin):
 
     @classmethod
     def iter_paragraphs(cls,
-                        sequence,              # type: InputDataType
+                        sequence,              # type: Union[InputDataType, Path]
                         fields=None,           # type: Optional[List[str]]
                         use_apt_pkg=True,      # type: bool
                         shared_storage=False,  # type: bool
