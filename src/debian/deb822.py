@@ -705,7 +705,7 @@ class Deb822(Deb822Dict):
 
         is_filename_like = (
             isinstance(sequence, Path) or
-            (isinstance(sequence, str) and "\n" not in sequence and Path(sequence).exists())
+            (isinstance(sequence, str) and sequence and "\n" not in sequence and Path(sequence).exists() and Path(sequence).is_file())
         )
 
         apt_pkg_allowed = use_apt_pkg and (
