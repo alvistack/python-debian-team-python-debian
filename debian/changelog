@@ -1,3 +1,9 @@
+python-debian (1.0.1) unstable; urgency=medium
+
+  * Fix handling of empty string data given to Deb822.iter_paragraphs.
+
+ -- Stuart Prescott <stuart@debian.org>  Tue, 11 Mar 2025 23:17:33 +1100
+
 python-debian (1.0.0) unstable; urgency=medium
 
   * The 1.0.0 release of python-debian :)
