@@ -206,6 +206,7 @@ upload it.
 The upload procedure is::
 
     $ ./debian/rules dist
+    $ twine check --strict dist/python?debian-x.y.z.*
     $ twine upload dist/python?debian-x.y.z.*
 
 

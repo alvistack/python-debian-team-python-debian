@@ -35,7 +35,9 @@ dist:
 	# needs python3-build python3-wheel
 	rm -f dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*
 	python3 -m build --skip-dependency-check --no-isolation --sdist --wheel
-	echo "You can now: twine upload dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*"
+	@echo "You can now:"
+	@echo "  twine check --strict dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*"
+	@echo "  twine upload dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*"
 
 apidoc:
 	rm -f docs/api/*
