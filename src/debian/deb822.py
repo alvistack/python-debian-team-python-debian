@@ -233,6 +233,7 @@ Deb822 Classes
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import builtins    # pylint: disable=unused-import
+from collections import defaultdict
 import collections.abc
 import datetime
 import email.utils
@@ -358,6 +359,10 @@ class Error(Exception):
 
 class RestrictedFieldError(Error):
     """Raised when modifying the raw value of a field is not allowed."""
+
+
+class MergeChangesError(Error):
+    """Raised for problems merging .changes files."""
 
 
 if TYPE_CHECKING:
@@ -1946,6 +1951,93 @@ class Changes(_gpg_multivalued, _VersionAccessorMixin):
             subdir = self['source'][0]
 
         return 'pool/%s/%s/%s' % (section, subdir, self['source'])
+
+    def _merge_check_simple_fields(self, other: "Changes") -> None:
+        """Check whether simple fields in .changes files are consistent."""
+        if self["Format"] != "1.8":
+            raise MergeChangesError(
+                f"Unknown .changes format: {self['Format']}"
+            )
+
+        for field in ("Format", "Source", "Version"):
+            values = [changes[field] for changes in (self, other)]
+            if len(set(values)) != 1:
+                raise MergeChangesError(
+                    f"{field} fields do not match: {values}"
+                )
+
+    def _merge_check_descriptions(self, other: "Changes") -> None:
+        """Check that descriptions in .changes files are consistent."""
+        changes_description_re = re.compile(r"^ ([^ ]+) - (.+)")
+        descriptions: dict[str, str] = {}
+        for changes in (self, other):
+            for description_line in changes.get(
+                "Description", ""
+            ).splitlines():
+                if not description_line:
+                    continue
+                m = changes_description_re.match(description_line)
+                if m:
+                    name, description = m.groups()
+                    if (
+                        name in descriptions
+                        and descriptions[name] != description
+                    ):
+                        raise MergeChangesError(
+                            f"Descriptions for {name} do not match: "
+                            f"{descriptions[name]!r} != {description!r}"
+                        )
+                    descriptions[name] = description
+
+    def _merge_check_checksums(self, other: "Changes") -> None:
+        """Check that checksums in .changes files are consistent."""
+        checksums: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
+        for changes in (self, other):
+            for field in changes:
+                if field.lower().startswith(
+                    "checksums-"
+                ) and field.lower() not in {
+                    "checksums-sha1",
+                    "checksums-sha256",
+                }:
+                    raise MergeChangesError(
+                        f"Unsupported checksum field: {field}"
+                    )
+
+            for field in ("Files", "Checksums-Sha1", "Checksums-Sha256"):
+                for checksum in changes.get(field, []):
+                    name = checksum["name"]
+                    if (
+                        name in checksums[field]
+                        and checksums[field][name] != checksum
+                    ):
+                        raise MergeChangesError(
+                            f"Entries in {field} for {name} do not match: "
+                            f"{checksums[field][name]} != {checksum}"
+                        )
+                    checksums[field][name] = checksum
+
+    def merge(self, other: "Changes") -> "Changes":
+        """Merge another .changes file into this one."""
+        self._merge_check_simple_fields(other)
+        self._merge_check_descriptions(other)
+        self._merge_check_checksums(other)
+
+        merged = Changes(str(self))
+        merged.merge_fields("Binary", other)
+        merged.merge_fields("Architecture", other)
+        merged.merge_fields("Description", other)
+
+        for field in ("Files", "Checksums-Sha1", "Checksums-Sha256"):
+            existing = {tuple(checksum.items()) for checksum in merged[field]}
+            for checksum in other[field]:
+                assert tuple(checksum.items()) not in existing
+                merged[field].append(checksum)
+
+        merged.order_before("Binary", "Source")
+        merged.order_before("Description", "Changes")
+
+        return merged
 
 
 class BuildInfo(_gpg_multivalued, _PkgRelationMixin, _VersionAccessorMixin):
