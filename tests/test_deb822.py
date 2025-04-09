@@ -584,6 +584,32 @@ with open("test_deb822.pickle", "wb") as fh:
         assert list(paragraph.keys()) == \
             ['Package', 'Architecture', 'Depends', 'Recommends', 'Description']
 
+    def test_merge_fields_single_line(self) -> None:
+        left = deb822.Deb822({"Binary": "foo bar"})
+        right = deb822.Deb822({"Binary": "baz quux"})
+
+        left.merge_fields("Binary", right)
+
+        assert left["Binary"] == "bar baz foo quux"
+
+    def test_merge_fields_multi_line(self) -> None:
+        left = deb822.Deb822(
+            {"Description": "\n foo - package foo\n bar - package bar"}
+        )
+        right = deb822.Deb822(
+            {"Description": "\n baz - package baz\n quux - package quux"}
+        )
+
+        left.merge_fields("Description", right)
+
+        assert left["Description"] == (
+            "\n"
+            " foo - package foo\n"
+            " bar - package bar\n"
+            " baz - package baz\n"
+            " quux - package quux"
+        )
+
     def test_gpg_stripping(self) -> None:
         for string in GPG_SIGNED:
             unparsed_with_gpg = string % UNPARSED_PACKAGE
