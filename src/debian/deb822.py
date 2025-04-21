@@ -1031,8 +1031,8 @@ class Deb822(Deb822Dict):
             return merged
 
         if self.is_multi_line(s1) and self.is_multi_line(s2):
-            for item in s2.splitlines(True):
-                if item not in s1.splitlines(True):
+            for item in s2.splitlines():
+                if item not in s1.splitlines():
                     s1 = s1 + "\n" + item
             return s1
 
