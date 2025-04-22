@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 from collections import namedtuple
-import email.utils
+import hashlib
 import io
 import logging
 import os
@@ -1800,3 +1800,232 @@ class TestGpgInfo:
             os.remove(filename)
 
         self._validate_gpg_info(gpg_info, sampledata)
+
+
+class TestChanges:
+
+    def test_merge_unknown_format(self) -> None:
+        # Only "Format: 1.8" is supported.
+        with pytest.raises(
+            deb822.MergeChangesError, match="Unknown .changes format: 1.7"
+        ):
+            deb822.Changes({"Format": "1.7"}).merge(
+                deb822.Changes({"Format": "1.7"})
+            )
+
+    @pytest.mark.parametrize("field", ["Format", "Source", "Version"])
+    def test_merge_mismatched_simple_fields(self, field: str) -> None:
+        # All "Format", "Source", and "Version" fields must match.
+        changes = deb822.Changes(
+            {"Format": "1.8", "Source": "hello", "Version": "1.0"}
+        )
+        other = changes.copy()
+        other[field] = "mismatch"
+        expected_error = (
+            f"{field} fields do not match: [{changes[field]!r}, 'mismatch']"
+        )
+        with pytest.raises(
+            deb822.MergeChangesError, match=re.escape(expected_error)
+        ):
+            changes.merge(other)
+
+    def test_merge_mismatched_descriptions(self) -> None:
+        # The descriptions for each binary package must match.
+        changes, other = [
+            deb822.Changes(
+                {
+                    "Format": "1.8",
+                    "Source": "hello",
+                    "Version": "1.0",
+                    "Description": (
+                        "\n"
+                        " unrecognized junk\n"
+                        " match - matching description\n"
+                        f" unique-{name} - only in {name}\n"
+                        f" mismatch - {name}"
+                    )
+                }
+            )
+            for name in ("left", "right")
+        ]
+        with pytest.raises(
+            deb822.MergeChangesError,
+            match="Descriptions for mismatch do not match: 'left' != 'right'"
+        ):
+            changes.merge(other)
+
+    def test_merge_mismatched_files(self) -> None:
+        # The entries for a given file in "Files" must match.
+        changes, other = [
+            deb822.Changes(
+                {
+                    "Format": "1.8",
+                    "Source": "hello",
+                    "Version": "1.0",
+                    "Files": (
+                        "\n"
+                        " 0000 16 misc optional archdep_1.0_amd64.deb\n"
+                        " 0001 20 misc optional match_1.0_all.deb\n"
+                        f" {csum} {size} misc optional mismatch_1.0_all.deb"
+                    )
+                }
+            )
+            for csum, size in (("0002", 24), ("0003", 32))
+        ]
+        expected_error = (
+            "Entries in Files for mismatch_1.0_all.deb do not match: "
+            "{'md5sum': '0002', 'size': '24', 'section': 'misc', "
+            "'priority': 'optional', 'name': 'mismatch_1.0_all.deb'} != "
+            "{'md5sum': '0003', 'size': '32', 'section': 'misc', "
+            "'priority': 'optional', 'name': 'mismatch_1.0_all.deb'}"
+        )
+        with pytest.raises(
+            deb822.MergeChangesError, match=re.escape(expected_error)
+        ):
+            changes.merge(other)
+
+    @pytest.mark.parametrize(
+        "field,checksum",
+        [("Checksums-Sha1", "sha1"), ("Checksums-Sha256", "sha256")]
+    )
+    def test_merge_mismatched_checksums(
+        self, field: str, checksum: str
+    ) -> None:
+        # The entries for a given file in "Checksums-*" must match.
+        changes, other = [
+            deb822.Changes(
+                {
+                    "Format": "1.8",
+                    "Source": "hello",
+                    "Version": "1.0",
+                    field: (
+                        "\n"
+                        " 0000 16 archdep_1.0_amd64.deb\n"
+                        " 0001 20 match_1.0_all.deb\n"
+                        f" {csum} {size} mismatch_1.0_all.deb"
+                    )
+                }
+            )
+            for csum, size in (("0002", 24), ("0003", 32))
+        ]
+        expected_error = (
+            f"Entries in {field} for mismatch_1.0_all.deb do not match: "
+            f"{{'{checksum}': '0002', 'size': '24', "
+            f"'name': 'mismatch_1.0_all.deb'}} != "
+            f"{{'{checksum}': '0003', 'size': '32', "
+            f"'name': 'mismatch_1.0_all.deb'}}"
+        )
+        with pytest.raises(
+            deb822.MergeChangesError, match=re.escape(expected_error)
+        ):
+            changes.merge(other)
+
+    def test_merge_unsupported_checksum(self) -> None:
+        # Unsupported "Checksums-*" fields are an error.
+        changes = deb822.Changes(
+            {
+                "Format": "1.8",
+                "Source": "hello",
+                "Version": "1.0",
+                "Checksums-Unsupported": "",
+            }
+        )
+        other = changes.copy()
+        with pytest.raises(
+            deb822.MergeChangesError,
+            match="Unsupported checksum field: Checksums-Unsupported"
+        ):
+            changes.merge(other)
+
+    def _make_files_line(self, contents: bytes, filename: str) -> str:
+        return (
+            f" {hashlib.md5(contents).hexdigest()} {len(contents)}"
+            f" misc optional {filename}"
+        )
+
+    def _make_checksums_sha1_line(self, contents: bytes, filename: str) -> str:
+        return (
+            f" {hashlib.sha1(contents).hexdigest()} {len(contents)} {filename}"
+        )
+
+    def _make_checksums_sha256_line(
+        self, contents: bytes, filename: str
+    ) -> str:
+        return (
+            f" {hashlib.sha256(contents).hexdigest()} {len(contents)}"
+            f" {filename}"
+        )
+
+    def test_merge_success(self) -> None:
+        # Merging two valid and compatible .changes files works.
+        hello_data_contents = b"hello-data"
+        hello_contents = b"hello"
+        base_fields = {
+            "Format": "1.8",
+            "Date": "Sun, 01 Dec 2024 00:00:00 +0000",
+            "Source": "hello",
+            "Version": "1.0-1",
+            "Distribution": "unstable",
+            "Urgency": "medium",
+            "Maintainer": "Example Maintainer <maintainer@example.org>",
+            "Changes": (
+                "\n"
+                " hello (1.0-1) unstable; urgency=medium\n"
+                " .\n"
+                "   Test upload."
+            ),
+        }
+        changes = deb822.Changes(
+            {
+                **base_fields,
+                "Binary": "hello-data",
+                "Architecture": "all",
+                "Description": "\n hello-data - data for hello",
+                "Files": "\n" + self._make_files_line(
+                    hello_data_contents, "hello-data_1.0-1_all.deb"
+                ),
+                "Checksums-Sha1": "\n" + self._make_checksums_sha1_line(
+                    hello_data_contents, "hello-data_1.0-1_all.deb"
+                ),
+                "Checksums-Sha256": "\n" + self._make_checksums_sha256_line(
+                    hello_data_contents, "hello-data_1.0-1_all.deb"
+                ),
+            }
+        )
+        other = deb822.Changes(
+            {
+                **base_fields,
+                "Binary": "hello",
+                "Architecture": "amd64",
+                "Description": "\n hello - hello world",
+                "Files": "\n" + self._make_files_line(
+                    hello_contents, "hello_1.0-1_amd64.deb"
+                ),
+                "Checksums-Sha1": "\n" + self._make_checksums_sha1_line(
+                    hello_contents, "hello_1.0-1_amd64.deb"
+                ),
+                "Checksums-Sha256": "\n" + self._make_checksums_sha256_line(
+                    hello_contents, "hello_1.0-1_amd64.deb"
+                ),
+            }
+        )
+
+        merged = changes.merge(other)
+
+        assert merged == {
+            **base_fields,
+            "Binary": "hello hello-data",
+            "Architecture": "all amd64",
+            "Description": (
+                "\n"
+                " hello-data - data for hello\n"
+                " hello - hello world"
+            ),
+            "Files": changes["Files"] + other["Files"],
+            "Checksums-Sha1": (
+                changes["Checksums-Sha1"] + other["Checksums-Sha1"]
+            ),
+            "Checksums-Sha256": (
+                changes["Checksums-Sha256"] + other["Checksums-Sha256"]
+            ),
+        }
