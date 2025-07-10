@@ -36,12 +36,15 @@ from typing import (
     IO,
     Iterator,
     List,
-    Literal,
     Optional,
     Text,
     Union,
     overload,
 )
+try:
+    from typing import Literal
+except ImportError:
+    pass
 
 from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
 from debian.changelog import Changelog
@@ -321,7 +324,7 @@ class DebPart:
     @overload
     def get_content(self,
                     fname: Union[str, Path],
-                    encoding: Literal[None] = None,
+                    encoding: "Literal[None]" = None,
                     errors: Optional[str] = None,
                     follow_symlinks: bool = False,
                    ) -> Optional[bytes]:
@@ -408,7 +411,7 @@ class DebControl(DebPart):
 
     @overload
     def md5sums(self,
-                encoding: Literal[None] = None,
+                encoding: "Literal[None]" = None,
                 errors: Optional[str] = None) -> Dict[bytes, str]:
         pass
 
@@ -535,7 +538,7 @@ class DebFile(ArFile):
 
     @overload
     def md5sums(self,
-                encoding: Literal[None] = None,
+                encoding: "Literal[None]" = None,
                 errors: Optional[str] = None) -> Dict[bytes, str]:
         pass
 

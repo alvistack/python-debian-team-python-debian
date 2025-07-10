@@ -32,6 +32,7 @@ The :class:`Substvars` class is the key class within this module.
 Substvars Classes
 -----------------
 """
+from __future__ import annotations
 
 
 import contextlib
@@ -46,11 +47,10 @@ from os import PathLike
 from types import TracebackType
 from typing import Dict, Set, Optional, Union, Iterator, IO, Iterable, TYPE_CHECKING, Type
 
-AnyPath = Union[PathLike[str], PathLike[bytes], str, bytes]
-
 try:
     if TYPE_CHECKING:
         from typing import Self   # needs Python 3.11
+        AnyPath = Union[PathLike[str], PathLike[bytes], str, bytes]   # needs Python 3.9
 except ImportError:
     pass
 
