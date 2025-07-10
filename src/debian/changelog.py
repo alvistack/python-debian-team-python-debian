@@ -192,41 +192,38 @@ class ChangeBlock:
     """
 
     def __init__(self,
-                 package=None,          # type: Optional[str]
-                 version=None,          # type: Optional[Union[Version, str]]
-                 distributions=None,    # type: Optional[str]
-                 urgency=None,          # type: Optional[str]
-                 urgency_comment=None,  # type: Optional[str]
-                 changes=None,          # type: Optional[List[Text]]
-                 author=None,           # type: Optional[Text]
-                 date=None,             # type: Optional[str]
-                 other_pairs=None,      # type: Optional[Dict[str, str]]
-                 encoding='utf-8',      # type: str
-                ):
-        # type: (...) -> None
-        self._raw_version = None   # type: Optional[str]
+                 package: Optional[str] = None,
+                 version: Optional[Union[Version, str]] = None,
+                 distributions: Optional[str] = None,
+                 urgency: Optional[str] = None,
+                 urgency_comment: Optional[str] = None,
+                 changes: Optional[List[Text]] = None,
+                 author: Optional[Text] = None,
+                 date: Optional[str] = None,
+                 other_pairs: Optional[Dict[str, str]] = None,
+                 encoding: str = 'utf-8',
+                ) -> None:
+        self._raw_version: Optional[str] = None
         self._set_version(version)
         self.package = package
         self.distributions = distributions
         self.urgency = urgency or "unknown"
         self.urgency_comment = urgency_comment or ''
-        self._changes = changes or []   # type: List[Text]
+        self._changes: List[Text] = changes or []
         self.author = author
         self.date = date
-        self._trailing = []    # type: List[Text]
+        self._trailing: List[Text] = []
         self.other_pairs = other_pairs or {}
         self._encoding = encoding
         self._no_trailer = False
         self._trailer_separator = "  "
 
-    def _get_version(self):
-        # type: () -> Optional[Version]
+    def _get_version(self) -> Optional[Version]:
         if self._raw_version is None:
             return None
         return Version(self._raw_version)
 
-    def _set_version(self, version):
-        # type: (Optional[Union[Version, str]]) -> None
+    def _set_version(self, version: Optional[Union[Version, str]]) -> None:
         if version is not None:
             self._raw_version = str(version)
         else:
@@ -239,8 +236,7 @@ class ChangeBlock:
         doc="The package version that this block pertains to"
     )
 
-    def other_keys_normalised(self):
-        # type: () -> Dict[str, str]
+    def other_keys_normalised(self) -> Dict[str, str]:
         """ Obtain a dict from the block header (other than urgency) """
         norm_dict = {}
         for (key, value) in self.other_pairs.items():
@@ -279,8 +275,7 @@ class ChangeBlock:
                 changes.append(change)
             self._changes = changes
 
-    def _get_bugs_closed_generic(self, type_re):
-        # type: (Pattern[Text]) -> List[int]
+    def _get_bugs_closed_generic(self, type_re: Pattern[Text]) -> List[int]:
         changes = ' '.join(self._changes)
         bugs = []
         for match in type_re.finditer(changes):
@@ -299,8 +294,7 @@ class ChangeBlock:
         """ List of Launchpad bugs closed by the block """
         return self._get_bugs_closed_generic(closeslp)
 
-    def _format(self, allow_missing_author=False):
-        # type: (Optional[bool]) -> str
+    def _format(self, allow_missing_author: Optional[bool] = False) -> str:
         # TODO(jsw): Switch to StringIO or a list to join at the end.
         block = ""
         if self.package is None:
@@ -340,7 +334,7 @@ class ChangeBlock:
     def __str__(self) -> str:
         return self._format()
 
-    def __bytes__(self):  # type: () -> bytes
+    def __bytes__(self) -> bytes:
         # pylint: disable=invalid-bytes-returned
         # pylint bug https://github.com/PyCQA/pylint/issues/3599
         return str(self).encode(self._encoding)
@@ -453,16 +447,15 @@ class Changelog:
 
     # TODO(jsw): Avoid masking the 'file' built-in.
     def __init__(self,
-                 file=None,                 # type: Optional[IterableDataSource]
-                 max_blocks=None,           # type: Optional[int]
-                 allow_empty_author=False,  # type: bool
-                 strict=False,              # type: bool
-                 encoding='utf-8',          # type: str
-                 ):
-        # type: (...) -> None
+                 file: Optional[IterableDataSource] = None,
+                 max_blocks: Optional[int] = None,
+                 allow_empty_author: bool = False,
+                 strict: bool = False,
+                 encoding: str = 'utf-8',
+                 ) -> None:
         self._encoding = encoding
-        self._blocks = []   # type: List[ChangeBlock]
-        self.initial_blank_lines = []   # type: List[Text]
+        self._blocks: List[ChangeBlock] = []
+        self.initial_blank_lines: List[Text] = []
         if file is not None:
             self.parse_changelog(
                 file, max_blocks=max_blocks,
@@ -476,13 +469,12 @@ class Changelog:
         logger.warning(message)
 
     def parse_changelog(self,
-                        file,             # type: Optional[IterableDataSource]
-                        max_blocks=None,  # type: Optional[int]
-                        allow_empty_author=False,  # type: bool
-                        strict=True,      # type: bool
-                        encoding=None,    # type: Optional[str]
-                       ):
-        # type: (...) -> None
+                        file: Optional[IterableDataSource],
+                        max_blocks: Optional[int] = None,
+                        allow_empty_author: bool = False,
+                        strict: bool = True,
+                        encoding: Optional[str] = None,
+                       ) -> None:
         """ Read and parse a changelog file
 
         If you create an Changelog object without specifying a changelog
@@ -538,8 +530,8 @@ class Changelog:
                     current_block.distributions = top_match.group(3).lstrip()
 
                     pairs = line.split(";", 1)[1]
-                    all_keys = {}      # type: Dict[str, str]
-                    other_pairs = {}   # type: Dict[str, str]
+                    all_keys: Dict[str, str] = {}
+                    other_pairs: Dict[str, str] = {}
                     for pair in pairs.split(','):
                         pair = pair.strip()
                         kv_match = keyvalue.match(pair)
@@ -675,13 +667,11 @@ class Changelog:
             current_block._no_trailer = True
             self._blocks.append(current_block)
 
-    def get_version(self):
-        # type: () -> Optional[Version]
+    def get_version(self) -> Optional[Version]:
         """Return a Version object for the last version"""
         return self._blocks[0].version   # type: ignore
 
-    def set_version(self, version):
-        # type: (Union[Version, str]) -> None
+    def set_version(self, version: Union[Version, str]) -> None:
         """Set the version of the last changelog block
 
         version can be a full version string, or a Version object
@@ -732,23 +722,19 @@ class Changelog:
         doc="Name of the package in the last version"
     )
 
-    def get_versions(self):
-        # type: () -> List[Version]
+    def get_versions(self) -> List[Version]:
         return self.versions
 
     @property
-    def versions(self):
-        # type: () -> List[Version]
+    def versions(self) -> List[Version]:
         """Returns a list of :class:`debian.debian_support.Version` objects
         that are listed in the changelog."""
         return [block.version for block in self._blocks]
 
-    def _raw_versions(self):
-        # type: () -> List[Optional[str]]
+    def _raw_versions(self) -> List[Optional[str]]:
         return [block._raw_version for block in self._blocks]
 
-    def _format(self, allow_missing_author=False):
-        # type: (Optional[bool]) -> str
+    def _format(self, allow_missing_author: Optional[bool] = False) -> str:
         pieces = []
         for line in self.initial_blank_lines:
             pieces.append(line + '\n')
@@ -759,17 +745,15 @@ class Changelog:
     def __str__(self) -> str:
         return self._format()
 
-    def __bytes__(self):  # type: () -> bytes
+    def __bytes__(self) -> bytes:
         # pylint: disable=invalid-bytes-returned
         # pylint bug https://github.com/PyCQA/pylint/issues/3599
         return str(self).encode(self._encoding)
 
-    def __iter__(self):
-        # type: () -> Iterator[ChangeBlock]
+    def __iter__(self) -> Iterator[ChangeBlock]:
         return iter(self._blocks)
 
-    def __getitem__(self, n):
-        # type: (Union[Version, int, str]) -> ChangeBlock
+    def __getitem__(self, n: Union[Version, int, str]) -> ChangeBlock:
         """ select a changelog entry by number, version string, or Version
 
         :param n: integer or str representing a version or Version object
@@ -817,8 +801,7 @@ be uploaded."""
         """
         self._blocks[0].add_change(change)
 
-    def set_author(self, author):
-        # type: (Text) -> None
+    def set_author(self, author: Text) -> None:
         """ set the author of the top changelog entry """
         self._blocks[0].author = author
 
@@ -846,18 +829,17 @@ be uploaded."""
     )
 
     def new_block(self,
-                  package=None,          # type: Optional[str]
-                  version=None,          # type: Optional[Union[Version, str]]
-                  distributions=None,    # type: Optional[str]
-                  urgency=None,          # type: Optional[str]
-                  urgency_comment=None,  # type: Optional[str]
-                  changes=None,          # type: Optional[List[Text]]
-                  author=None,           # type: Optional[Text]
-                  date=None,             # type: Optional[str]
-                  other_pairs=None,      # type: Optional[Dict[str, str]]
-                  encoding=None,         # type: Optional[str]
-                  ):
-        # type: (...) -> None
+                  package: Optional[str] = None,
+                  version: Optional[Union[Version, str]] = None,
+                  distributions: Optional[str] = None,
+                  urgency: Optional[str] = None,
+                  urgency_comment: Optional[str] = None,
+                  changes: Optional[List[Text]] = None,
+                  author: Optional[Text] = None,
+                  date: Optional[str] = None,
+                  other_pairs: Optional[Dict[str, str]] = None,
+                  encoding: Optional[str] = None,
+                  ) -> None:
         """ Add a new changelog block to the changelog
 
         Start a new :class:`ChangeBlock` entry representing a new version
@@ -876,8 +858,7 @@ be uploaded."""
             block.add_trailing_line('')
         self._blocks.insert(0, block)
 
-    def write_to_open_file(self, filehandle):
-        # type: (IO[Text]) -> None
+    def write_to_open_file(self, filehandle: IO[Text]) -> None:
         """ Write the changelog entry to a filehandle
 
         Write the changelog out to the filehandle passed. The file argument
@@ -886,8 +867,7 @@ be uploaded."""
         filehandle.write(str(self))
 
 
-def get_maintainer():
-    # type: () -> Tuple[Optional[Text], Optional[Text]]
+def get_maintainer() -> Tuple[Optional[Text], Optional[Text]]:
     """Get the maintainer information in the same manner as dch.
 
     This function gets the information about the current user for
@@ -919,7 +899,7 @@ def get_maintainer():
                 env['EMAIL'] = match_obj.group(2)
 
     # Get maintainer's name
-    maintainer = None   # type: Optional[Text]
+    maintainer: Optional[Text] = None
     if 'DEBFULLNAME' in env:
         maintainer = env['DEBFULLNAME']
     elif 'NAME' in env:
@@ -933,7 +913,7 @@ def get_maintainer():
             pass
 
     # Get maintainer's mail address
-    email_address = None   # type: Optional[Text]
+    email_address: Optional[Text] = None
     if 'DEBEMAIL' in env:
         email_address = env['DEBEMAIL']
     elif 'EMAIL' in env:

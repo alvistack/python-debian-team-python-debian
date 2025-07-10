@@ -143,13 +143,11 @@ class DebPart:
     mechanism is the third one (as in deb.data.get_file('/etc/vim/vimrc') ).
     """
 
-    def __init__(self, member):
-        # type: (ArMember) -> None
+    def __init__(self, member: ArMember) -> None:
         self.__member = member  # arfile.ArMember file member
-        self.__tgz = None   # type: Optional[tarfile.TarFile]
+        self.__tgz: Optional[tarfile.TarFile] = None
 
-    def tgz(self):
-        # type: () -> tarfile.TarFile
+    def tgz(self) -> tarfile.TarFile:
         """Return a TarFile object corresponding to this part of a .deb
         package.
 
@@ -157,8 +155,7 @@ class DebPart:
         compressed tar archives, not only gzipped ones.
         """
 
-        def _custom_decompress(command_list):
-            # type: (List[str]) -> BinaryIO
+        def _custom_decompress(command_list: List[str]) -> BinaryIO:
             try:
                 # pylint: disable=import-outside-toplevel
                 import subprocess
@@ -203,8 +200,7 @@ class DebPart:
         return self.__tgz
 
     @staticmethod
-    def __normalize_member(fname):
-        # type: (Union[str, Path]) -> str
+    def __normalize_member(fname: Union[str, Path]) -> str:
         """ try (not so hard) to obtain a member file name in a form that is
         stored in the .tar.gz, i.e. starting with ./ """
 
@@ -259,8 +255,7 @@ class DebPart:
 
         return DebPart.__normalize_member(os.path.normpath(currpath))
 
-    def has_file(self, fname, follow_symlinks=False):
-        # type: (Union[str, Path], bool) -> bool
+    def has_file(self, fname: Union[str, Path], follow_symlinks: bool = False) -> bool:
         """Check if this part contains a given file name.
 
         Symlinks within the archive can be followed.
@@ -278,17 +273,26 @@ class DebPart:
         return fname in names
 
     @overload
-    def get_file(self, fname, encoding=None, errors=None, follow_symlinks=False):
-        # type: (Union[str, Path], None, Optional[str], bool) -> IO[bytes]
+    def get_file(self,
+                 fname: Union[str, Path],
+                 encoding: None = None,
+                 errors: Optional[str] = None,
+                 follow_symlinks: bool = False) -> IO[bytes]:
         pass
 
     @overload
-    def get_file(self, fname, encoding, errors=None, follow_symlinks=False):
-        # type: (Union[str, Path], str, Optional[str], bool) -> IO[str]
+    def get_file(self,
+                 fname: Union[str, Path],
+                 encoding: str,
+                 errors: Optional[str] = None,
+                 follow_symlinks: bool = False) -> IO[str]:
         pass
 
-    def get_file(self, fname, encoding=None, errors=None, follow_symlinks=False):
-        # type: (Union[str, Path], Optional[str], Optional[str], bool) -> Union[IO[bytes], IO[str]]
+    def get_file(self,
+                 fname: Union[str, Path],
+                 encoding: Optional[str] = None,
+                 errors: Optional[str] = None,
+                 follow_symlinks: bool = False) -> Union[IO[bytes], IO[str]]:
         """Return a file object corresponding to a given file name.
 
         If encoding is given, then the file object will return Unicode data;
@@ -321,31 +325,28 @@ class DebPart:
 
     @overload
     def get_content(self,
-                    fname,          # type: Union[str, Path]
-                    encoding=None,  # type: Literal[None]
-                    errors=None,    # type: Optional[str]
-                    follow_symlinks=False,  # type: bool
-                   ):
-        # type: (...) -> Optional[bytes]
+                    fname: Union[str, Path],
+                    encoding: Literal[None] = None,
+                    errors: Optional[str] = None,
+                    follow_symlinks: bool = False,
+                   ) -> Optional[bytes]:
         pass
 
     @overload
     def get_content(self,
-                    fname,             # type: Union[str, Path]
-                    encoding,          # type: str
-                    errors=None,       # type: Optional[str]
-                    follow_symlinks=False,  # type: bool
-                   ):
-        # type: (...) -> Optional[Text]
+                    fname: Union[str, Path],
+                    encoding: str,
+                    errors: Optional[str] = None,
+                    follow_symlinks: bool = False,
+                   ) -> Optional[Text]:
         pass
 
     def get_content(self,
-                    fname,          # type: Union[str, Path]
-                    encoding=None,  # type: Optional[str]
-                    errors=None,    # type: Optional[str]
-                    follow_symlinks=False,  # type: bool
-                   ):
-        # type: (...) -> Optional[Union[Text,bytes]]
+                    fname: Union[str, Path],
+                    encoding: Optional[str] = None,
+                    errors: Optional[str] = None,
+                    follow_symlinks: bool = False,
+                   ) -> Optional[Union[Text,bytes]]:
         """Return the string content of a given file, or None (e.g. for
         directories).
 
@@ -368,16 +369,13 @@ class DebPart:
 
     # container emulation
 
-    def __iter__(self):
-        # type: () -> Iterator[str]
+    def __iter__(self) -> Iterator[str]:
         return iter(self.tgz().getnames())
 
-    def __contains__(self, fname):
-        # type: (Union[str, Path]) -> bool
+    def __contains__(self, fname: Union[str, Path]) -> bool:
         return self.has_file(fname)
 
-    def __getitem__(self, fname):
-        # type: (Union[str, Path]) ->  Optional[Union[bytes, Text]]
+    def __getitem__(self, fname: Union[str, Path]) -> Optional[Union[bytes, Text]]:
         return self.get_content(fname)
 
     def close(self) -> None:
@@ -414,16 +412,18 @@ class DebControl(DebPart):
         return debian.deb822.DebControl(self.get_content(CONTROL_FILE))
 
     @overload
-    def md5sums(self, encoding=None, errors=None):
-        # type: (Literal[None], Optional[str]) -> Dict[bytes, str]
+    def md5sums(self,
+                encoding: Literal[None] = None,
+                errors: Optional[str] = None) -> Dict[bytes, str]:
         pass
 
     @overload
     def md5sums(self, encoding: str, errors: Optional[str] = None) -> Dict[str, str]:
         pass
 
-    def md5sums(self, encoding=None, errors=None):
-        # type: (Optional[str], Optional[str]) -> Union[Dict[str, str], Dict[bytes, str]]
+    def md5sums(self,
+                encoding: Optional[str] = None,
+                errors: Optional[str] = None) -> Union[Dict[str, str], Dict[bytes, str]]:
         """ Return a dictionary mapping filenames (of the data part) to
         md5sums. Fails if the control part does not contain a 'md5sum' file.
 
@@ -472,8 +472,10 @@ class DebFile(ArFile):
                         file
     """
 
-    def __init__(self, filename=None, mode='r', fileobj=None):
-        # type: (Optional[Union[str, Path]], str, Optional[BinaryIO]) -> None
+    def __init__(self,
+                 filename: Optional[Union[str, Path]] = None,
+                 mode: str = 'r',
+                 fileobj: Optional[BinaryIO] = None) -> None:
         ArFile.__init__(self, filename, mode, fileobj)
         actual_names = set(self.getnames())
 
@@ -500,7 +502,7 @@ class DebFile(ArFile):
                 "missing required part in given .deb"
                 " (expected: '%s')" % INFO_PART)
 
-        self.__parts = {}   # type: Dict[str, DebPart]
+        self.__parts: Dict[str, DebPart] = {}
         self.__parts[CTRL_PART] = DebControl(self.getmember(
             compressed_part_name(CTRL_PART)))
         self.__parts[DATA_PART] = DebData(self.getmember(
@@ -519,13 +521,11 @@ class DebFile(ArFile):
         return self.__version
 
     @property
-    def data(self):
-        # type: () -> DebData
+    def data(self) -> DebData:
         return self.__parts[DATA_PART]  # type: ignore
 
     @property
-    def control(self):
-        # type: () -> DebControl
+    def control(self) -> DebControl:
         return self.__parts[CTRL_PART]  # type: ignore
 
     # proxy methods for the appropriate parts
@@ -539,21 +539,22 @@ class DebFile(ArFile):
         return self.control.scripts()
 
     @overload
-    def md5sums(self, encoding=None, errors=None):
-        # type: (Literal[None], Optional[str]) -> Dict[bytes, str]
+    def md5sums(self,
+                encoding: Literal[None] = None,
+                errors: Optional[str] = None) -> Dict[bytes, str]:
         pass
 
     @overload
     def md5sums(self, encoding: str, errors: Optional[str]=None) -> Dict[str, str]:
         pass
 
-    def md5sums(self, encoding=None, errors=None):
-        # type: (Optional[str], Optional[str]) -> Union[Dict[str, str], Dict[bytes, str]]
+    def md5sums(self,
+                encoding: Optional[str] = None,
+                errors: Optional[str] = None) -> Union[Dict[str, str], Dict[bytes, str]]:
         """ See .control.md5sums() """
         return self.control.md5sums(encoding=encoding, errors=errors)
 
-    def changelog(self):
-        # type: () -> Optional[Changelog]
+    def changelog(self) -> Optional[Changelog]:
         """ Return a Changelog object for the changelog.Debian.gz of the
         present .deb package. Return None if no changelog can be found. """
 

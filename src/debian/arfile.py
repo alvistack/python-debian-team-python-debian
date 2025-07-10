@@ -59,13 +59,12 @@ class ArFile(object):
     """
 
     def __init__(self,
-                 filename=None,  # type: Optional[Union[str, Path]]
-                 mode='r',       # type: str
-                 fileobj=None,   # type: Optional[BinaryIO]
-                 encoding=None,  # type: Optional[str]
-                 errors=None,    # type: Optional[str]
-                 ):
-        # type: (...) -> None
+                 filename: Optional[Union[str, Path]] = None,
+                 mode: str = 'r',
+                 fileobj: Optional[BinaryIO] = None,
+                 encoding: Optional[str] = None,
+                 errors: Optional[str] = None,
+                 ) -> None:
         """ Build an ar file representation starting from either a filename or
         an existing file object. The only supported mode is 'r'.
 
@@ -74,9 +73,9 @@ class ArFile(object):
         encoding is sys.getfilesystemencoding() and the default error handling
         scheme is 'surrogateescape'.
         """
-        self.__members = []  # type: List[ArMember]
-        self.__members_dict = {}  # type: Dict[str, ArMember]
-        self.__fname = filename  # type: Optional[Union[str, Path]]
+        self.__members: List[ArMember] = []
+        self.__members_dict: Dict[str, ArMember] = {}
+        self.__fname: Optional[Union[str, Path]] = filename
         self.__fileobj = fileobj
         self.__encoding = encoding or sys.getfilesystemencoding()
         if errors is None:
@@ -96,8 +95,7 @@ class ArFile(object):
         else:
             raise ArError("Unable to open valid file")
 
-    def __collect_members(self, fp):
-        # type: (BinaryIO) -> None
+    def __collect_members(self, fp: BinaryIO) -> None:
         if fp.read(GLOBAL_HEADER_LENGTH) != GLOBAL_HEADER:
             raise ArError("Unable to find global header")
 
@@ -114,8 +112,7 @@ class ArFile(object):
             else:
                 fp.seek(newmember.size + 1, 1)   # skip to next header
 
-    def getmember(self, name):
-        # type: (str) -> ArMember
+    def getmember(self, name: str) -> "ArMember":
         """ Return the (last occurrence of a) member in the archive whose name
         is 'name'. Raise KeyError if no member matches the given name.
 
@@ -124,8 +121,7 @@ class ArFile(object):
 
         return self.__members_dict[name]
 
-    def getmembers(self):
-        # type: () -> List[ArMember]
+    def getmembers(self) -> List["ArMember"]:
         """ Return a list of all members contained in the archive.
 
         The list has the same order of members in the archive and can contain
@@ -136,26 +132,22 @@ class ArFile(object):
 
     members = property(getmembers)
 
-    def getnames(self):
-        # type: () -> List[str]
+    def getnames(self) -> List[str]:
         """ Return a list of all member names in the archive. """
 
         return [f.name for f in self.__members]
 
-    def extractall(self):
-        # type: () -> NoReturn
+    def extractall(self) -> NoReturn:
         """ Not (yet) implemented. """
 
         raise NotImplementedError  # TODO
 
-    def extract(self, member, path):
-        # type: (str, str) -> NoReturn
+    def extract(self, member: str, path: str) -> NoReturn:
         """ Not (yet) implemented. """
 
         raise NotImplementedError  # TODO
 
-    def extractfile(self, member):
-        # type: (str) -> Optional[ArMember]
+    def extractfile(self, member: str) -> Optional["ArMember"]:
         """ Return a file object corresponding to the requested member. A member
         can be specified either as a string (its name) or as a ArMember
         instance. """
@@ -177,14 +169,12 @@ class ArFile(object):
 
     # container emulation
 
-    def __iter__(self):
-        # type: () -> Iterator[ArMember]
+    def __iter__(self) -> Iterator["ArMember"]:
         """ Iterate over the members of the present ar archive. """
 
         return iter(self.__members)
 
-    def __getitem__(self, name):
-        # type: (str) -> ArMember
+    def __getitem__(self, name: str) -> "ArMember":
         """ Same as .getmember(name). """
 
         return self.getmember(name)
@@ -207,35 +197,34 @@ class ArMember(object):
 
     def __init__(self) -> None:
         # member name (i.e. filename) in the archive
-        self.__name = None      # type: Optional[str]
+        self.__name: Optional[str] = None
         # last modification time
-        self.__mtime = None     # type: Optional[int]
+        self.__mtime: Optional[int] = None
         # owner user id
-        self.__owner = None     # type: Optional[int]
+        self.__owner: Optional[int] = None
         # owner group id
-        self.__group = None     # type: Optional[int]
+        self.__group: Optional[int] = None
         # permissions as octal bytes
-        self.__fmode = None     # type: Optional[bytes]
+        self.__fmode: Optional[bytes] = None
         # member size in bytes
-        self.__size = None      # type: Optional[int]
+        self.__size: Optional[int] = None
         # file name associated with this member
-        self.__fname = ""       # type: Optional[Union[str, Path]]
+        self.__fname: Optional[Union[str, Path]] = ""
         # file pointer
-        self.__fp = None        # type: Optional[BinaryIO]
+        self.__fp: Optional[BinaryIO] = None
         # start-of-data offset
-        self.__offset = 0       # type: int
+        self.__offset: int = 0
         # end-of-data offset
-        self.__end = 0          # type: int
+        self.__end: int = 0
         # current position
-        self.__cur = 0          # type: int
+        self.__cur: int = 0
 
     @staticmethod
-    def from_file(fp,             # type: BinaryIO
-                  fname,          # type: Optional[Union[str, Path]]
-                  encoding=None,  # type: Optional[str]
-                  errors=None,    # type: Optional[str]
-                  ):
-        # type: (...) -> Optional[ArMember]
+    def from_file(fp: BinaryIO,
+                  fname: Optional[Union[str, Path]],
+                  encoding: Optional[str] = None,
+                  errors: Optional[str] = None,
+                  ) -> Optional["ArMember"]:
         """fp is an open File object positioned on a valid file header inside
         an ar archive. Return a new ArMember on success, None otherwise. """
 
@@ -291,8 +280,7 @@ class ArMember(object):
     # file interface
 
     # XXX this is not a sequence like file objects
-    def read(self, size=0):
-        # type: (int) -> bytes
+    def read(self, size: int = 0) -> bytes:
         if self.__fp is None:
             if self.__fname is None:
                 raise ValueError("Cannot have both fp and fname undefined")
@@ -311,8 +299,7 @@ class ArMember(object):
         self.__cur = self.__fp.tell()
         return buf
 
-    def readline(self, size=None):
-        # type: (Optional[int]) -> bytes
+    def readline(self, size: Optional[int] = None) -> bytes:
         if self.__fp is None:
             if self.__fname is None:
                 raise ValueError("Cannot have both fp and fname undefined")
@@ -374,10 +361,8 @@ class ArMember(object):
     def next(self) -> bytes:
         return self.readline()
 
-    def __iter__(self):
-        # type: () -> Iterator[bytes]
-        def nextline():
-            # type: () -> Generator[bytes, None, None]
+    def __iter__(self) -> Iterator[bytes]:
+        def nextline() -> Generator[bytes, None, None]:
             line = self.readline()
             if line:
                 yield line
