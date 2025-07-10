@@ -36,17 +36,12 @@ from typing import (
     IO,
     Iterator,
     List,
+    Literal,
     Optional,
     Text,
     Union,
     overload,
 )
-try:
-    from typing_extensions import (
-        Literal,
-    )
-except ImportError:
-    pass
 
 from debian.arfile import ArFile, ArError, ArMember     # pylint: disable=unused-import
 from debian.changelog import Changelog
