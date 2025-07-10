@@ -17,6 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+from __future__ import annotations
+
 from collections import namedtuple
 import hashlib
 import io
@@ -346,8 +348,7 @@ PARSED_PARAGRAPHS_WITH_COMMENTS = [
 ]
 
 
-def find_test_file(filename):
-    # type: (str) -> str
+def find_test_file(filename: str) -> str:
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
 
@@ -355,15 +356,13 @@ def find_test_file(filename):
 KEYRING = os.path.abspath(find_test_file('test-keyring.gpg'))
 
 
-def open_utf8(filename, mode='r'):
-    # type: (str, str) -> IO[Text]
+def open_utf8(filename: str, mode: str = 'r') -> IO[Text]:
     """Open a UTF-8 text file in text mode."""
     return open(filename, mode=mode, encoding='UTF-8')
 
 
 class TestDeb822Dict:
-    def make_dict(self):
-        # type: () -> deb822.Deb822Dict
+    def make_dict(self) -> deb822.Deb822Dict:
         d = deb822.Deb822Dict()
         d['TestKey'] = 1
         d['another_key'] = 2
@@ -419,8 +418,9 @@ class TestDeb822Dict:
 
 
 class TestDeb822:
-    def assertWellParsed(self, deb822_, dict_):
-        # type: (deb822.Deb822, deb822.Deb822Mapping) -> None
+    def assertWellParsed(self,
+                         deb822_: deb822.Deb822,
+                         dict_: deb822.Deb822Mapping) -> None:
         """Check that the given Deb822 object has the very same keys and
            values as the given dict.
         """
@@ -432,8 +432,7 @@ class TestDeb822:
         assert deb822_ == dict_
 
     @staticmethod
-    def gen_random_string(length=20):
-        # type: (int) -> str
+    def gen_random_string(length: int = 20) -> str:
         from random import choice
         import string
         chars = string.ascii_letters + string.digits
@@ -746,8 +745,12 @@ with open("test_deb822.pickle", "wb") as fh:
 
         assert len(list(deb822.Deb822.iter_paragraphs(str(tmp), use_apt_pkg=use_apt_pkg))) == 2
 
-    def _test_iter_paragraphs_count(self, filename, cmd, expected, *args, **kwargs):
-        # type: (str, Callable[..., Any], int, *Any, **Any) -> None
+    def _test_iter_paragraphs_count(self,
+                                    filename: str,
+                                    cmd: Callable[..., Any],
+                                    expected: int,
+                                    *args: Any,
+                                    **kwargs: Any) -> None:
         with open_utf8(filename) as fh:
             count = len(list(cmd(fh, *args, **kwargs)))
             assert expected == count, \
@@ -756,8 +759,8 @@ with open("test_deb822.pickle", "wb") as fh:
                     expected=expected,
                 )
 
-    def _test_iter_paragraphs_with_extra_whitespace(self, tests):
-        # type: (Callable[[str], None]) -> None
+    def _test_iter_paragraphs_with_extra_whitespace(self,
+                                                    tests: Callable[[str], None]) -> None:
         """ Paragraphs splitting when stray whitespace is between
 
         From policy §5.1:
@@ -791,7 +794,7 @@ with open("test_deb822.pickle", "wb") as fh:
 
     def test_iter_paragraphs_with_extra_whitespace_default(self) -> None:
         """ Paragraphs splitting with stray whitespace (default options) """
-        def tests(filename): # type: (str) -> None
+        def tests(filename: str) -> None:
             # apt_pkg not used, should split
             self._test_iter_paragraphs_count(filename, deb822.Deb822.iter_paragraphs, 2)
 
@@ -799,7 +802,7 @@ with open("test_deb822.pickle", "wb") as fh:
 
     def test_iter_paragraphs_with_extra_whitespace_no_apt_pkg(self) -> None:
         """ Paragraphs splitting with stray whitespace (without apt_pkg)"""
-        def tests(filename): # type: (str) -> None
+        def tests(filename: str) -> None:
             # apt_pkg not used, should split
             self._test_iter_paragraphs_count(filename, deb822.Deb822.iter_paragraphs, 2, use_apt_pkg=False)
 
@@ -822,7 +825,7 @@ with open("test_deb822.pickle", "wb") as fh:
     @pytest.mark.skipif(not _have_apt_pkg, reason="apt_pkg is not available")
     def test_iter_paragraphs_with_extra_whitespace_apt_pkg(self) -> None:
         """ Paragraphs splitting with stray whitespace (with apt_pkg) """
-        def tests(filename): # type: (str) -> None
+        def tests(filename: str) -> None:
 
             # apt_pkg used, should not split
             self._test_iter_paragraphs_count(filename, deb822.Deb822.iter_paragraphs, 1, use_apt_pkg=True)
@@ -833,8 +836,10 @@ with open("test_deb822.pickle", "wb") as fh:
 
         self._test_iter_paragraphs_with_extra_whitespace(tests)
 
-    def _test_iter_paragraphs(self, filename, cls, **kwargs):
-        # type: (str, Type[deb822.Deb822], **Any) -> None
+    def _test_iter_paragraphs(self,
+                              filename: str,
+                              cls: Type[deb822.Deb822],
+                              **kwargs: Any) -> None:
         """Ensure iter_paragraphs consistency"""
         
         with open(filename, 'rb') as fh:
@@ -1102,7 +1107,7 @@ Description: python modules to work with Debian-related data formats
         resulting object should have only unicode values.)
         """
 
-        objects = []  # type: List[deb822.Deb822]
+        objects: List[deb822.Deb822] = []
         with open_utf8(find_test_file('test_Packages')) as f:
             objects.extend(deb822.Packages.iter_paragraphs(f))
         with open_utf8(find_test_file('test_Sources')) as f:
@@ -1116,7 +1121,7 @@ Description: python modules to work with Debian-related data formats
 
         # The same should be true for Sources and Changes except for their
         # _multivalued fields
-        multi = []   # type: List[Union[deb822.Changes, deb822.Sources]]
+        multi: List[Union[deb822.Changes, deb822.Sources]] = []
         with open_utf8(find_test_file('test_Sources')) as f:
             multi.extend(deb822.Sources.iter_paragraphs(f))
         for d in multi:
@@ -1145,7 +1150,7 @@ Description: python modules to work with Debian-related data formats
 
         # The same should be true for Sources and Changes except for their
         # _multivalued fields
-        multi = []   # type: List[Union[deb822.Changes, deb822.Sources]]
+        multi: List[Union[deb822.Changes, deb822.Sources]] = []
         multi.append(deb822.Changes(CHANGES_FILE))
         multi.append(deb822.Changes(SIGNED_CHECKSUM_CHANGES_FILE
                                     % CHECKSUM_CHANGES_FILE))
@@ -1232,8 +1237,7 @@ Description: python modules to work with Debian-related data formats
         self.assertWellParsed(deb822.Deb822(data), parsed)
 
     @staticmethod
-    def _dictset(d, key, value):
-        # type: (Dict[str, Any], str, Any) -> None
+    def _dictset(d: Dict[str, Any], key: str, value: Any) -> None:
         d[key] = value
 
     def test_field_value_ends_in_newline(self) -> None:
@@ -1279,8 +1283,7 @@ Description: python modules to work with Debian-related data formats
         assert d["Package-List"] == [{"package": "pkg", "package-type": "deb", "section": "section", "priority": "priority", "_other": "arch=all essential=yes"}]
         assert str(d) == text
 
-    def _test_iter_paragraphs_comments(self, paragraphs):
-        # type: (List[deb822.Deb822]) -> None
+    def _test_iter_paragraphs_comments(self, paragraphs: List[deb822.Deb822]) -> None:
         assert len(paragraphs) == len(PARSED_PARAGRAPHS_WITH_COMMENTS)
         for i in range(len(paragraphs)):
             self.assertWellParsed(paragraphs[i],
@@ -1440,8 +1443,9 @@ UTF-8"
 
 class TestPkgRelations:
 
-    def assertPkgDictEqual(self, expected, actual):
-        # type: (deb822.Deb822Mapping, deb822.Deb822Mapping) -> None
+    def assertPkgDictEqual(self,
+                           expected: deb822.Deb822Mapping,
+                           actual: deb822.Deb822Mapping) -> None:
         p1keys = sorted(expected.keys())
         p2keys = sorted(actual.keys())
         assert p1keys == p2keys, "Different fields present in packages"
@@ -1449,8 +1453,7 @@ class TestPkgRelations:
             assert expected[k] == actual[k], "Different for field '%s'" % k
 
     @staticmethod
-    def rel(dict_):
-        # type: (deb822.Deb822MutableMapping) -> deb822.Deb822Mapping
+    def rel(dict_: deb822.Deb822MutableMapping) -> deb822.Deb822Mapping:
         """Modify dict_ to ensure it contains all fields from parse_relations
 
         Accept a dict that partially describes a package relationship and add
@@ -1554,8 +1557,7 @@ class TestPkgRelations:
             # being missing were generated
             assert not warnings_record, "Warnings emitted from deb822"
 
-    def test_pkgrelation_str(self, caplog):
-        # type: (pytest.LogCaptureFixture) -> None
+    def test_pkgrelation_str(self, caplog: pytest.LogCaptureFixture) -> None:
         bin_rels = [
             'file, libc6 (>= 2.7-1), libpaper1, psutils, '
             'perl:any, python:native'
@@ -1739,8 +1741,7 @@ class TestGpgInfo:
     ])
 
     @pytest.fixture()
-    def sampledata(self):
-        # type: () -> Generator[TestGpgInfo.SampleData, None, None]
+    def sampledata(self) -> Generator[TestGpgInfo.SampleData, None, None]:
         datastr = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
         data = datastr.encode()
         valid = {
@@ -1759,8 +1760,9 @@ class TestGpgInfo:
             valid,
         )
 
-    def _validate_gpg_info(self, gpg_info, sampledata):
-        # type: (deb822.GpgInfo, TestGpgInfo.SampleData) -> None
+    def _validate_gpg_info(self,
+                           gpg_info: deb822.GpgInfo,
+                           sampledata: TestGpgInfo.SampleData) -> None:
         # The second part of the GOODSIG field could change if the primary
         # uid changes, so avoid checking that.  Also, the first part of the
         # SIG_ID field has undergone at least one algorithm change in gpg,
@@ -1770,25 +1772,22 @@ class TestGpgInfo:
         assert gpg_info['VALIDSIG'] == sampledata.valid['VALIDSIG']
         assert gpg_info['SIG_ID'][1:] == sampledata.valid['SIG_ID'][1:]
 
-    def test_from_sequence_string(self, sampledata):
-        # type: (TestGpgInfo.SampleData) -> None
+    def test_from_sequence_string(self, sampledata: TestGpgInfo.SampleData) -> None:
         gpg_info = deb822.GpgInfo.from_sequence(sampledata.data, keyrings=[KEYRING])
         self._validate_gpg_info(gpg_info, sampledata)
 
-    def test_from_sequence_newline_terminated(self, sampledata):
-        # type: (TestGpgInfo.SampleData) -> None
+    def test_from_sequence_newline_terminated(self,
+                                              sampledata: TestGpgInfo.SampleData) -> None:
         sequence = io.BytesIO(sampledata.data)
         gpg_info = deb822.GpgInfo.from_sequence(sequence, keyrings=[KEYRING])
         self._validate_gpg_info(gpg_info, sampledata)
 
-    def test_from_sequence_no_newlines(self, sampledata):
-        # type: (TestGpgInfo.SampleData) -> None
+    def test_from_sequence_no_newlines(self, sampledata: TestGpgInfo.SampleData) -> None:
         sequence = sampledata.data.splitlines()
         gpg_info = deb822.GpgInfo.from_sequence(sequence, keyrings=[KEYRING])
         self._validate_gpg_info(gpg_info, sampledata)
 
-    def test_from_file(self, sampledata):
-        # type: (TestGpgInfo.SampleData) -> None
+    def test_from_file(self, sampledata: TestGpgInfo.SampleData) -> None:
         fd, filename = tempfile.mkstemp()
         fp = os.fdopen(fd, 'wb')
         fp.write(sampledata.data)

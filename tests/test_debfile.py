@@ -173,13 +173,11 @@ class TestArFile:
         if os.path.exists('test.ar'):
             os.unlink('test.ar')
 
-    def test_getnames(self, sample_archive):
-        # type: (None) -> None
+    def test_getnames(self, sample_archive: None) -> None:
         """ test for file list equality """
         assert self.a.getnames() == self.testmembers
 
-    def test_getmember(self, sample_archive):
-        # type: (None) -> None
+    def test_getmember(self, sample_archive: None) -> None:
         """ test for each member equality """
         for member in self.testmembers:
             m = self.a.getmember(member)
@@ -192,8 +190,7 @@ class TestArFile:
             assert m.owner == mstat[stat.ST_UID]
             assert m.group == mstat[stat.ST_GID]
 
-    def test_file_seek(self, sample_archive):
-        # type: (None) -> None
+    def test_file_seek(self, sample_archive: None) -> None:
         """ test for faked seek """
         m = self.a.getmember(self.testmembers[0])
 
@@ -212,8 +209,7 @@ class TestArFile:
         m.seek(0)
         m.close()
 
-    def test_file_read(self, sample_archive):
-        # type: (None) -> None
+    def test_file_read(self, sample_archive: None) -> None:
         """ test for faked read """
         for m in self.a.getmembers():
             with open(find_test_file(m.name), 'rb') as f:
@@ -223,8 +219,7 @@ class TestArFile:
 
             m.close()
 
-    def test_file_readlines(self, sample_archive):
-        # type: (None) -> None
+    def test_file_readlines(self, sample_archive: None) -> None:
         """ test for faked readlines """
 
         for m in self.a.getmembers():
@@ -485,8 +480,12 @@ class TestDebFile:
             # skip the root
             assert debfile_names[1:] == dpkg_names[1:]
 
-    def _test_file_contents(self, debname, debfilename, origfilename, modes=None, follow_symlinks=False):
-        # type: (str, Union[str, Path], Union[str, Path], Optional[List[str]], bool) -> None
+    def _test_file_contents(self,
+                            debname: str,
+                            debfilename: Union[str, Path],
+                            origfilename: Union[str, Path],
+                            modes: Optional[List[str]] = None,
+                            follow_symlinks: bool = False) -> None:
         """ helper function to test that the deb file has the right contents """
         modes = modes or ["rb", "rt"]
         for mode in modes:
@@ -517,8 +516,7 @@ class TestDebFile:
 
     def test_data_has_file_symlinks(self, sample_deb: str) -> None:
         """ test for round-trip of a data file """
-        def path(*args):
-            # type: (Union[str, Path]) -> str
+        def path(*args: Union[str, Path]) -> str:
             return os.path.normpath(os.path.join(
                 str(self.example_data_dir), *args
             ))

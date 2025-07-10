@@ -27,8 +27,7 @@ from typing import (
 )
 
 
-def find_test_file(filename):
-    # type: (str) -> str
+def find_test_file(filename: str) -> str:
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
 
@@ -36,8 +35,7 @@ def find_test_file(filename):
 class TestDebtags:
 
     @pytest.fixture()
-    def debtagsdb(self):
-        # type: () -> Generator[debtags.DB, None, None]
+    def debtagsdb(self) -> Generator[debtags.DB, None, None]:
         db = debtags.DB()
         with open(find_test_file("test_tagdb"), "r") as f:
             db.read(f)
@@ -74,8 +72,7 @@ class TestDebtags:
         assert db.package_count() == 2
         assert db.tag_count() == 1
 
-    def test_read(self, debtagsdb):
-        # type: (debtags.DB) -> None
+    def test_read(self, debtagsdb: debtags.DB) -> None:
         db = debtagsdb
         assert db.tags_of_package("polygen") == \
             set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text"))
