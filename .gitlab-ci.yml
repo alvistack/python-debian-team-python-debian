@@ -101,6 +101,11 @@ unit-tests-oldstable:
   extends:
   - .depends-debian-full
   - .unit-tests-debian
+
+unit-tests-oldoldstable:
+  image: debian:oldoldstable
+  extends:
+  - unit-tests-oldstable
   before_script:
   - !reference [.depends-debian-minimal, before_script]
   - dpkg -r python3-pytest
@@ -112,11 +117,6 @@ unit-tests-oldstable:
     FORBID_MISSING_AR: "1"
     JOB_DEPS: python3-pip python3-chardet
     JOB_PIP_DEPS: pytest
-
-unit-tests-oldoldstable:
-  image: debian:oldoldstable
-  extends:
-  - unit-tests-oldstable
 
 ### Unit testing configurations (non-Debian)
 
