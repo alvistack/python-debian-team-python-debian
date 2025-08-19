@@ -73,7 +73,7 @@ class LinkedListNode(Generic[T]):
 
     @previous_node.setter
     def previous_node(self, node):
-        # type: (LinkedListNode[T]) -> None
+        # type: (Optional[LinkedListNode[T]]) -> None
         self._previous_node = weakref.ref(node) if node is not None else None
 
     def remove(self):

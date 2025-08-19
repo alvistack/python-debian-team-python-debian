@@ -117,3 +117,34 @@ class TestDpkgArchTable:
         # our stubbed data).
 
         assert arch_table.matches_architecture('mipsel', 'any-mipsel')
+
+    @pytest.mark.skipif(not HAS_REAL_DATA, reason="Missing real data")
+    @pytest.mark.skipif(os.path.isfile("/etc/fedora-release"), reason="Bad real data")
+    def test_multiarch(self) -> None:
+        arch_table = DpkgArchTable.load_arch_table()
+        archs = [
+            ('amd64', 'x86_64-linux-gnu'),
+            ('arm64', 'aarch64-linux-gnu'),
+            # fedora has 'linux-gnu' instead of 'linux-gnueabi' in ostable for 'eabi-gnu-linux'
+            ('armel', 'arm-linux-gnueabi'),
+            ('armhf', 'arm-linux-gnueabihf'),
+            ('i386', 'i386-linux-gnu'),
+            ('mips64el', 'mips64el-linux-gnuabi64'),
+            ('ppc64el', 'powerpc64le-linux-gnu'),
+            ('riscv64', 'riscv64-linux-gnu'),
+            ('s390x', 's390x-linux-gnu'),
+            ('alpha', 'alpha-linux-gnu'),
+            ('hppa', 'hppa-linux-gnu'),
+            ('hurd-amd64', 'x86_64-gnu'),
+            ('hurd-i386', 'i386-gnu'),
+            ('loong64', 'loongarch64-linux-gnu'),
+            ('m68k', 'm68k-linux-gnu'),
+            ('powerpc', 'powerpc-linux-gnu'),
+            ('ppc64', 'powerpc64-linux-gnu'),
+            ('sh4', 'sh4-linux-gnu'),
+            ('sparc64', 'sparc64-linux-gnu'),
+            ('x32', 'x86_64-linux-gnux32'),
+        ]
+
+        for arch, expected in archs:
+            assert arch_table.dpkg_arch_to_multiarch(arch) == expected
