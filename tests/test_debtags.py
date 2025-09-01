@@ -1,5 +1,4 @@
 #! /usr/bin/python
-## vim: fileencoding=utf-8
 
 # Copyright (C) 2006 Enrico Zini <enrico@enricozini.org>
 #
@@ -37,28 +36,28 @@ class TestDebtags:
     @pytest.fixture()
     def debtagsdb(self) -> Generator[debtags.DB, None, None]:
         db = debtags.DB()
-        with open(find_test_file("test_tagdb"), "r") as f:
+        with open(find_test_file("test_tagdb")) as f:
             db.read(f)
         yield db
 
     def test_insert(self) -> None:
         db = debtags.DB()
-        db.insert("test", set(("a", "b")));
+        db.insert("test", {"a", "b"});
         assert db.has_package("test")
         assert not db.has_package("a")
         assert not db.has_package("b")
         assert db.has_tag("a")
         assert db.has_tag("b")
         assert not db.has_tag("test")
-        assert db.tags_of_package("test") == set(("a", "b"))
-        assert db.packages_of_tag("a") == set(("test"))
-        assert db.packages_of_tag("b") == set(("test"))
+        assert db.tags_of_package("test") == {"a", "b"}
+        assert db.packages_of_tag("a") == set("test")
+        assert db.packages_of_tag("b") == set("test")
         assert db.package_count() == 1
         assert db.tag_count() == 2
 
     def test_reverse(self) -> None:
         db = debtags.DB()
-        db.insert("test", set(("a", "b")));
+        db.insert("test", {"a", "b"});
         db = db.reverse()
         assert db.has_package("a")
         assert db.has_package("b")
@@ -66,16 +65,16 @@ class TestDebtags:
         assert db.has_tag("test")
         assert not db.has_tag("a")
         assert not db.has_tag("b")
-        assert db.packages_of_tag("test") == set(("a", "b"))
-        assert db.tags_of_package("a") == set(("test"))
-        assert db.tags_of_package("b") == set(("test"))
+        assert db.packages_of_tag("test") == {"a", "b"}
+        assert db.tags_of_package("a") == set("test")
+        assert db.tags_of_package("b") == set("test")
         assert db.package_count() == 2
         assert db.tag_count() == 1
 
     def test_read(self, debtagsdb: debtags.DB) -> None:
         db = debtagsdb
         assert db.tags_of_package("polygen") == \
-            set(("devel::interpreter", "game::toys", "interface::commandline", "works-with::text"))
+            {"devel::interpreter", "game::toys", "interface::commandline", "works-with::text"}
         assert "polygen" in db.packages_of_tag("interface::commandline")
         assert db.package_count() == 144
         assert db.tag_count() == 94

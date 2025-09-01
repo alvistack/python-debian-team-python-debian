@@ -27,20 +27,17 @@ from typing import (
     IO,
     Iterable,
     Iterator,
-    List,
-    Optional,
     Set,
-    Text,
     Tuple,
 )
 PkgTagDbType = Dict[str, Set[str]]
 TagPkgDbType = Dict[str, Set[str]]
-PkgFilterType = Callable[[Text], bool]
-TagFilterType = Callable[[Text], bool]
-PkgTagFilterType = Callable[[Tuple[Text, Set[Text]]], bool]
+PkgFilterType = Callable[[str], bool]
+TagFilterType = Callable[[str], bool]
+PkgTagFilterType = Callable[[Tuple[str, Set[str]]], bool]
 
 
-def parse_tags(input_data: Iterator[Text]) -> Iterator[Tuple[Set[str], Set[str]]]:
+def parse_tags(input_data: Iterator[str]) -> Iterator[tuple[set[str], set[str]]]:
     lre = re.compile(r"^(.+?)(?::?\s*|:\s+(.+?)\s*)$")
     for line in input_data:
         # Is there a way to remove the last character of a line that does not
@@ -57,7 +54,7 @@ def parse_tags(input_data: Iterator[Text]) -> Iterator[Tuple[Set[str], Set[str]]
         yield pkgs, tags
 
 
-def read_tag_database(input_data: Iterator[Text]) -> PkgTagDbType:
+def read_tag_database(input_data: Iterator[str]) -> PkgTagDbType:
     """Read the tag database, returning a pkg->tags dictionary"""
     db: PkgTagDbType = {}
     for pkgs, tags in parse_tags(input_data):
@@ -67,7 +64,7 @@ def read_tag_database(input_data: Iterator[Text]) -> PkgTagDbType:
     return db
 
 
-def read_tag_database_reversed(input_data: Iterator[Text]) -> TagPkgDbType:
+def read_tag_database_reversed(input_data: Iterator[str]) -> TagPkgDbType:
     """Read the tag database, returning a tag->pkgs dictionary"""
     db: TagPkgDbType = {}
     for pkgs, tags in parse_tags(input_data):
@@ -81,9 +78,9 @@ def read_tag_database_reversed(input_data: Iterator[Text]) -> TagPkgDbType:
 
 
 def read_tag_database_both_ways(
-        input_data: Iterator[Text],
-        tag_filter: Optional[TagFilterType] = None,
-    ) -> Tuple[PkgTagDbType, TagPkgDbType]:
+        input_data: Iterator[str],
+        tag_filter: TagFilterType | None = None,
+    ) -> tuple[PkgTagDbType, TagPkgDbType]:
     "Read the tag database, returning a pkg->tags and a tag->pkgs dictionary"
     db: PkgTagDbType = {}
     dbr: TagPkgDbType = {}
@@ -105,7 +102,7 @@ def read_tag_database_both_ways(
 
 def reverse(db: PkgTagDbType) -> TagPkgDbType:
     """Reverse a tag database, from package -> tags to tag->packages"""
-    res: Dict[str, Set[str]] = {}
+    res: dict[str, set[str]] = {}
     for pkg, tags in db.items():
         for tag in tags:
             if tag not in res:
@@ -168,8 +165,8 @@ class DB:
         self.rdb: TagPkgDbType = {}
 
     def read(self,
-             input_data: Iterator[Text],
-             tag_filter: Optional[TagFilterType] = None,
+             input_data: Iterator[str],
+             tag_filter: TagFilterType | None = None,
             ) -> None:
         """
         Read the database from a file.
@@ -190,13 +187,13 @@ class DB:
         self.db = pickle.load(file)
         self.rdb = pickle.load(file)
 
-    def insert(self, pkg: str, tags: Set[str]) -> None:
+    def insert(self, pkg: str, tags: set[str]) -> None:
         self.db[pkg] = tags.copy()
         for tag in tags:
             if tag in self.rdb:
                 self.rdb[tag].add(pkg)
             else:
-                self.rdb[tag] = set((pkg))
+                self.rdb[tag] = set(pkg)
 
     def dump(self) -> None:
         output(self.db)
@@ -362,19 +359,19 @@ class DB:
         """Check if the collection contains packages tagged with tag"""
         return tag in self.rdb
 
-    def tags_of_package(self, pkg: str) -> Set[str]:
+    def tags_of_package(self, pkg: str) -> set[str]:
         """Return the tag set of a package"""
         return self.db[pkg] if pkg in self.db else set()
 
-    def packages_of_tag(self, tag: str) -> Set[str]:
+    def packages_of_tag(self, tag: str) -> set[str]:
         """Return the package set of a tag"""
         return self.rdb[tag] if tag in self.rdb else set()
 
-    def tags_of_packages(self, pkgs: Iterable[str]) -> Set[str]:
+    def tags_of_packages(self, pkgs: Iterable[str]) -> set[str]:
         """Return the set of tags that have all the packages in ``pkgs``"""
         return set.union(*(self.tags_of_package(p) for p in pkgs))
 
-    def packages_of_tags(self, tags: Iterable[str]) -> Set[str]:
+    def packages_of_tags(self, tags: Iterable[str]) -> set[str]:
         """Return the set of packages that have all the tags in ``tags``"""
         return set.union(*(self.packages_of_tag(t) for t in tags))
 
@@ -405,11 +402,11 @@ class DB:
         """Iterate over the tags"""
         return self.rdb.keys()
 
-    def iter_packages_tags(self) -> Iterable[Tuple[str, Set[str]]]:
+    def iter_packages_tags(self) -> Iterable[tuple[str, set[str]]]:
         """Iterate over 2-tuples of (pkg, tags)"""
         return self.db.items()
 
-    def iter_tags_packages(self) -> Iterable[Tuple[str, Set[str]]]:
+    def iter_tags_packages(self) -> Iterable[tuple[str, set[str]]]:
         """Iterate over 2-tuples of (tag, pkgs)"""
         return self.rdb.items()
 
@@ -421,7 +418,7 @@ class DB:
         """Return the number of tags"""
         return len(self.rdb)
 
-    def ideal_tagset(self, tags: List[str]) -> Set[str]:
+    def ideal_tagset(self, tags: list[str]) -> set[str]:
         """
         Return an ideal selection of the top tags in a list of tags.
 
@@ -439,7 +436,7 @@ class DB:
         def score_fun(x: float) -> float:
             return float((x-15)*(x-15))/x
 
-        tagset: Set[str] = set()
+        tagset: set[str] = set()
         min_score = 3.
         for i in range(len(tags)):
             pkgs = self.packages_of_tags(tags[:i+1])
@@ -456,7 +453,7 @@ class DB:
             return set(tags[:1])
         return tagset
 
-    def correlations(self) -> Iterator[Tuple[str, str, float]]:
+    def correlations(self) -> Iterator[tuple[str, str, float]]:
         """
         Generate the list of correlation as a tuple (hastag, hasalsotag, score).
 

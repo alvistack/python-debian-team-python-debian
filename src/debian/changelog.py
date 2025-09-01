@@ -97,6 +97,8 @@ Changelog Classes
 # Copyright 2005 Frank Lichtenheld <frank@lichtenheld.de>
 # and licensed under the same license as above.
 
+from __future__ import annotations
+
 import email.utils
 import logging
 import os
@@ -104,16 +106,11 @@ import re
 import socket
 
 from typing import (
-    Dict,
     Iterable,
     Iterator,
     IO,
-    List,
-    Optional,
     Pattern,
     Union,
-    Text,
-    Tuple,
 )
 
 # pwd is only available on Unix platforms.
@@ -127,9 +124,9 @@ from debian.debian_support import Version
 
 IterableDataSource = Union[
     bytes,
-    Text,
-    IO[Text],
-    Iterable[Text],
+    str,
+    IO[str],
+    Iterable[str],
     Iterable[bytes],
 ]
 
@@ -142,7 +139,7 @@ class ChangelogParseError(Exception):
 
     def __init__(self, line: str) -> None:
         self._line = line
-        super(ChangelogParseError, self).__init__()
+        super().__init__()
 
     def __str__(self) -> str:
         return "Could not parse changelog: "+self._line
@@ -160,7 +157,7 @@ class VersionError(Exception):
 
     def __init__(self, version: str) -> None:
         self._version = version
-        super(VersionError, self).__init__()
+        super().__init__()
 
     def __str__(self) -> str:
         return "Could not parse version: " + self._version
@@ -192,38 +189,38 @@ class ChangeBlock:
     """
 
     def __init__(self,
-                 package: Optional[str] = None,
-                 version: Optional[Union[Version, str]] = None,
-                 distributions: Optional[str] = None,
-                 urgency: Optional[str] = None,
-                 urgency_comment: Optional[str] = None,
-                 changes: Optional[List[Text]] = None,
-                 author: Optional[Text] = None,
-                 date: Optional[str] = None,
-                 other_pairs: Optional[Dict[str, str]] = None,
+                 package: str | None = None,
+                 version: Version | str | None = None,
+                 distributions: str | None = None,
+                 urgency: str | None = None,
+                 urgency_comment: str | None = None,
+                 changes: list[str] | None = None,
+                 author: str | None = None,
+                 date: str | None = None,
+                 other_pairs: dict[str, str] | None = None,
                  encoding: str = 'utf-8',
                 ) -> None:
-        self._raw_version: Optional[str] = None
+        self._raw_version: str | None = None
         self._set_version(version)
         self.package = package
         self.distributions = distributions
         self.urgency = urgency or "unknown"
         self.urgency_comment = urgency_comment or ''
-        self._changes: List[Text] = changes or []
+        self._changes: list[str] = changes or []
         self.author = author
         self.date = date
-        self._trailing: List[Text] = []
+        self._trailing: list[str] = []
         self.other_pairs = other_pairs or {}
         self._encoding = encoding
         self._no_trailer = False
         self._trailer_separator = "  "
 
-    def _get_version(self) -> Optional[Version]:
+    def _get_version(self) -> Version | None:
         if self._raw_version is None:
             return None
         return Version(self._raw_version)
 
-    def _set_version(self, version: Optional[Union[Version, str]]) -> None:
+    def _set_version(self, version: Version | str | None) -> None:
         if version is not None:
             self._raw_version = str(version)
         else:
@@ -236,7 +233,7 @@ class ChangeBlock:
         doc="The package version that this block pertains to"
     )
 
-    def other_keys_normalised(self) -> Dict[str, str]:
+    def other_keys_normalised(self) -> dict[str, str]:
         """ Obtain a dict from the block header (other than urgency) """
         norm_dict = {}
         for (key, value) in self.other_pairs.items():
@@ -247,7 +244,7 @@ class ChangeBlock:
             norm_dict[key] = value
         return norm_dict
 
-    def changes(self) -> List[str]:
+    def changes(self) -> list[str]:
         """ Get the changelog entries for this block as a list of str """
         return self._changes
 
@@ -275,7 +272,7 @@ class ChangeBlock:
                 changes.append(change)
             self._changes = changes
 
-    def _get_bugs_closed_generic(self, type_re: Pattern[Text]) -> List[int]:
+    def _get_bugs_closed_generic(self, type_re: Pattern[str]) -> list[int]:
         changes = ' '.join(self._changes)
         bugs = []
         for match in type_re.finditer(changes):
@@ -285,16 +282,16 @@ class ChangeBlock:
         return bugs
 
     @property
-    def bugs_closed(self) -> List[int]:
+    def bugs_closed(self) -> list[int]:
         """ List of (Debian) bugs closed by the block """
         return self._get_bugs_closed_generic(closes)
 
     @property
-    def lp_bugs_closed(self) -> List[int]:
+    def lp_bugs_closed(self) -> list[int]:
         """ List of Launchpad bugs closed by the block """
         return self._get_bugs_closed_generic(closeslp)
 
-    def _format(self, allow_missing_author: Optional[bool] = False) -> str:
+    def _format(self, allow_missing_author: bool | None = False) -> str:
         # TODO(jsw): Switch to StringIO or a list to join at the end.
         block = ""
         if self.package is None:
@@ -310,7 +307,7 @@ class ChangeBlock:
             raise ChangelogCreateError("Urgency not specified")
         block += "urgency=" + self.urgency + self.urgency_comment
         for (key, value) in self.other_pairs.items():
-            block += ", %s=%s" % (key, value)
+            block += f", {key}={value}"
         block += '\n'
         if self.changes() is None:
             raise ChangelogCreateError("Changes not specified")
@@ -447,15 +444,15 @@ class Changelog:
 
     # TODO(jsw): Avoid masking the 'file' built-in.
     def __init__(self,
-                 file: Optional[IterableDataSource] = None,
-                 max_blocks: Optional[int] = None,
+                 file: IterableDataSource | None = None,
+                 max_blocks: int | None = None,
                  allow_empty_author: bool = False,
                  strict: bool = False,
                  encoding: str = 'utf-8',
                  ) -> None:
         self._encoding = encoding
-        self._blocks: List[ChangeBlock] = []
-        self.initial_blank_lines: List[Text] = []
+        self._blocks: list[ChangeBlock] = []
+        self.initial_blank_lines: list[str] = []
         if file is not None:
             self.parse_changelog(
                 file, max_blocks=max_blocks,
@@ -469,11 +466,11 @@ class Changelog:
         logger.warning(message)
 
     def parse_changelog(self,
-                        file: Optional[IterableDataSource],
-                        max_blocks: Optional[int] = None,
+                        file: IterableDataSource | None,
+                        max_blocks: int | None = None,
                         allow_empty_author: bool = False,
                         strict: bool = True,
-                        encoding: Optional[str] = None,
+                        encoding: str | None = None,
                        ) -> None:
         """ Read and parse a changelog file
 
@@ -530,8 +527,8 @@ class Changelog:
                     current_block.distributions = top_match.group(3).lstrip()
 
                     pairs = line.split(";", 1)[1]
-                    all_keys: Dict[str, str] = {}
-                    other_pairs: Dict[str, str] = {}
+                    all_keys: dict[str, str] = {}
+                    other_pairs: dict[str, str] = {}
                     for pair in pairs.split(','):
                         pair = pair.strip()
                         kv_match = keyvalue.match(pair)
@@ -667,11 +664,11 @@ class Changelog:
             current_block._no_trailer = True
             self._blocks.append(current_block)
 
-    def get_version(self) -> Optional[Version]:
+    def get_version(self) -> Version | None:
         """Return a Version object for the last version"""
         return self._blocks[0].version   # type: ignore
 
-    def set_version(self, version: Union[Version, str]) -> None:
+    def set_version(self, version: Version | str) -> None:
         """Set the version of the last changelog block
 
         version can be a full version string, or a Version object
@@ -709,7 +706,7 @@ class Changelog:
         doc="The upstream part of the version number of the last version."
     )
 
-    def get_package(self) -> Optional[str]:
+    def get_package(self) -> str | None:
         """Returns the name of the package in the last entry."""
         return self._blocks[0].package
 
@@ -722,19 +719,19 @@ class Changelog:
         doc="Name of the package in the last version"
     )
 
-    def get_versions(self) -> List[Version]:
+    def get_versions(self) -> list[Version]:
         return self.versions
 
     @property
-    def versions(self) -> List[Version]:
+    def versions(self) -> list[Version]:
         """Returns a list of :class:`debian.debian_support.Version` objects
         that are listed in the changelog."""
         return [block.version for block in self._blocks]
 
-    def _raw_versions(self) -> List[Optional[str]]:
+    def _raw_versions(self) -> list[str | None]:
         return [block._raw_version for block in self._blocks]
 
-    def _format(self, allow_missing_author: Optional[bool] = False) -> str:
+    def _format(self, allow_missing_author: bool | None = False) -> str:
         pieces = []
         for line in self.initial_blank_lines:
             pieces.append(line + '\n')
@@ -753,7 +750,7 @@ class Changelog:
     def __iter__(self) -> Iterator[ChangeBlock]:
         return iter(self._blocks)
 
-    def __getitem__(self, n: Union[Version, int, str]) -> ChangeBlock:
+    def __getitem__(self, n: Version | int | str) -> ChangeBlock:
         """ select a changelog entry by number, version string, or Version
 
         :param n: integer or str representing a version or Version object
@@ -801,7 +798,7 @@ be uploaded."""
         """
         self._blocks[0].add_change(change)
 
-    def set_author(self, author: Text) -> None:
+    def set_author(self, author: str) -> None:
         """ set the author of the top changelog entry """
         self._blocks[0].author = author
 
@@ -829,16 +826,16 @@ be uploaded."""
     )
 
     def new_block(self,
-                  package: Optional[str] = None,
-                  version: Optional[Union[Version, str]] = None,
-                  distributions: Optional[str] = None,
-                  urgency: Optional[str] = None,
-                  urgency_comment: Optional[str] = None,
-                  changes: Optional[List[Text]] = None,
-                  author: Optional[Text] = None,
-                  date: Optional[str] = None,
-                  other_pairs: Optional[Dict[str, str]] = None,
-                  encoding: Optional[str] = None,
+                  package: str | None = None,
+                  version: Version | str | None = None,
+                  distributions: str | None = None,
+                  urgency: str | None = None,
+                  urgency_comment: str | None = None,
+                  changes: list[str] | None = None,
+                  author: str | None = None,
+                  date: str | None = None,
+                  other_pairs: dict[str, str] | None = None,
+                  encoding: str | None = None,
                   ) -> None:
         """ Add a new changelog block to the changelog
 
@@ -858,7 +855,7 @@ be uploaded."""
             block.add_trailing_line('')
         self._blocks.insert(0, block)
 
-    def write_to_open_file(self, filehandle: IO[Text]) -> None:
+    def write_to_open_file(self, filehandle: IO[str]) -> None:
         """ Write the changelog entry to a filehandle
 
         Write the changelog out to the filehandle passed. The file argument
@@ -867,7 +864,7 @@ be uploaded."""
         filehandle.write(str(self))
 
 
-def get_maintainer() -> Tuple[Optional[Text], Optional[Text]]:
+def get_maintainer() -> tuple[str | None, str | None]:
     """Get the maintainer information in the same manner as dch.
 
     This function gets the information about the current user for
@@ -899,7 +896,7 @@ def get_maintainer() -> Tuple[Optional[Text], Optional[Text]]:
                 env['EMAIL'] = match_obj.group(2)
 
     # Get maintainer's name
-    maintainer: Optional[Text] = None
+    maintainer: str | None = None
     if 'DEBFULLNAME' in env:
         maintainer = env['DEBFULLNAME']
     elif 'NAME' in env:
@@ -913,7 +910,7 @@ def get_maintainer() -> Tuple[Optional[Text], Optional[Text]]:
             pass
 
     # Get maintainer's mail address
-    email_address: Optional[Text] = None
+    email_address: str | None = None
     if 'DEBEMAIL' in env:
         email_address = env['DEBEMAIL']
     elif 'EMAIL' in env:
@@ -935,7 +932,7 @@ def get_maintainer() -> Tuple[Optional[Text], Optional[Text]]:
                 if not user:
                     addr = None
                 else:
-                    addr = "%s@%s" % (user, addr)
+                    addr = f"{user}@{addr}"
 
         if addr:
             email_address = addr
@@ -943,7 +940,7 @@ def get_maintainer() -> Tuple[Optional[Text], Optional[Text]]:
     return (maintainer, email_address)
 
 
-def format_date(timestamp: Optional[float] = None, localtime: bool = True) -> str:
+def format_date(timestamp: float | None = None, localtime: bool = True) -> str:
     """ format a datestamp in the required format for the changelog
 
     :param timestamp: float, optional. The timestamp (seconds since epoch)

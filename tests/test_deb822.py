@@ -1,5 +1,4 @@
 #! /usr/bin/python
-## vim: fileencoding=utf-8
 
 # Copyright (C) 2006 Adeodato Simó <dato@net.com.org.es>
 #
@@ -65,16 +64,8 @@ from debian.debian_support import Version
 from typing import (
     Any,
     Callable,
-    Dict,
     Generator,
     IO,
-    List,
-    Optional,
-    Union,
-    Text,
-    Tuple,
-    Type,
-    TypeVar,
 )
 
 
@@ -356,7 +347,7 @@ def find_test_file(filename: str) -> str:
 KEYRING = os.path.abspath(find_test_file('test-keyring.gpg'))
 
 
-def open_utf8(filename: str, mode: str = 'r') -> IO[Text]:
+def open_utf8(filename: str, mode: str = 'r') -> IO[str]:
     """Open a UTF-8 text file in text mode."""
     return open(filename, mode=mode, encoding='UTF-8')
 
@@ -732,7 +723,7 @@ with open("test_deb822.pickle", "wb") as fh:
         text = (UNPARSED_PACKAGE + '\n\n\n' + UNPARSED_PACKAGE)
         tmp = tmp_path / "Packages"
 
-        with open(tmp, "wt", encoding="UTF-8") as fh:
+        with open(tmp, "w", encoding="UTF-8") as fh:
             fh.write(text)
 
         for d in deb822.Deb822.iter_paragraphs(tmp, use_apt_pkg=use_apt_pkg):
@@ -838,7 +829,7 @@ with open("test_deb822.pickle", "wb") as fh:
 
     def _test_iter_paragraphs(self,
                               filename: str,
-                              cls: Type[deb822.Deb822],
+                              cls: type[deb822.Deb822],
                               **kwargs: Any) -> None:
         """Ensure iter_paragraphs consistency"""
         
@@ -1107,7 +1098,7 @@ Description: python modules to work with Debian-related data formats
         resulting object should have only unicode values.)
         """
 
-        objects: List[deb822.Deb822] = []
+        objects: list[deb822.Deb822] = []
         with open_utf8(find_test_file('test_Packages')) as f:
             objects.extend(deb822.Packages.iter_paragraphs(f))
         with open_utf8(find_test_file('test_Sources')) as f:
@@ -1121,7 +1112,7 @@ Description: python modules to work with Debian-related data formats
 
         # The same should be true for Sources and Changes except for their
         # _multivalued fields
-        multi: List[Union[deb822.Changes, deb822.Sources]] = []
+        multi: list[deb822.Changes | deb822.Sources] = []
         with open_utf8(find_test_file('test_Sources')) as f:
             multi.extend(deb822.Sources.iter_paragraphs(f))
         for d in multi:
@@ -1150,7 +1141,7 @@ Description: python modules to work with Debian-related data formats
 
         # The same should be true for Sources and Changes except for their
         # _multivalued fields
-        multi: List[Union[deb822.Changes, deb822.Sources]] = []
+        multi: list[deb822.Changes | deb822.Sources] = []
         multi.append(deb822.Changes(CHANGES_FILE))
         multi.append(deb822.Changes(SIGNED_CHECKSUM_CHANGES_FILE
                                     % CHECKSUM_CHANGES_FILE))
@@ -1237,7 +1228,7 @@ Description: python modules to work with Debian-related data formats
         self.assertWellParsed(deb822.Deb822(data), parsed)
 
     @staticmethod
-    def _dictset(d: Dict[str, Any], key: str, value: Any) -> None:
+    def _dictset(d: dict[str, Any], key: str, value: Any) -> None:
         d[key] = value
 
     def test_field_value_ends_in_newline(self) -> None:
@@ -1283,7 +1274,7 @@ Description: python modules to work with Debian-related data formats
         assert d["Package-List"] == [{"package": "pkg", "package-type": "deb", "section": "section", "priority": "priority", "_other": "arch=all essential=yes"}]
         assert str(d) == text
 
-    def _test_iter_paragraphs_comments(self, paragraphs: List[deb822.Deb822]) -> None:
+    def _test_iter_paragraphs_comments(self, paragraphs: list[deb822.Deb822]) -> None:
         assert len(paragraphs) == len(PARSED_PARAGRAPHS_WITH_COMMENTS)
         for i in range(len(paragraphs)):
             self.assertWellParsed(paragraphs[i],
@@ -1406,13 +1397,13 @@ UTF-8"
 
     def test_changes_binary_mode(self) -> None:
         """Trivial parse test for a signed file in binary mode"""
-        with io.open(find_test_file('test_Changes'), 'rb') as f:
+        with open(find_test_file('test_Changes'), 'rb') as f:
             changes = deb822.Changes(f)
         assert 'python-debian' == changes['Source']
 
     def test_changes_text_mode(self) -> None:
         """Trivial parse test for a signed file in text mode"""
-        with io.open(find_test_file('test_Changes'), 'r', encoding='utf-8') as f:
+        with open(find_test_file('test_Changes'), encoding='utf-8') as f:
             changes = deb822.Changes(f)
         assert 'python-debian' == changes['Source']
 
@@ -1421,13 +1412,13 @@ UTF-8"
             removals = deb822.Removals.iter_paragraphs(f)
             r = next(removals)
             assert r['suite'] == 'unstable'
-            assert r['date'] == u'Wed, 01 Jan 2014 17:03:54 +0000'
+            assert r['date'] == 'Wed, 01 Jan 2014 17:03:54 +0000'
             # Date objects, timezones, cross-platform, portability nightmare...
             assert r.date.strftime('%S') == '54'
             assert len(r.binaries) == 1
             assert r.binaries[0]['package'] == 'libzoom-ruby'
             assert r.binaries[0]['version'] == '0.4.1-5'
-            assert r.binaries[0]['architectures'] == set(['all'])
+            assert r.binaries[0]['architectures'] == {'all'}
             r = next(removals)
             assert len(r.binaries) == 3
             r = next(removals)
@@ -1436,9 +1427,9 @@ UTF-8"
             assert r.also_wnpp == [123456]
             r = next(removals)
             assert r.binaries[0]['architectures'] == \
-                set(['amd64', 'armel', 'armhf', 'hurd-i386', 'i386',
+                {'amd64', 'armel', 'armhf', 'hurd-i386', 'i386',
                      'kfreebsd-amd64', 'kfreebsd-i386', 'mips', 'mipsel',
-                     'powerpc', 's390x', 'sparc'])
+                     'powerpc', 's390x', 'sparc'}
 
 
 class TestPkgRelations:
@@ -1741,7 +1732,7 @@ class TestGpgInfo:
     ])
 
     @pytest.fixture()
-    def sampledata(self) -> Generator[TestGpgInfo.SampleData, None, None]:
+    def sampledata(self) -> Generator[TestGpgInfo.SampleData]:
         datastr = SIGNED_CHECKSUM_CHANGES_FILE % CHECKSUM_CHANGES_FILE
         data = datastr.encode()
         valid = {
@@ -1830,7 +1821,7 @@ class TestChanges:
 
     def test_merge_mismatched_descriptions(self) -> None:
         # The descriptions for each binary package must match.
-        changes, other = [
+        changes, other = (
             deb822.Changes(
                 {
                     "Format": "1.8",
@@ -1846,7 +1837,7 @@ class TestChanges:
                 }
             )
             for name in ("left", "right")
-        ]
+        )
         with pytest.raises(
             deb822.MergeChangesError,
             match="Descriptions for mismatch do not match: 'left' != 'right'"
@@ -1855,7 +1846,7 @@ class TestChanges:
 
     def test_merge_mismatched_files(self) -> None:
         # The entries for a given file in "Files" must match.
-        changes, other = [
+        changes, other = (
             deb822.Changes(
                 {
                     "Format": "1.8",
@@ -1870,7 +1861,7 @@ class TestChanges:
                 }
             )
             for csum, size in (("0002", 24), ("0003", 32))
-        ]
+        )
         expected_error = (
             "Entries in Files for mismatch_1.0_all.deb do not match: "
             "{'md5sum': '0002', 'size': '24', 'section': 'misc', "
@@ -1891,7 +1882,7 @@ class TestChanges:
         self, field: str, checksum: str
     ) -> None:
         # The entries for a given file in "Checksums-*" must match.
-        changes, other = [
+        changes, other = (
             deb822.Changes(
                 {
                     "Format": "1.8",
@@ -1906,7 +1897,7 @@ class TestChanges:
                 }
             )
             for csum, size in (("0002", 24), ("0003", 32))
-        ]
+        )
         expected_error = (
             f"Entries in {field} for mismatch_1.0_all.deb do not match: "
             f"{{'{checksum}': '0002', 'size': '24', "

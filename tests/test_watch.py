@@ -18,10 +18,6 @@
 """Tests for debian.watch."""
 
 from io import StringIO
-from typing import (
-    Optional,
-    TypeVar,
-)
 
 import pytest
 

@@ -17,14 +17,15 @@
 
 """Functions for working with watch files."""
 
+from __future__ import annotations
+
+
 import logging
 import re
 
 from typing import (
     Iterable,
     Iterator,
-    List,
-    Optional,
     Sequence,
     TextIO,
 )
@@ -93,9 +94,9 @@ class WatchFile:
     """
 
     def __init__(self,
-                 entries: Optional[Sequence["Watch"]] = None,
-                 options: Optional[Sequence[str]] = None,
-                 version: Optional[int] = DEFAULT_VERSION,
+                 entries: Sequence[Watch] | None = None,
+                 options: Sequence[str] | None = None,
+                 version: int | None = DEFAULT_VERSION,
                  ):
         self.version = version
         if entries is None:
@@ -105,7 +106,7 @@ class WatchFile:
             options = []
         self.options = options
 
-    def __iter__(self) -> Iterator["Watch"]:
+    def __iter__(self) -> Iterator[Watch]:
         return iter(self.entries)
 
     def dump(self, f: TextIO) -> None:
@@ -141,7 +142,7 @@ class WatchFile:
     @classmethod
     def from_lines(cls,
                    lines: Iterable[str],
-                   strict: bool = False) -> Optional["WatchFile"]:
+                   strict: bool = False) -> WatchFile | None:
         """Parse from the contents that make up a watch file.
 
         :param lines: watch file lines to parse
@@ -149,8 +150,8 @@ class WatchFile:
         :raise MissingVersion: if there is no version number declared
         :raise ValueError: when syntax errors are encountered
         """
-        joined_lines: List[List[str]] = []
-        continued: List[str] = []
+        joined_lines: list[list[str]] = []
+        continued: list[str] = []
         for line in lines:
             if line.startswith('#'):
                 continue
@@ -235,10 +236,10 @@ class Watch:
 
     def __init__(self,
                  url: str,
-                 matching_pattern: Optional[str] = None,
-                 version: Optional[str] = None,
-                 script: Optional[str] = None,
-                 opts: Optional[Sequence[str]] = None,
+                 matching_pattern: str | None = None,
+                 version: str | None = None,
+                 script: str | None = None,
+                 opts: Sequence[str] | None = None,
                  ):
         self.url = url
         self.matching_pattern = matching_pattern
@@ -250,7 +251,7 @@ class Watch:
 
     def __repr__(self) -> str:
         return (
-            "%s(%r, matching_pattern=%r, version=%r, script=%r, opts=%r)" % (
+            "{}({!r}, matching_pattern={!r}, version={!r}, script={!r}, opts={!r})".format(
                 self.__class__.__name__, self.url, self.matching_pattern,
                 self.version, self.script, self.options))
 

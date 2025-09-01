@@ -4,8 +4,7 @@ import weakref
 from weakref import ReferenceType
 
 from typing import (
-    Iterable, Optional, Generic, Dict, Iterator, TypeVar, TYPE_CHECKING, Any,
-    Callable,
+    Iterable, Generic, Iterator, TypeVar, TYPE_CHECKING, Any, Callable,
 )
 
 # Used a generic type for any case where we need a generic type without any bounds
@@ -13,7 +12,7 @@ from typing import (
 T = TypeVar('T')
 
 
-def resolve_ref(ref: Optional[ReferenceType[T]]) -> Optional[T]:
+def resolve_ref(ref: ReferenceType[T] | None) -> T | None:
     return ref() if ref is not None else None
 
 
@@ -25,7 +24,7 @@ class _CaseInsensitiveString(str):
     if TYPE_CHECKING:  # pragma: no cover
         # neither pylint nor mypy cope with str_lower being defined in __new__
         def __init__(self, s: str) -> None:
-            super(_CaseInsensitiveString, self).__init__(s)   # type: ignore
+            super().__init__(s)   # type: ignore
             self.str_lower = ''
 
     def __new__(cls, str_):  # type: ignore
@@ -62,16 +61,16 @@ class LinkedListNode(Generic[T]):
     __slots__ = ('_previous_node', 'value', 'next_node', '__weakref__')
 
     def __init__(self, value: T) -> None:
-        self._previous_node: Optional[ReferenceType[LinkedListNode[T]]] = None
-        self.next_node: Optional[LinkedListNode[T]] = None
+        self._previous_node: ReferenceType[LinkedListNode[T]] | None = None
+        self.next_node: LinkedListNode[T] | None = None
         self.value = value
 
     @property
-    def previous_node(self) -> Optional[LinkedListNode[T]]:
+    def previous_node(self) -> LinkedListNode[T] | None:
         return resolve_ref(self._previous_node)
 
     @previous_node.setter
-    def previous_node(self, node: Optional[LinkedListNode[T]]) -> None:
+    def previous_node(self, node: LinkedListNode[T] | None) -> None:
         self._previous_node = weakref.ref(node) if node is not None else None
 
     def remove(self) -> T:
@@ -81,7 +80,7 @@ class LinkedListNode(Generic[T]):
         return self.value
 
     def iter_next(self, *,
-                  skip_current: Optional[bool] = False
+                  skip_current: bool | None = False
                   ) -> Iterator[LinkedListNode[T]]:
         node = self.next_node if skip_current else self
         while node:
@@ -89,7 +88,7 @@ class LinkedListNode(Generic[T]):
             node = node.next_node
 
     def iter_previous(self, *,
-                      skip_current: Optional[bool] = False
+                      skip_current: bool | None = False
                       ) -> Iterator[LinkedListNode[T]]:
         node = self.previous_node if skip_current else self
         while node:
@@ -97,17 +96,17 @@ class LinkedListNode(Generic[T]):
             node = node.previous_node
 
     @staticmethod
-    def link_nodes(previous_node: Optional[LinkedListNode[T]],
-                   next_node: Optional['LinkedListNode[T]']) -> None:
+    def link_nodes(previous_node: LinkedListNode[T] | None,
+                   next_node: LinkedListNode[T] | None) -> None:
         if next_node:
             next_node.previous_node = previous_node
         if previous_node:
             previous_node.next_node = next_node
 
     @staticmethod
-    def _insert_link(first_node: Optional[LinkedListNode[T]],
+    def _insert_link(first_node: LinkedListNode[T] | None,
                      new_node: LinkedListNode[T],
-                     last_node: Optional[LinkedListNode[T]],
+                     last_node: LinkedListNode[T] | None,
                      ) -> None:
         LinkedListNode.link_nodes(first_node, new_node)
         LinkedListNode.link_nodes(new_node, last_node)
@@ -132,9 +131,9 @@ class LinkedList(Generic[T]):
 
     __slots__ = ('head_node', 'tail_node', '_size')
 
-    def __init__(self, values: Optional[Iterable[T]] = None) -> None:
-        self.head_node: Optional[LinkedListNode[T]] = None
-        self.tail_node: Optional[LinkedListNode[T]] = None
+    def __init__(self, values: Iterable[T] | None = None) -> None:
+        self.head_node: LinkedListNode[T] | None = None
+        self.tail_node: LinkedListNode[T] | None = None
         self._size = 0
         if values is not None:
             self.extend(values)
@@ -146,7 +145,7 @@ class LinkedList(Generic[T]):
         return self._size
 
     @property
-    def tail(self) -> Optional[T]:
+    def tail(self) -> T | None:
         return self.tail_node.value if self.tail_node is not None else None
 
     def pop(self) -> None:
@@ -259,13 +258,13 @@ class OrderedSet:
     to look up if a key is in a set than in a list.
     """
 
-    def __init__(self, iterable: Optional[Iterable[str]] = None) -> None:
+    def __init__(self, iterable: Iterable[str] | None = None) -> None:
 
         # We implement the OrderedSet as a "Home-built" LinkedHashSet because
         # python does not provide better facilities for it.  On the flip side,
         # we can add specialized functionality on top of it like "insert after"
         # or "move to the end".
-        self.__table: Dict[str, LinkedListNode[str]] = {}
+        self.__table: dict[str, LinkedListNode[str]] = {}
         self.__order: LinkedList[str] = LinkedList()
         if iterable is None:
             iterable = []

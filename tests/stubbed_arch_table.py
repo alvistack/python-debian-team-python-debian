@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from io import StringIO
 from os import PathLike
-from typing import Union
 
 from debian._arch_table import DpkgArchTable
 
@@ -58,7 +57,7 @@ class StubbedDpkgArchTable(DpkgArchTable):
 
     @classmethod
     def load_arch_table(cls,
-                        path: Union[str, PathLike[str]] = "/usr/share/dpkg") -> DpkgArchTable:
+                        path: str | PathLike[str] = "/usr/share/dpkg") -> DpkgArchTable:
         cpu_table = StringIO(stubbed_cpu_table_data)
         os_table = StringIO(stubbed_os_table_data)
         tuple_table = StringIO(stubbed_tuple_table_data)

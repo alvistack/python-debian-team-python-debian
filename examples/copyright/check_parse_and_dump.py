@@ -60,7 +60,7 @@ def main():
     for filename in sys.stdin:
         total += 1
         filename = filename.rstrip()
-        with io.open(filename, mode='rt', encoding='utf-8') as f:
+        with open(filename, encoding='utf-8') as f:
             try:
                 c = copyright.Copyright(f)
             except Exception as e:
@@ -113,7 +113,7 @@ def main():
         f.write('\n%s: (%d / %d)\n' % (heading, len(problems), total))
         if not args.summary:
             for filename, problem in problems:
-                f.write(' %s: %s\n' % (filename, problem))
+                f.write(' {}: {}\n'.format(filename, problem))
 
 
 if __name__ == '__main__':

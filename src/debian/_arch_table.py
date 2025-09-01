@@ -28,12 +28,12 @@ from __future__ import annotations
 
 import os
 from os import PathLike
-from typing import Iterable, Optional, IO, List, Dict, Union, Tuple
+from typing import Iterable, IO
 
 import collections.abc
 
 
-def _parse_table_file(fd: IO[str]) -> Iterable[List[str]]:
+def _parse_table_file(fd: IO[str]) -> Iterable[list[str]]:
     for line in fd:
         line = line.rstrip()
         if not line or line.startswith("#"):
@@ -64,20 +64,20 @@ class QuadTupleDpkgArchitecture(_QuadTuple):
 class DpkgArchTable:
 
     def __init__(self,
-                 arch2tuple: Dict[str, QuadTupleDpkgArchitecture],
-                 cputable: Dict[str, Tuple[str, ...]],
-                 ostable: Dict[str, Tuple[str, ...]]
+                 arch2tuple: dict[str, QuadTupleDpkgArchitecture],
+                 cputable: dict[str, tuple[str, ...]],
+                 ostable: dict[str, tuple[str, ...]]
                 ) -> None:
         self._arch2table = arch2tuple
         self._cputable = cputable
         self._ostable = ostable
-        self._wildcard_cache: Dict[str, QuadTupleDpkgArchitecture] = {
+        self._wildcard_cache: dict[str, QuadTupleDpkgArchitecture] = {
             'any': QuadTupleDpkgArchitecture('any', 'any', 'any', 'any')
         }
 
     @classmethod
     def load_arch_table(cls,
-                        path: Union[str, PathLike[str]] = '/usr/share/dpkg') -> DpkgArchTable:
+                        path: str | PathLike[str] = '/usr/share/dpkg') -> DpkgArchTable:
         # NOTE! This method is stubbed in including doctests to support non-Debian systems
         #   See conftest.py for the concrete implementation and the limited data set available.
         """Load the Dpkg Architecture Table
@@ -117,7 +117,7 @@ class DpkgArchTable:
         cpu_table_fd: IO[str],
         triplet_compat: bool = False
     ) -> DpkgArchTable:
-        arch2tuple: Dict[str, QuadTupleDpkgArchitecture] = {}
+        arch2tuple: dict[str, QuadTupleDpkgArchitecture] = {}
         cputable = {} # Dict[str, Tuple[str, ...]]
         ostable = {} # Dict[str, Tuple[str, ...]]
 
@@ -356,7 +356,7 @@ class DpkgArchTable:
         # allow_mixing_positive_and_negative=False even if the input matches before the
         # inconsistency is detected.
 
-        verdict: Optional[bool] = None
+        verdict: bool | None = None
         positive_match_seen = False
         negative_match_seen = False
         arch_restriction_iter = iter(architecture_restrictions)

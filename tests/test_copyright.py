@@ -1,5 +1,4 @@
 #! /usr/bin/python
-## vim: fileencoding=utf-8
 
 # Copyright (C) 2014 Google, Inc.
 #
@@ -31,14 +30,9 @@ from debian._deb822_repro import parse_deb822_file, Deb822ParagraphElement
 
 
 from typing import (
-    Any,
     Generator,
-    List,
     Pattern,
-    Sequence,
-    Text,
     no_type_check,
-    TYPE_CHECKING,
 )
 
 
@@ -447,7 +441,7 @@ class TestCopyright:
 
     def test_all_paragraphs(self) -> None:
         c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
-        expected: List[copyright.AllParagraphTypes] = []
+        expected: list[copyright.AllParagraphTypes] = []
         expected.append(c.header)
         expected.extend(list(c.all_files_paragraphs()))
         expected.extend(list(c.all_license_paragraphs()))
@@ -557,7 +551,7 @@ class TestMultline:
     ])
 
     @pytest.fixture()
-    def sample_data(self) -> Generator[TestMultline.SampleData, None, None]:
+    def sample_data(self) -> Generator[TestMultline.SampleData]:
         paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
 
         formatted = paragraphs[1]['License']
@@ -702,7 +696,7 @@ class TestGlobsToRe:
 
     flags = re.MULTILINE | re.DOTALL
 
-    def assertReEqual(self, a: Pattern[Text], b: Pattern[Text]) -> None:
+    def assertReEqual(self, a: Pattern[str], b: Pattern[str]) -> None:
         assert a.pattern == b.pattern
         assert a.flags == b.flags
 
@@ -808,7 +802,7 @@ class TestGlobsToRe:
 class TestFilesParagraph:
 
     @pytest.fixture()
-    def prototype(self) -> Generator[Deb822ParagraphElement, None, None]:
+    def prototype(self) -> Generator[Deb822ParagraphElement]:
         p = Deb822ParagraphElement.new_empty_paragraph()
         p['Files'] = '*'
         p['Copyright'] = 'Foo'
