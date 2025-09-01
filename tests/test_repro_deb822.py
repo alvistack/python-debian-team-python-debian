@@ -964,8 +964,7 @@ class TestFormatPreservingDeb822Parser:
             ], start=0)
         }
 
-        def key_func(field_name):
-            # type: (str) -> Tuple[int, str]
+        def key_func(field_name: str) -> Tuple[int, str]:
             field_name_lower = field_name.lower()
             order = name_order.get(field_name_lower)
             if order is not None:
@@ -1275,11 +1274,10 @@ class TestFormatPreservingDeb822Parser:
 
         @contextlib.contextmanager
         def _field_mutation_test(
-                kvpair,  # type: Deb822KeyValuePairElement
-                interpretation,  # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
-                expected_output,  # type: str
-        ):
-            # type: (...) -> Iterator[Deb822ParsedTokenList[VE, ST]]
+                kvpair: Deb822KeyValuePairElement,
+                interpretation: Interpretation[Deb822ParsedTokenList[VE, ST]],
+                expected_output: str,
+        ) -> Iterator[Deb822ParsedTokenList[VE, ST]]:
             original_value_element = kvpair.value_element
             with kvpair.interpret_as(interpretation) as value_list:
                 yield value_list
@@ -1617,8 +1615,7 @@ class TestFormatPreservingDeb822Parser:
                 'hurd': 2,
             }
 
-            def _key_func(v):
-                # type: (str) -> Any
+            def _key_func(v: str) -> Any:
                 if '-' in v:
                     ov = order.get(v.split('-')[0])
                     if ov is None:
@@ -1664,11 +1661,10 @@ class TestFormatPreservingDeb822Parser:
 
         @contextlib.contextmanager
         def _field_mutation_test(
-                kvpair,  # type: Deb822KeyValuePairElement
-                interpretation,  # type: Interpretation[Deb822ParsedTokenList[VE, ST]]
-                expected_output,  # type: str
-        ):
-            # type: (...) -> Iterator[Deb822ParsedTokenList[VE, ST]]
+                kvpair: Deb822KeyValuePairElement,
+                interpretation: Interpretation[Deb822ParsedTokenList[VE, ST]],
+                expected_output: str,
+        ) -> Iterator[Deb822ParsedTokenList[VE, ST]]:
             original_value_element = kvpair.value_element
             with kvpair.interpret_as(interpretation) as value_list:
                 yield value_list

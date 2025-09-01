@@ -40,14 +40,12 @@ from debian import debian_support
 
 
 
-def find_test_file(filename):
-    # type: (str) -> str
+def find_test_file(filename: str) -> str:
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
 
 
-def open_utf8(filename, mode='r'):
-    # type: (str, str) -> IO[Text]
+def open_utf8(filename: str, mode: str = 'r') -> IO[Text]:
     """Open a UTF-8 text file in text mode."""
     return open(filename, mode=mode, encoding='UTF-8')
 
@@ -107,8 +105,7 @@ class TestChangelog:
             assert clines[i] == cslines[i]
         assert len(clines) == len(cslines), "Different lengths"
 
-    def test_preserve_initial_lines(self, caplog):
-        # type: (pytest.LogCaptureFixture) -> None
+    def test_preserve_initial_lines(self, caplog: pytest.LogCaptureFixture) -> None:
         cl_text = b"""
 THIS IS A LINE THAT SHOULD BE PRESERVED BUT IGNORED
 haskell-src-exts (1.8.2-3) unstable; urgency=low
@@ -273,8 +270,7 @@ haskell-src-exts (1.8.2-2) unstable; urgency=low
         for block in c:
             assert bytes(block) == str(block).encode('latin1')
 
-    def test_malformed_date(self, caplog):
-        # type: (pytest.LogCaptureFixture) -> None
+    def test_malformed_date(self, caplog: pytest.LogCaptureFixture) -> None:
         c_text = """package (1.0-1) codename; urgency=medium
 
   * minimal example reproducer of malformed date line

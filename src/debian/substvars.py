@@ -32,6 +32,7 @@ The :class:`Substvars` class is the key class within this module.
 Substvars Classes
 -----------------
 """
+from __future__ import annotations
 
 
 import contextlib
@@ -42,14 +43,14 @@ import typing
 from abc import ABC
 from collections import OrderedDict
 from collections.abc import MutableMapping
+from os import PathLike
 from types import TracebackType
 from typing import Dict, Set, Optional, Union, Iterator, IO, Iterable, TYPE_CHECKING, Type
 
 try:
     if TYPE_CHECKING:
-        from typing import Self
-        from os import PathLike
-        AnyPath = Union[PathLike[str], PathLike[bytes], str, bytes]
+        from typing import Self   # needs Python 3.11
+        AnyPath = Union[PathLike[str], PathLike[bytes], str, bytes]   # needs Python 3.9
 except ImportError:
     pass
 
@@ -64,10 +65,9 @@ class Substvar:
 
     __slots__ = ['_assignment_operator', '_value']
 
-    def __init__(self, initial_value="",  # type: str
-                 assignment_operator='=',  # type: str
-                 ):
-        # type: (...) -> None
+    def __init__(self, initial_value: str = "",
+                 assignment_operator: str = '=',
+                 ) -> None:
 
         # We have 2 values for _value:
         # 1) string: The variable is set to a fixed string.  This variant is
@@ -78,22 +78,20 @@ class Substvar:
         # When reading substvars from files, we always use variant 1) and then
         # lazily convert to 2) when necessary.  This choice makes the substvars
         # round-trip safe by default until someone messes with a substvar.
-        self._value = initial_value   # type: Union[str, Set[str]]
-        self.assignment_operator = assignment_operator  # type: str
+        self._value: Union[str, Set[str]] = initial_value
+        self.assignment_operator: str = assignment_operator
 
     @property
     def assignment_operator(self) -> str:
         return self._assignment_operator
 
     @assignment_operator.setter
-    def assignment_operator(self, new_operator):
-        # type: (str) -> None
+    def assignment_operator(self, new_operator: str) -> None:
         if new_operator not in {'=', '?='}:
             raise ValueError('Operator must be one of: "=", or "?=" - got: ' + new_operator)
         self._assignment_operator = new_operator
 
-    def add_dependency(self, dependency_clause):
-        # type: (str) -> None
+    def add_dependency(self, dependency_clause: str) -> None:
         if self._value == "":
             self._value = {dependency_clause}
             return
@@ -107,8 +105,7 @@ class Substvar:
             return ", ".join(sorted(self._value))
         return self._value
 
-    def __eq__(self, other):
-        # type: (object) -> bool
+    def __eq__(self, other: object) -> bool:
         if other is None or not isinstance(other, Substvar):
             return False
         if self.assignment_operator != other.assignment_operator:
@@ -168,12 +165,11 @@ class Substvars(_Substvars_Base['Substvars']):
     __slots__ = ['_vars_dict', '_substvars_path']
 
     def __init__(self) -> None:
-        self._vars_dict = OrderedDict()  # type: Dict[str, Substvar]
-        self._substvars_path = None  # type: Optional[AnyPath]
+        self._vars_dict: Dict[str, Substvar] = OrderedDict()
+        self._substvars_path: Optional[AnyPath] = None
 
     @classmethod
-    def load_from_path(cls, substvars_path, missing_ok=False):
-        # type: (AnyPath, bool) -> Self
+    def load_from_path(cls, substvars_path: AnyPath, missing_ok: bool = False) -> "Self":
         """Shorthand for initializing a Substvars from a file
 
         The return substvars will have `substvars_path` set to the provided path enabling
@@ -209,29 +205,24 @@ class Substvars(_Substvars_Base['Substvars']):
         return substvars
 
     @property
-    def _vars(self):
-        # type: () -> Dict[str, Substvar]
+    def _vars(self) -> Dict[str, Substvar]:
         # Indirection to support subclasses that want to provide lazy loading or other "fun stuff"
         return self._vars_dict
 
     @_vars.setter
-    def _vars(self, vars_dict):
-        # type: (Dict[str, Substvar]) -> None
+    def _vars(self, vars_dict: Dict[str, Substvar]) -> None:
         # Indirection to support subclasses that want to provide lazy loading or other "fun stuff"
         self._vars_dict = vars_dict
 
     @property
-    def substvars_path(self):
-        # type: () -> Optional[AnyPath]
+    def substvars_path(self) -> Optional[AnyPath]:
         return self._substvars_path
 
     @substvars_path.setter
-    def substvars_path(self, new_path):
-        # type: (Optional[AnyPath]) -> None
+    def substvars_path(self, new_path: Optional[AnyPath]) -> None:
         self._substvars_path = new_path
 
-    def add_dependency(self, substvar, dependency_clause):
-        # type: (str, str) -> None
+    def add_dependency(self, substvar: str, dependency_clause: str) -> None:
         """Add a dependency clause to a given substvar
 
         >>> substvars = Substvars()
@@ -260,41 +251,34 @@ class Substvars(_Substvars_Base['Substvars']):
         variable.add_dependency(dependency_clause)
 
     def __exit__(self,
-                 exc_type,  # type: Optional[Type[BaseException]]
-                 exc_val,  # type: Optional[BaseException]
-                 exc_tb,  # type: Optional[TracebackType]
-                 ):
-        # type: (...) -> Optional[bool]
+                 exc_type: Optional[Type[BaseException]],
+                 exc_val: Optional[BaseException],
+                 exc_tb: Optional[TracebackType],
+                 ) -> Optional[bool]:
         if exc_type is None:
             self.save()
         return super().__exit__(exc_type, exc_val, exc_tb)
 
-    def __iter__(self):
-        # type: () -> Iterator[str]
+    def __iter__(self) -> Iterator[str]:
         return iter(self._vars)
 
     def __len__(self) -> int:
         return len(self._vars_dict)
 
-    def __contains__(self, item):
-        # type: (object) -> bool
+    def __contains__(self, item: object) -> bool:
         return item in self._vars
 
-    def __getitem__(self, key):
-        # type: (str) -> str
+    def __getitem__(self, key: str) -> str:
         return self._vars[key].resolve()
 
-    def __delitem__(self, key):
-        # type: (str) -> None
+    def __delitem__(self, key: str) -> None:
         del self._vars[key]
 
-    def __setitem__(self, key, value):
-        # type: (str, str) -> None
+    def __setitem__(self, key: str, value: str) -> None:
         self._vars[key] = Substvar(value)
 
     @property
-    def as_substvar(self):
-        # type: () -> MutableMapping[str, Substvar]
+    def as_substvar(self) -> MutableMapping[str, Substvar]:
         """Provides a mapping to the Substvars object for more advanced operations
 
         Treating a substvars file mostly as a "str -> str" mapping is sufficient for many cases.
@@ -321,8 +305,7 @@ class Substvars(_Substvars_Base['Substvars']):
         # This is an indirection of `_vars` to avoid exposing the `_vars` setter
         return self._vars
 
-    def __eq__(self, other):
-        # type: (object) -> bool
+    def __eq__(self, other: object) -> bool:
         if other is None or not isinstance(other, Substvars):
             return False
         return self._vars == other._vars
@@ -350,8 +333,7 @@ class Substvars(_Substvars_Base['Substvars']):
         with open(self._substvars_path, 'w', encoding='utf-8') as fd:
             return self.write_substvars(fd)
 
-    def write_substvars(self, fileobj):
-        # type: (IO[str]) -> None
+    def write_substvars(self, fileobj: IO[str]) -> None:
         """Write a copy of the substvars to an open text file
 
         :param fileobj: The open file (should open in text mode using the UTF-8 encoding)
@@ -360,8 +342,7 @@ class Substvars(_Substvars_Base['Substvars']):
                            for k, v in self._vars.items()
                            )
 
-    def read_substvars(self, fileobj):
-        # type: (Iterable[str]) -> None
+    def read_substvars(self, fileobj: Iterable[str]) -> None:
         """Read substvars from an open text file in the format supported by dpkg-gencontrol
 
         On success, all existing variables will be discarded and only variables

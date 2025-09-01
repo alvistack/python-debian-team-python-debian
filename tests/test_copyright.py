@@ -17,6 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+from __future__ import annotations
+
 from collections import namedtuple
 import logging
 import re
@@ -445,7 +447,7 @@ class TestCopyright:
 
     def test_all_paragraphs(self) -> None:
         c = copyright.Copyright(MULTI_LICENSE.splitlines(True))
-        expected = []  # type: List[copyright.AllParagraphTypes]
+        expected: List[copyright.AllParagraphTypes] = []
         expected.append(c.header)
         expected.extend(list(c.all_files_paragraphs()))
         expected.extend(list(c.all_license_paragraphs()))
@@ -555,8 +557,7 @@ class TestMultline:
     ])
 
     @pytest.fixture()
-    def sample_data(self):
-        # type: () -> Generator[TestMultline.SampleData, None, None]
+    def sample_data(self) -> Generator[TestMultline.SampleData, None, None]:
         paragraphs = list(parse_deb822_file(SIMPLE.splitlines(True)))
 
         formatted = paragraphs[1]['License']
@@ -569,24 +570,21 @@ class TestMultline:
             parsed_lines,
         )
 
-    def test_format_multiline(self, sample_data):
-        # type: (TestMultline.SampleData) -> None
+    def test_format_multiline(self, sample_data: TestMultline.SampleData) -> None:
         assert None == copyright.format_multiline(None)
         assert 'Foo' == copyright.format_multiline('Foo')
         assert 'Foo\n Bar baz\n .\n Quux.' == \
             copyright.format_multiline('Foo\nBar baz\n\nQuux.')
         assert sample_data.formatted == copyright.format_multiline(sample_data.parsed)
 
-    def test_parse_multiline(self, sample_data):
-        # type: (TestMultline.SampleData) -> None
+    def test_parse_multiline(self, sample_data: TestMultline.SampleData) -> None:
         assert None == copyright.parse_multiline(None)
         assert 'Foo' == copyright.parse_multiline('Foo')
         assert 'Foo\nBar baz\n\nQuux.' == \
             copyright.parse_multiline('Foo\n Bar baz\n .\n Quux.')
         assert sample_data.parsed == copyright.parse_multiline(sample_data.formatted)
 
-    def test_format_multiline_lines(self, sample_data):
-        # type: (TestMultline.SampleData) -> None
+    def test_format_multiline_lines(self, sample_data: TestMultline.SampleData) -> None:
         assert '' == copyright.format_multiline_lines([])
         assert 'Foo' == copyright.format_multiline_lines(['Foo'])
         assert 'Foo\n Bar baz\n .\n Quux.' == \
@@ -594,8 +592,8 @@ class TestMultline:
         assert sample_data.formatted == \
             copyright.format_multiline_lines(sample_data.parsed_lines)
 
-    def test_parse_multiline_as_lines(self, sample_data):
-        # type: (TestMultline.SampleData) -> None
+    def test_parse_multiline_as_lines(self,
+                                      sample_data: TestMultline.SampleData) -> None:
         assert [] == copyright.parse_multiline_as_lines('')
         assert ['Foo'] == copyright.parse_multiline_as_lines('Foo')
         assert ['Foo', 'Bar baz', '', 'Quux.'] == \
@@ -603,8 +601,7 @@ class TestMultline:
         assert sample_data.parsed_lines == \
             copyright.parse_multiline_as_lines(sample_data.formatted)
 
-    def test_parse_format_inverses(self, sample_data):
-        # type: (TestMultline.SampleData) -> None
+    def test_parse_format_inverses(self, sample_data: TestMultline.SampleData) -> None:
         assert sample_data.formatted == copyright.format_multiline(
                 copyright.parse_multiline(sample_data.formatted))
 
@@ -705,8 +702,7 @@ class TestGlobsToRe:
 
     flags = re.MULTILINE | re.DOTALL
 
-    def assertReEqual(self, a, b):
-        # type: (Pattern[Text], Pattern[Text]) -> None
+    def assertReEqual(self, a: Pattern[Text], b: Pattern[Text]) -> None:
         assert a.pattern == b.pattern
         assert a.flags == b.flags
 
@@ -812,8 +808,7 @@ class TestGlobsToRe:
 class TestFilesParagraph:
 
     @pytest.fixture()
-    def prototype(self):
-        # type: () -> Generator[Deb822ParagraphElement, None, None]
+    def prototype(self) -> Generator[Deb822ParagraphElement, None, None]:
         p = Deb822ParagraphElement.new_empty_paragraph()
         p['Files'] = '*'
         p['Copyright'] = 'Foo'
@@ -821,8 +816,7 @@ class TestFilesParagraph:
         yield p
 
     @no_type_check
-    def test_files_property(self, prototype):
-        # type: (Deb822ParagraphElement) -> None
+    def test_files_property(self, prototype: Deb822ParagraphElement) -> None:
         fp = copyright.FilesParagraph(prototype)
         assert ('*',) == fp.files
 
@@ -842,8 +836,7 @@ class TestFilesParagraph:
         assert ('foo/*', 'bar/*', 'baz/*', 'quux/*') == fp.files
 
     @no_type_check
-    def test_license_property(self, prototype):
-        # type: (Deb822ParagraphElement) -> None
+    def test_license_property(self, prototype: Deb822ParagraphElement) -> None:
         fp = copyright.FilesParagraph(prototype)
         assert copyright.License('ISC') == fp.license
         fp.license = copyright.License('ISC', '[LICENSE TEXT]')
@@ -853,8 +846,7 @@ class TestFilesParagraph:
         with pytest.raises(TypeError):
             fp.license = None
 
-    def test_matches(self, prototype):
-        # type: (Deb822ParagraphElement) -> None
+    def test_matches(self, prototype: Deb822ParagraphElement) -> None:
         fp = copyright.FilesParagraph(prototype)
         assert fp.matches('foo/bar.cc')
         assert fp.matches('Makefile')
@@ -907,8 +899,7 @@ class TestHeader:
         with pytest.raises(copyright.NotMachineReadableError):
             copyright.Header(data=data)
 
-    def test_format_https_upgrade(self, caplog):
-        # type: (pytest.LogCaptureFixture) -> None
+    def test_format_https_upgrade(self, caplog: pytest.LogCaptureFixture) -> None:
         data = Deb822ParagraphElement.new_empty_paragraph()
         data['Format'] = "http%s" % FORMAT[5:]
         with caplog.at_level(logging.WARNING):
@@ -976,8 +967,7 @@ class TestHeader:
         assert not ('license' in h)
 
 
-def _no_space(s):
-    # type: (str) -> str
+def _no_space(s: str) -> str:
     """Returns s.  Raises ValueError if s contains any whitespace."""
     if re.search(r'\s', s):
         raise ValueError('whitespace not allowed')
