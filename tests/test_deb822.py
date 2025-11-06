@@ -36,6 +36,8 @@ import warnings
 
 import pytest
 
+from tests.stubbed_arch_table import StubbedDpkgArchTable
+
 try:
     # skip tests that require apt_pkg if it is not available
     import apt_pkg
@@ -1692,6 +1694,45 @@ class TestPkgRelations:
         term = rel[0][0]['archqual']
         assert term == "native"
         assert deb822.PkgRelation.str(rel) == r
+
+    def test_holds_on_arch(self) -> None:
+        table = StubbedDpkgArchTable.load_arch_table()
+        for one_relation, expected in (
+            # no restriction
+            ("foo",                     True),
+            # architecture membership
+            ("foo [ amd64  armel]",     True),
+            ("foo [        armel]",     False),
+            # architecture exclusions
+            ("foo [!amd64 !armel]",     False),
+            ("foo [       !armel]",     True),
+        ):
+            rel = deb822.PkgRelation.parse_relations(one_relation)[0][0]
+            got = deb822.PkgRelation.holds_on_arch(rel, "amd64", table)
+            assert got == expected, one_relation
+
+    def test_holds_with_profiles(self) -> None:
+        for one_relation, expected in (
+            # no restriction
+            ("foo",                     True),
+            # profile membership
+            ("foo <p1>",                True),
+            ("foo <p>",                 False),
+            # profile negation
+            ("foo <!p1>",               False),
+            ("foo <!p>",                True),
+            # profile conjunction
+            ("foo <p p1>",              False),
+            ("foo <p1 p2>",             True),
+            ("foo <p1 p2 p>",           False),
+            # profile disjunction
+            ("foo <p> <p1>",            True),
+            ("foo <p> <q>",             False),
+            ("foo <p1> <p2>",           True),
+        ):
+            rel = deb822.PkgRelation.parse_relations(one_relation)[0][0]
+            got = deb822.PkgRelation.holds_with_profiles(rel, ("p1", "p2"))
+            assert got == expected, one_relation
 
 
 class TestVersionAccessor:

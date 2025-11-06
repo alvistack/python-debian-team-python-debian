@@ -1478,6 +1478,48 @@ class PkgRelation:
         return [[parse_rel(or_dep) for or_dep in or_deps] for or_deps in cnf]
 
     @staticmethod
+    def holds_on_arch(
+        relation: ParsedRelation,
+        arch: str,
+        table: debian.debian_support.DpkgArchTable,
+    ) -> bool:
+        # NOTE! The DpkgArchTable is stubbed in including doctests to support non-Debian systems
+        #   See conftest.py for the concrete implementation and the limited data set available.
+        """Is relation active on the given architecture?
+
+        >>> table = DpkgArchTable.load_arch_table()
+        >>> relation = PkgRelation.parse_relations("foo [armel linux-any],")[0][0]
+        >>> PkgRelation.holds_on_arch(relation, "amd64", table)
+        True
+        >>> PkgRelation.holds_on_arch(relation, "hurd-i386", table)
+        False
+        """
+        archs = relation["arch"]
+        return (archs is None
+                or table.architecture_is_concerned(
+                    arch,
+                    tuple(("" if a.enabled else "!") + a.arch for a in archs)))
+
+    @staticmethod
+    def holds_with_profiles(
+        relation: ParsedRelation,
+        profiles: collections.abc.Container[str],
+    ) -> bool:
+        """Is relation active under the given profiles?
+
+        >>> relation = PkgRelation.parse_relations("foo <a !b> <c>")[0][0]
+        >>> PkgRelation.holds_with_profiles(relation, ("a", "b"))
+        False
+        >>> PkgRelation.holds_with_profiles(relation, ("c", ))
+        True
+        """
+        restrictions = relation["restrictions"]
+        return (restrictions is None
+                or any(all(term.enabled == (term.profile in profiles)
+                           for term in restriction_list)
+                       for restriction_list in restrictions))
+
+    @staticmethod
     def str(rels: list[list[PkgRelation.ParsedRelation]]) -> builtins.str:
         """Format to string structured inter-package relationships
 
