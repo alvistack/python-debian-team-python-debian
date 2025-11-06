@@ -7,3 +7,4 @@ build/sphinx/
 .mypy_cache/
 src/debian/.mypy_cache/
 .coverage
+src/python_debian.egg-info/
