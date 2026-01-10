@@ -30,14 +30,14 @@ output less verbose.
 
 import argparse
 import codecs
-import io
 import sys
+from typing import Any
 import warnings
 
 from debian import copyright
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('--summary', action='store_true',
                         help='Whether to print only a summary')
@@ -46,15 +46,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     if args.suppress_warnings:
         warnings.filterwarnings('ignore', module='debian.copyright')
 
-    problems = {}
-    parse_failures = []
-    dump_failures = []
+    problems: dict[tuple[int, str], list[tuple[str, Any]]] = {}
 
     total = 0
     for filename in sys.stdin:
@@ -108,12 +106,12 @@ def main():
                 problems.setdefault((7, 'Globs with **'), []).append(
                     (filename, globs_with_double_star))
 
-    f = codecs.getwriter(encoding='utf-8')(sys.stdout)
-    for (_, heading), problems in sorted(problems.items()):
-        f.write('\n%s: (%d / %d)\n' % (heading, len(problems), total))
+    f_out = codecs.getwriter(encoding='utf-8')(sys.stdout)
+    for (_, heading), details in sorted(problems.items()):
+        f_out.write(f"\n{heading}: ({len(details)} / {total})\n")
         if not args.summary:
-            for filename, problem in problems:
-                f.write(' {}: {}\n'.format(filename, problem))
+            for filename, problem in details:
+                f_out.write(f" {filename}: {problem}\n")
 
 
 if __name__ == '__main__':
