@@ -50,8 +50,8 @@ class TestDebtags:
         assert db.has_tag("b")
         assert not db.has_tag("test")
         assert db.tags_of_package("test") == {"a", "b"}
-        assert db.packages_of_tag("a") == set("test")
-        assert db.packages_of_tag("b") == set("test")
+        assert db.packages_of_tag("a") == {"test"}
+        assert db.packages_of_tag("b") == {"test"}
         assert db.package_count() == 1
         assert db.tag_count() == 2
 
@@ -66,8 +66,8 @@ class TestDebtags:
         assert not db.has_tag("a")
         assert not db.has_tag("b")
         assert db.packages_of_tag("test") == {"a", "b"}
-        assert db.tags_of_package("a") == set("test")
-        assert db.tags_of_package("b") == set("test")
+        assert db.tags_of_package("a") == {"test"}
+        assert db.tags_of_package("b") == {"test"}
         assert db.package_count() == 2
         assert db.tag_count() == 1
 
