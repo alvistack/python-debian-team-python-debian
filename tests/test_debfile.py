@@ -17,15 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import contextlib
 import os
 import os.path
 from pathlib import Path
-import re
 import shutil
 import stat
 import subprocess
-import sys
 import tempfile
 
 import pytest
@@ -39,19 +36,11 @@ from debian import debfile
 from typing import (
     Any,
     Callable,
-    Dict,
     Generator,
-    IO,
-    Iterator,
     List,
     Optional,
     Union,
-    Text,
-    Tuple,
-    Type,
-    TypeVar,
 )
-
 
 
 # Only run tests that rely on ar to make archives if it installed.
@@ -346,7 +335,7 @@ class TestDebFile:
 
             # the debian-binary member
             info_member = str(tpath / "debian-binary")
-            with open(info_member, "wt") as fh:
+            with open(info_member, "w") as fh:
                 fh.write("2.0\n")
 
             # the data.tar member
@@ -401,7 +390,7 @@ class TestDebFile:
                 for f in self.example_data_files:
                     with open(str(examplespath / f), 'rb') as hashfh:
                         h = md5(hashfh.read()).hexdigest()
-                    fh.write("%s %s\n" % (h, str(self.example_data_dir / f)))
+                    fh.write(f"{h} {self.example_data_dir / f}\n")
 
             control_member = _make_archive(str(controlpath), control)
 

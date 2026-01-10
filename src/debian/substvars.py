@@ -45,7 +45,7 @@ from collections import OrderedDict
 from collections.abc import MutableMapping
 from os import PathLike
 from types import TracebackType
-from typing import Dict, Set, Optional, Union, Iterator, IO, Iterable, TYPE_CHECKING, Type
+from typing import Union, Iterator, IO, Iterable, TYPE_CHECKING
 
 try:
     if TYPE_CHECKING:
@@ -78,7 +78,7 @@ class Substvar:
         # When reading substvars from files, we always use variant 1) and then
         # lazily convert to 2) when necessary.  This choice makes the substvars
         # round-trip safe by default until someone messes with a substvar.
-        self._value: Union[str, Set[str]] = initial_value
+        self._value: str | set[str] = initial_value
         self.assignment_operator: str = assignment_operator
 
     @property
@@ -165,11 +165,11 @@ class Substvars(_Substvars_Base['Substvars']):
     __slots__ = ['_vars_dict', '_substvars_path']
 
     def __init__(self) -> None:
-        self._vars_dict: Dict[str, Substvar] = OrderedDict()
-        self._substvars_path: Optional[AnyPath] = None
+        self._vars_dict: dict[str, Substvar] = OrderedDict()
+        self._substvars_path: AnyPath | None = None
 
     @classmethod
-    def load_from_path(cls, substvars_path: AnyPath, missing_ok: bool = False) -> "Self":
+    def load_from_path(cls, substvars_path: AnyPath, missing_ok: bool = False) -> Self:
         """Shorthand for initializing a Substvars from a file
 
         The return substvars will have `substvars_path` set to the provided path enabling
@@ -196,7 +196,7 @@ class Substvars(_Substvars_Base['Substvars']):
         """
         substvars = cls()
         try:
-            with open(substvars_path, 'r', encoding='utf-8') as fd:
+            with open(substvars_path, encoding='utf-8') as fd:
                 substvars.read_substvars(fd)
         except OSError as e:
             if e.errno != errno.ENOENT or not missing_ok:
@@ -205,21 +205,21 @@ class Substvars(_Substvars_Base['Substvars']):
         return substvars
 
     @property
-    def _vars(self) -> Dict[str, Substvar]:
+    def _vars(self) -> dict[str, Substvar]:
         # Indirection to support subclasses that want to provide lazy loading or other "fun stuff"
         return self._vars_dict
 
     @_vars.setter
-    def _vars(self, vars_dict: Dict[str, Substvar]) -> None:
+    def _vars(self, vars_dict: dict[str, Substvar]) -> None:
         # Indirection to support subclasses that want to provide lazy loading or other "fun stuff"
         self._vars_dict = vars_dict
 
     @property
-    def substvars_path(self) -> Optional[AnyPath]:
+    def substvars_path(self) -> AnyPath | None:
         return self._substvars_path
 
     @substvars_path.setter
-    def substvars_path(self, new_path: Optional[AnyPath]) -> None:
+    def substvars_path(self, new_path: AnyPath | None) -> None:
         self._substvars_path = new_path
 
     def add_dependency(self, substvar: str, dependency_clause: str) -> None:
@@ -251,10 +251,10 @@ class Substvars(_Substvars_Base['Substvars']):
         variable.add_dependency(dependency_clause)
 
     def __exit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc_val: Optional[BaseException],
-                 exc_tb: Optional[TracebackType],
-                 ) -> Optional[bool]:
+                 exc_type: type[BaseException] | None,
+                 exc_val: BaseException | None,
+                 exc_tb: TracebackType | None,
+                 ) -> bool | None:
         if exc_type is None:
             self.save()
         return super().__exit__(exc_type, exc_val, exc_tb)
@@ -315,7 +315,7 @@ class Substvars(_Substvars_Base['Substvars']):
 
         For persisting the contents, please consider `save()` or `write_substvars`.
         """
-        return "".join("{}{}{}\n".format(k, v.assignment_operator, v.resolve())
+        return "".join(f"{k}{v.assignment_operator}{v.resolve()}\n"
                        for k, v in self._vars.items()
                        )
 
@@ -338,7 +338,7 @@ class Substvars(_Substvars_Base['Substvars']):
 
         :param fileobj: The open file (should open in text mode using the UTF-8 encoding)
         """
-        fileobj.writelines("{}{}{}\n".format(k, v.assignment_operator, v.resolve())
+        fileobj.writelines(f"{k}{v.assignment_operator}{v.resolve()}\n"
                            for k, v in self._vars.items()
                            )
 

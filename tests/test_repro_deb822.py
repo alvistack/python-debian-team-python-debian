@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*- vim: fileencoding=utf-8 :
 
 # Copyright (C) 2021 Niels Thykier
 #

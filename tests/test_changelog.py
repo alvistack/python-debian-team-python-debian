@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# vim: fileencoding=utf-8
 #
 # changelog.py -- Python module for Debian changelogs
 # Copyright (C) 2006-7 James Westby <jw+debian@jameswestby.net>
@@ -27,10 +26,7 @@
 import logging
 import os.path
 from typing import (
-    Any,
     IO,
-    Optional,
-    Text,
 )
 
 import pytest
@@ -39,13 +35,12 @@ from debian import changelog
 from debian import debian_support
 
 
-
 def find_test_file(filename: str) -> str:
     """ find a test file that is located within the test suite """
     return os.path.join(os.path.dirname(__file__), filename)
 
 
-def open_utf8(filename: str, mode: str = 'r') -> IO[Text]:
+def open_utf8(filename: str, mode: str = 'r') -> IO[str]:
     """Open a UTF-8 text file in text mode."""
     return open(filename, mode=mode, encoding='UTF-8')
 

@@ -18,6 +18,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import annotations
+
+
 import gzip
 import os
 import os.path
@@ -27,8 +30,6 @@ import sys
 import tempfile
 from typing import (
     Any,
-    List,
-    Optional,
 )
 import urllib.parse
 
@@ -54,9 +55,9 @@ class TestVersion:
     def _test_version(
         self,
         full_version: str,
-        epoch: Optional[str],
+        epoch: str | None,
         upstream: str,
-        debian: Optional[str]) -> None:
+        debian: str | None) -> None:
         for cls in self.test_classes:
             v = cls(full_version)
             assert v.full_version == full_version, \
@@ -162,7 +163,7 @@ class TestVersion:
             v2 = cls2(v2_str)
             truth_fn = self._get_truth_fn(cmp_oper)
             assert truth_fn(v1, v2) == True, \
-                            "%r %s %r != True" % (v1, cmp_oper, v2)
+                            f"{v1!r} {cmp_oper} {v2!r} != True"
 
     def test_comparisons(self) -> None:
         """Test comparison against all combinations of Version classes"""
@@ -203,7 +204,7 @@ class TestHelperRoutine:
     """Tests for various debian_support helper routines"""
 
     def test_read_lines_sha1(self) -> None:
-        empty: List[bytes] = []
+        empty: list[bytes] = []
         assert read_lines_sha1(empty) == \
                          'da39a3ee5e6b4b0d3255bfef95601890afd80709'
         assert read_lines_sha1(['1\n', '23\n']) == \
@@ -255,7 +256,7 @@ class TestPdiff:
             # Make a copy of the original file so it can be updated
             fd, copy = tempfile.mkstemp()
             fp = os.fdopen(fd, 'w')
-            with open(original, 'r') as fh:
+            with open(original) as fh:
                 fp.write(fh.read())
             fp.close()
 
@@ -296,7 +297,7 @@ class TestPackageFile:
             pflist = list(pf)
             assert len(pflist) == 3
             assert isinstance(pflist[0][0][1], str)
-        with open(packfile, 'rt') as fhtext:
+        with open(packfile) as fhtext:
             pf = debian_support.PackageFile('ignored', file_obj=fhtext)
             pflist = list(pf)
             assert len(pflist) == 3
