@@ -1426,10 +1426,11 @@ UTF-8"
             assert r.bug == [753912]
             assert r.also_wnpp == [123456]
             r = next(removals)
-            assert r.binaries[0]['architectures'] == \
-                {'amd64', 'armel', 'armhf', 'hurd-i386', 'i386',
-                     'kfreebsd-amd64', 'kfreebsd-i386', 'mips', 'mipsel',
-                     'powerpc', 's390x', 'sparc'}
+            assert r.binaries[0]['architectures'] == {
+                'amd64', 'armel', 'armhf', 'hurd-i386', 'i386',
+                'kfreebsd-amd64', 'kfreebsd-i386', 'mips', 'mipsel',
+                'powerpc', 's390x', 'sparc'
+            }
 
 
 class TestPkgRelations:

@@ -193,7 +193,7 @@ class DB:
             if tag in self.rdb:
                 self.rdb[tag].add(pkg)
             else:
-                self.rdb[tag] = set(pkg)
+                self.rdb[tag] = {pkg}
 
     def dump(self) -> None:
         output(self.db)

@@ -42,7 +42,7 @@ class TestDebtags:
 
     def test_insert(self) -> None:
         db = debtags.DB()
-        db.insert("test", {"a", "b"});
+        db.insert("test", {"a", "b"})
         assert db.has_package("test")
         assert not db.has_package("a")
         assert not db.has_package("b")
@@ -57,7 +57,7 @@ class TestDebtags:
 
     def test_reverse(self) -> None:
         db = debtags.DB()
-        db.insert("test", {"a", "b"});
+        db.insert("test", {"a", "b"})
         db = db.reverse()
         assert db.has_package("a")
         assert db.has_package("b")

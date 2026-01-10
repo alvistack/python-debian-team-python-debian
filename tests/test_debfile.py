@@ -390,7 +390,7 @@ class TestDebFile:
                 for f in self.example_data_files:
                     with open(str(examplespath / f), 'rb') as hashfh:
                         h = md5(hashfh.read()).hexdigest()
-                    fh.write(f"{h} {str(self.example_data_dir / f)}\n")
+                    fh.write(f"{h} {self.example_data_dir / f}\n")
 
             control_member = _make_archive(str(controlpath), control)
 
