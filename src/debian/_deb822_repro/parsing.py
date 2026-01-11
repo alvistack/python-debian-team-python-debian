@@ -846,22 +846,33 @@ def _is_comma_token(v):
     return isinstance(v, Deb822CommaToken)
 
 
-def _parse_comma_list_value(token, buffered_iterator):
-    # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822ParsedValueElement
-    comma_offset = buffered_iterator.peek_find(_is_comma_token)
-    value_parts = [token]
-    if comma_offset is not None:
-        # The value is followed by a comma and now we know where it ends
-        value_parts.extend(buffered_iterator.peek_many(comma_offset - 1))
-    else:
-        # The value is the last value there is.  Consume all remaining tokens
-        # and then trim from the right.
-        value_parts.extend(buffered_iterator.peek_buffer())
-    while value_parts and not isinstance(value_parts[-1], Deb822ValueToken):
-        value_parts.pop()
+def _parse_separator_list_value(
+    is_separator_token: Callable[[TokenOrElement], bool],
+) -> Callable[
+    [Deb822Token, BufferingIterator[Deb822Token]], "Deb822ParsedValueElement"
+]:
+    def _parse_list_value(
+        token: Deb822Token, buffered_iterator: BufferingIterator[Deb822Token]
+    ) -> "Deb822ParsedValueElement":
+        separator_offset = buffered_iterator.peek_find(is_separator_token)
+        value_parts = [token]
+        if separator_offset is not None:
+            # The value is followed by a separator, and now we know where it ends
+            value_parts.extend(buffered_iterator.peek_many(separator_offset - 1))
+        else:
+            # The value is the last value there is.  Consume all remaining tokens
+            # and then trim from the right.
+            value_parts.extend(buffered_iterator.peek_buffer())
+        while value_parts and not isinstance(value_parts[-1], Deb822ValueToken):
+            value_parts.pop()
 
-    buffered_iterator.consume_many(len(value_parts) - 1)
-    return Deb822ParsedValueElement(value_parts)
+        buffered_iterator.consume_many(len(value_parts) - 1)
+        return Deb822ParsedValueElement(value_parts)
+
+    return _parse_list_value
+
+
+_parse_comma_list_value = _parse_separator_list_value(_is_comma_token)
 
 
 def _parse_uploaders_list_value(token, buffered_iterator):
