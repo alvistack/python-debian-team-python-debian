@@ -30,7 +30,6 @@ classifiers = [
 ]
 keywords = ["debian", "linux", "metadata", "packages", "packaging"]
 dependencies = [
-    "charset-normalizer",
 ]
 
 [project.urls]
@@ -38,6 +37,9 @@ homepage = "https://salsa.debian.org/python-debian-team/python-debian"
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
+encodings = [
+    "charset-normalizer",
+]
 test = [
     "pytest",
     "pytest-cov",
