@@ -26,6 +26,10 @@ export FORBID_MISSING_ZSTD ?= 1
 execute_after_dh_auto_build:
 	src/debian/doc-debtags > README.debtags
 
+
+override_dh_python3:
+	dh_python3 --suggests-section=encodings
+
 # don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 override_dh_auto_test: test
