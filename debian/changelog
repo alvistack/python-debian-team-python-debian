@@ -1,3 +1,28 @@
+python-debian (1.1.0) unstable; urgency=medium
+
+  [ Colin Watson ]
+  * Add support for merging Changes objects
+  * Fix merging of multi-line fields
+
+  [ Sébastien Noel ]
+  * gitlab-ci: Trixie has been released
+  * Provide a new dpkg_arch_to_multiarch() function
+    (Closes: #1095138)
+
+  [ Stuart Prescott ]
+  * Mutliple test, type and annotation related changes
+    including running `pyupgrade` with `py37` as target
+    version.
+
+  [ Nicolas Boulenguez ]
+  * Add deb822.PkgRelation.{holds_on_arch, holds_with_profiles}
+    (Closes: #1120283)
+  * Replace physical address to the FSF with an URL in the license text
+  * Update Standards-Version to 4.7.3
+  * Replace collections.namedtuple with typing.NamedTuple in deb822.py
+
+ -- Niels Thykier <niels@thykier.net>  Sun, 08 Feb 2026 13:31:49 +0000
+
 python-debian (1.0.1) unstable; urgency=medium
 
   * Fix handling of empty string data given to Deb822.iter_paragraphs.
