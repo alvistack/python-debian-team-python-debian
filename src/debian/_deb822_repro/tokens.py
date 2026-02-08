@@ -5,8 +5,14 @@ import weakref
 from weakref import ReferenceType
 
 from debian._deb822_repro._util import BufferingIterator
-from debian._deb822_repro.locatable import Locatable, START_POSITION, \
-    Range, ONE_CHAR_RANGE, ONE_LINE_RANGE, Position
+from debian._deb822_repro.locatable import (
+    Locatable,
+    START_POSITION,
+    Range,
+    ONE_CHAR_RANGE,
+    ONE_LINE_RANGE,
+    Position,
+)
 from debian._util import resolve_ref, _strI
 
 
@@ -15,7 +21,8 @@ if TYPE_CHECKING:
 
 
 # Consume whitespace and a single word.
-_RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
+_RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(
+    r"""
     (?P<space_before>\s*)                # Consume any whitespace before the word
                                          # The space only occurs in practise if the line starts
                                          # with space.
@@ -27,10 +34,13 @@ _RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(r'''
 
     (?P<word>\S+)                        # Consume the word (if present)
     (?P<trailing_whitespace>\s*)         # Consume trailing whitespace
-''', re.VERBOSE)
-_RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
+""",
+    re.VERBOSE,
+)
+_RE_COMMA_SEPARATED_WORD_LIST = re.compile(
+    r"""
     # This regex is slightly complicated by the fact that it should work with
-    # finditer and comsume the entire value.
+    # finditer and consume the entire value.
     #
     # To do this, we structure the regex so it always starts on a comma (except
     # for the first iteration, where we permit the absence of a comma)
@@ -50,10 +60,12 @@ _RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
     # From here it is "optional space, maybe a word and then optional space" again.  One reason why
     # all of it is optional is to gracefully cope with trailing commas.
     (?P<space_before_word>\s*)
-    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma separated list.
+    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma-separated list.
                                              # But surrounding whitespace is ignored
     (?P<space_after_word>\s*)
-''', re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
 # From Policy 5.1:
 #
@@ -64,7 +76,8 @@ _RE_COMMA_SEPARATED_WORD_LIST = re.compile(r'''
 #    (U+0023 #), nor with the hyphen character (U+002D -).
 #
 # That combines to this regex of questionable readability
-_RE_FIELD_LINE = re.compile(r'''
+_RE_FIELD_LINE = re.compile(
+    r"""
     ^                                          # Start of line
     (?P<field_name>                            # Capture group for the field name
         [\x21\x22\x24-\x2C\x2F-\x39\x3B-\x7F]  # First character
@@ -78,7 +91,9 @@ _RE_FIELD_LINE = re.compile(r'''
       (?P<value>  \S(?:.*\S)?  )               # Values must start and end on a "non-space"
       (?P<space_after_value> \s* )             # We can have optional space after the value
     )?
-''', re.VERBOSE)
+""",
+    re.VERBOSE,
+)
 
 
 class Deb822Token(Locatable):
@@ -90,11 +105,11 @@ class Deb822Token(Locatable):
     Deb822Token.
     """
 
-    __slots__ = ('_text', '_parent_element', '_token_size', '__weakref__')
+    __slots__ = ("_text", "_parent_element", "_token_size", "__weakref__")
 
     def __init__(self, text):
         # type: (str) -> None
-        if text == '':  # pragma: no cover
+        if text == "":  # pragma: no cover
             raise ValueError("Tokens must have content")
         self._text = text  # type: str
         self._parent_element = None  # type: Optional[ReferenceType['Deb822Element']]
@@ -102,22 +117,26 @@ class Deb822Token(Locatable):
         self._verify_token_text()
 
     def __repr__(self) -> str:
-        return "{clsname}('{text}')".format(clsname=self.__class__.__name__,
-                                            text=self._text.replace('\n', '\\n')
-                                            )
+        return "{clsname}('{text}')".format(
+            clsname=self.__class__.__name__, text=self._text.replace("\n", "\\n")
+        )
 
     def _verify_token_text(self) -> None:
-        if '\n' in self._text:
+        if "\n" in self._text:
             is_single_line_token = False
             if self.is_comment or self.is_error:
                 is_single_line_token = True
             if not is_single_line_token and not self.is_whitespace:
-                raise ValueError("Only whitespace, error and comment tokens may contain newlines")
+                raise ValueError(
+                    "Only whitespace, error and comment tokens may contain newlines"
+                )
             if not self.text.endswith("\n"):
                 raise ValueError("Tokens containing whitespace must end on a newline")
-            if is_single_line_token and '\n' in self.text[:-1]:
-                raise ValueError("Comments and error tokens must not contain embedded newlines"
-                                 " (only end on one)")
+            if is_single_line_token and "\n" in self.text[:-1]:
+                raise ValueError(
+                    "Comments and error tokens must not contain embedded newlines"
+                    " (only end on one)"
+                )
 
     @property
     def is_whitespace(self) -> bool:
@@ -169,7 +188,9 @@ class Deb822Token(Locatable):
     @parent_element.setter
     def parent_element(self, new_parent):
         # type: (Optional[Deb822Element]) -> None
-        self._parent_element = weakref.ref(new_parent) if new_parent is not None else None
+        self._parent_element = (
+            weakref.ref(new_parent) if new_parent is not None else None
+        )
 
     def clear_parent_if_parent(self, parent):
         # type: (Deb822Element) -> None
@@ -208,7 +229,7 @@ class Deb822NewlineAfterValueToken(Deb822SemanticallySignificantWhiteSpace):
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__('\n')
+        super().__init__("\n")
 
 
 class Deb822ValueContinuationToken(Deb822SemanticallySignificantWhiteSpace):
@@ -259,7 +280,7 @@ class Deb822FieldNameToken(Deb822Token):
     @property
     def text(self):
         # type: () -> _strI
-        return cast('_strI', self._text)
+        return cast("_strI", self._text)
 
 
 # The colon after the field name, parenthesis, etc.
@@ -277,7 +298,7 @@ class Deb822FieldSeparatorToken(Deb822SeparatorToken):
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__(':')
+        super().__init__(":")
 
 
 class Deb822CommaToken(Deb822SeparatorToken):
@@ -286,7 +307,7 @@ class Deb822CommaToken(Deb822SeparatorToken):
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__(',')
+        super().__init__(",")
 
 
 class Deb822PipeToken(Deb822SeparatorToken):
@@ -295,7 +316,7 @@ class Deb822PipeToken(Deb822SeparatorToken):
     __slots__ = ()
 
     def __init__(self) -> None:
-        super().__init__('|')
+        super().__init__("|")
 
 
 class Deb822ValueToken(Deb822Token):
@@ -315,7 +336,7 @@ class Deb822ValueDependencyVersionRelationOperatorToken(Deb822Token):
     __slots__ = ()
 
 
-def tokenize_deb822_file(sequence, encoding='utf-8'):
+def tokenize_deb822_file(sequence, encoding="utf-8"):
     # type: (Iterable[Union[str, bytes]], str) -> Iterable[Deb822Token]
     """Tokenize a deb822 file
 
@@ -340,7 +361,9 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
                 x += "\n"
             yield x
 
-    text_stream = BufferingIterator(_normalize_input(sequence))  # type: BufferingIterator[str]
+    text_stream = BufferingIterator(
+        _normalize_input(sequence)
+    )  # type: BufferingIterator[str]
 
     for line in text_stream:
         if line.isspace():
@@ -359,11 +382,11 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
             yield Deb822WhitespaceToken(sys.intern(line))
             continue
 
-        if line[0] == '#':
+        if line[0] == "#":
             yield Deb822CommentToken(line)
             continue
 
-        if line[0] in (' ', '\t'):
+        if line[0] in (" ", "\t"):
             if current_field_name is not None:
                 # We emit a separate whitespace token for the newline as it makes some
                 # things easier later (see _build_value_line)
@@ -382,20 +405,24 @@ def tokenize_deb822_file(sequence, encoding='utf-8'):
             # The line is a field, which means there is a bit to unpack
             # - note that by definition, leading and trailing whitespace is insignificant
             #   on the value part directly after the field separator
-            (field_name, _, space_before, value, space_after) = field_line_match.groups()
+            (field_name, _, space_before, value, space_after) = (
+                field_line_match.groups()
+            )
 
             current_field_name = field_name_cache.get(field_name)
 
-            if value is None or value == '':
+            if value is None or value == "":
                 # If there is no value, then merge the two space elements into space_after
                 # as it makes it easier to handle the newline.
-                space_after = space_before + space_after if space_after else space_before
-                space_before = ''
+                space_after = (
+                    space_before + space_after if space_after else space_before
+                )
+                space_before = ""
 
             if space_after:
                 # We emit a separate whitespace token for the newline as it makes some
                 # things easier later (see _build_value_line)
-                if space_after.endswith('\n'):
+                if space_after.endswith("\n"):
                     space_after = space_after[:-1]
 
             if current_field_name is None:
@@ -445,6 +472,7 @@ def _value_line_tokenizer(func):
             yield from func(line)
             if has_newline:
                 yield Deb822NewlineAfterValueToken()
+
     return impl
 
 
@@ -471,7 +499,9 @@ def comma_split_tokenizer(v):
     # type: (str) -> Iterable[Deb822Token]
     assert "\n" not in v
     for match in _RE_COMMA_SEPARATED_WORD_LIST.finditer(v):
-        space_before_comma, comma, space_before_word, word, space_after_word = match.groups()
+        space_before_comma, comma, space_before_word, word, space_after_word = (
+            match.groups()
+        )
         if space_before_comma:
             yield Deb822WhitespaceToken(sys.intern(space_before_comma))
         if comma:

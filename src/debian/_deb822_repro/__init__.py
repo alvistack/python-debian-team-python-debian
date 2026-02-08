@@ -18,7 +18,7 @@
 # better than this approach.
 #
 
-""" Round-trip safe dictionary-like interfaces to RFC822-like files
+"""Round-trip safe dictionary-like interfaces to RFC822-like files
 
 This module is a round-trip safe API for working with RFC822-like Debian data
 formats. It is primarily aimed files managed by humans, like debian/control.
@@ -179,13 +179,13 @@ from debian._deb822_repro.types import (
 )
 
 __all__ = [
-    'parse_deb822_file',
-    'AmbiguousDeb822FieldKeyError',
-    'LIST_SPACE_SEPARATED_INTERPRETATION',
-    'LIST_COMMA_SEPARATED_INTERPRETATION',
-    'Interpretation',
-    'Deb822FileElement',
-    'Deb822NoDuplicateFieldsParagraphElement',
-    'Deb822ParagraphElement',
-    'SyntaxOrParseError',
+    "parse_deb822_file",
+    "AmbiguousDeb822FieldKeyError",
+    "LIST_SPACE_SEPARATED_INTERPRETATION",
+    "LIST_COMMA_SEPARATED_INTERPRETATION",
+    "Interpretation",
+    "Deb822FileElement",
+    "Deb822NoDuplicateFieldsParagraphElement",
+    "Deb822ParagraphElement",
+    "SyntaxOrParseError",
 ]

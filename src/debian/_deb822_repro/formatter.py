@@ -20,7 +20,7 @@ _CONTENT_TYPE_COMMENT = "is_comment"
 _CONTENT_TYPE_SEPARATOR = "is_separator"
 
 
-class FormatterContentToken(object):
+class FormatterContentToken:
     """Typed, tagged text for use with the formatting API
 
     The FormatterContentToken is used by the formatting API and provides the
@@ -28,7 +28,7 @@ class FormatterContentToken(object):
     to format.
     """
 
-    __slots__ = ('_text', '_content_type')
+    __slots__ = ("_text", "_content_type")
 
     def __init__(self, text, content_type):
         # type: (str, object) -> None
@@ -52,9 +52,9 @@ class FormatterContentToken(object):
     def separator_token(cls, text):
         # type: (str) -> FormatterContentToken
         # Special-case separators as a minor memory optimization
-        if text == ' ':
+        if text == " ":
             return SPACE_SEPARATOR_FT
-        if text == ',':
+        if text == ",":
             return COMMA_SEPARATOR_FT
         return cls(text, _CONTENT_TYPE_SEPARATOR)
 
@@ -159,18 +159,20 @@ class FormatterContentToken(object):
         return self._text
 
     def __repr__(self) -> str:
-        return "{}({!r}, {}=True)".format(self.__class__.__name__, self._text, self._content_type)
+        return "{}({!r}, {}=True)".format(
+            self.__class__.__name__, self._text, self._content_type
+        )
 
 
-SPACE_SEPARATOR_FT = FormatterContentToken(' ', _CONTENT_TYPE_SEPARATOR)
-COMMA_SEPARATOR_FT = FormatterContentToken(',', _CONTENT_TYPE_SEPARATOR)
+SPACE_SEPARATOR_FT = FormatterContentToken(" ", _CONTENT_TYPE_SEPARATOR)
+COMMA_SEPARATOR_FT = FormatterContentToken(",", _CONTENT_TYPE_SEPARATOR)
 
 
 def one_value_per_line_formatter(
-        indentation,  # type: Union[int, Literal["FIELD_NAME_LENGTH"]]
-        trailing_separator=True,  # type: bool
-        immediate_empty_line=False,  # type: bool
-        ):
+    indentation,  # type: Union[int, Literal["FIELD_NAME_LENGTH"]]
+    trailing_separator=True,  # type: bool
+    immediate_empty_line=False,  # type: bool
+):
     # type: (...) -> FormatterCallback
     """Provide a simple formatter that can handle indentation and trailing separators
 
@@ -182,7 +184,7 @@ def one_value_per_line_formatter(
     integer, which determines the indentation for fields.  If it is an integer,
     then a fixed indentation is used (notably the value 1 ensures the shortest
     possible indentation).  Otherwise, if it is "FIELD_NAME_LENGTH", then the
-    indentation is set such that it aligns the values based on the field name.
+    indentation is set so that it aligns the values based on the field name.
     :param trailing_separator: If True, then the last value will have a trailing
     separator token (e.g., ",") after it.
     :param immediate_empty_line: Whether the value should always start with an
@@ -190,19 +192,20 @@ def one_value_per_line_formatter(
 
     """
     if indentation != "FIELD_NAME_LENGTH" and indentation < 1:
-        raise ValueError("indentation must be at least 1 (or \"FIELD_NAME_LENGTH\")")
+        raise ValueError('indentation must be at least 1 (or "FIELD_NAME_LENGTH")')
 
     def _formatter(
-            name,  # type: str
-            sep_token,  # type: FormatterContentToken
-            formatter_tokens,  # type: Iterator[FormatterContentToken]
-            ):
+        name,  # type: str
+        sep_token,  # type: FormatterContentToken
+        formatter_tokens,  # type: Iterator[FormatterContentToken]
+    ):
         # type: (...) -> Iterator[Union[FormatterContentToken, str]]
         if indentation == "FIELD_NAME_LENGTH":
             indent_len = len(name) + 2
         else:
             indent_len = indentation
-        indent = ' ' * indent_len
+            assert isinstance(indent_len, int)  # hint for PyCharm
+        indent = " " * indent_len
 
         emitted_first_line = False
         tok_iter = BufferingIterator(formatter_tokens)
@@ -217,32 +220,34 @@ def one_value_per_line_formatter(
                 yield t
             elif t.is_value:
                 if not emitted_first_line:
-                    yield ' '
+                    yield " "
                 else:
                     yield indent
                 yield t
-                if not sep_token.is_whitespace and (trailing_separator
-                                                    or tok_iter.peek_find(is_value)):
+                if not sep_token.is_whitespace and (
+                    trailing_separator or tok_iter.peek_find(is_value)
+                ):
                     yield sep_token
                 yield "\n"
             else:
                 # Skip existing separators (etc.)
                 continue
             emitted_first_line = True
+
     return _formatter
 
 
 one_value_per_line_trailing_separator = one_value_per_line_formatter(
-    "FIELD_NAME_LENGTH",
-    trailing_separator=True
+    "FIELD_NAME_LENGTH", trailing_separator=True
 )
 
 
-def format_field(formatter,  # type: FormatterCallback
-                 field_name,  # type: str
-                 separator_token,  # type: FormatterContentToken
-                 token_iter,  # type: Iterator[FormatterContentToken]
-                 ):
+def format_field(
+    formatter,  # type: FormatterCallback
+    field_name,  # type: str
+    separator_token,  # type: FormatterContentToken
+    token_iter,  # type: Iterator[FormatterContentToken]
+):
     # type: (...) -> str
     """Format a field using a provided formatter
 
@@ -419,21 +424,25 @@ def format_field(formatter,  # type: FormatterCallback
     Depends:
      bar
     """
-    formatted_tokens = [field_name, ':']
+    formatted_tokens = [field_name, ":"]
     just_after_newline = False
     last_was_value_token = False
     if isinstance(token_iter, list):
         # Stop people from using this to test known "invalid" cases.
         last_token = token_iter[-1]
         if last_token.is_comment:
-            raise ValueError("Invalid token_iter: Field values cannot end with comments")
+            raise ValueError(
+                "Invalid token_iter: Field values cannot end with comments"
+            )
     for token in formatter(field_name, separator_token, token_iter):
         token_as_text = str(token)
         # If we are given formatter tokens, then use them to verify the output.
         if isinstance(token, FormatterContentToken):
             if token.is_comment:
                 if not just_after_newline:
-                    raise ValueError("Bad format: Comments must appear directly after a newline.")
+                    raise ValueError(
+                        "Bad format: Comments must appear directly after a newline."
+                    )
                 # for the sake of ensuring people use proper test data.
                 if not token_as_text.startswith("#"):
                     raise ValueError("Invalid Comment token: Must start with #")
@@ -441,7 +450,9 @@ def format_field(formatter,  # type: FormatterCallback
                     raise ValueError("Invalid Comment token: Must end on a newline")
             elif token.is_value:
                 if token_as_text[0].isspace() or token_as_text[-1].isspace():
-                    raise ValueError("Invalid Value token: It cannot start nor end on whitespace")
+                    raise ValueError(
+                        "Invalid Value token: It cannot start nor end on whitespace"
+                    )
                 if just_after_newline:
                     raise ValueError("Bad format: Missing continuation line marker")
                 if last_was_value_token:
@@ -452,7 +463,7 @@ def format_field(formatter,  # type: FormatterCallback
             last_was_value_token = False
 
         if just_after_newline:
-            if token_as_text[0] in ('\r', '\n'):
+            if token_as_text[0] in ("\r", "\n"):
                 raise ValueError("Bad format: Saw completely empty line.")
             if not token_as_text[0].isspace() and not token_as_text.startswith("#"):
                 raise ValueError("Bad format: Saw completely empty line.")
