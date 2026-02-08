@@ -253,6 +253,7 @@ from typing import (
     Iterable,
     IO,
     List,
+    NamedTuple,
     Mapping,
     MutableMapping,
     overload,
@@ -1387,10 +1388,13 @@ class PkgRelation:
         r'(?P<enabled>\!)?'
         r'(?P<profile>[^\s]+)')
 
-    ArchRestriction = collections.namedtuple('ArchRestriction',
-                                             ['enabled', 'arch'])
-    BuildRestriction = collections.namedtuple('BuildRestriction',
-                                              ['enabled', 'profile'])
+    class ArchRestriction(NamedTuple):
+        enabled: bool
+        arch: str
+
+    class BuildRestriction(NamedTuple):
+        enabled: bool
+        profile: str
 
     if TYPE_CHECKING:
         class ParsedRelation(TypedDict):
