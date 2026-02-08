@@ -1,6 +1,5 @@
 Source: python-debian
 Section: python
-Priority: optional
 Maintainer: Debian python-debian Maintainers <pkg-python-debian-maint@lists.alioth.debian.org>
 Uploaders:
  Enrico Zini <enrico@debian.org>,
@@ -29,7 +28,10 @@ Standards-Version: 4.7.3
 Vcs-Browser: https://salsa.debian.org/python-debian-team/python-debian
 Vcs-Git: https://salsa.debian.org/python-debian-team/python-debian.git
 Homepage: https://salsa.debian.org/python-debian-team/python-debian
+# These fields can be removed when all supported Debian targets are
+# at least Trixie (13) or later.
 Rules-Requires-Root: no
+Priority: optional
 
 Package: python3-debian
 Architecture: all
