@@ -4,34 +4,33 @@ try:
     if TYPE_CHECKING:
         from debian._deb822_repro.tokens import Deb822Token, Deb822FieldNameToken
         from debian._deb822_repro.parsing import (
-            Deb822Element, Deb822CommentElement, Deb822ParsedValueElement
+            Deb822Element,
+            Deb822CommentElement,
+            Deb822ParsedValueElement,
         )
         from debian._deb822_repro.formatter import FormatterContentToken
 
-    TokenOrElement = Union['Deb822Element', 'Deb822Token']
-    TE = TypeVar('TE', bound=TokenOrElement)
+    TokenOrElement = Union["Deb822Element", "Deb822Token"]
+    TE = TypeVar("TE", bound=TokenOrElement)
 
     # Used as a resulting element for "mapping" functions that map TE -> R (see _combine_parts)
-    R = TypeVar('R', bound='Deb822Element')
+    R = TypeVar("R", bound="Deb822Element")
 
-    VE = TypeVar('VE', bound='Deb822Element')
+    VE = TypeVar("VE", bound="Deb822Element")
 
-    ST = TypeVar('ST', bound='Deb822Token')
+    ST = TypeVar("ST", bound="Deb822Token")
 
     # Internal type for part of the paragraph key.  Used to facility _unpack_key.
-    ParagraphKeyBase = Union['Deb822FieldNameToken', str]
+    ParagraphKeyBase = Union["Deb822FieldNameToken", str]
 
     ParagraphKey = Union[ParagraphKeyBase, Tuple[str, int]]
 
-    Commentish = Union[List[str], 'Deb822CommentElement']
+    Commentish = Union[List[str], "Deb822CommentElement"]
 
-    FormatterCallback = Callable[[
-                                     str,
-                                     'FormatterContentToken',
-                                     Iterator['FormatterContentToken']
-                                 ],
-                                 Iterator[Union['FormatterContentToken', str]]
-                                 ]
+    FormatterCallback = Callable[
+        [str, "FormatterContentToken", Iterator["FormatterContentToken"]],
+        Iterator[Union["FormatterContentToken", str]],
+    ]
     try:
         # Set __doc__ attributes if possible
         TE.__doc__ = """

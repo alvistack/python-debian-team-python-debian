@@ -6,15 +6,22 @@ import textwrap
 from abc import ABC
 
 from typing import (
-    Optional, Union, Iterable, Callable, TYPE_CHECKING, Iterator,
-    Type, cast, List, Generic,
+    Optional,
+    Union,
+    Iterable,
+    Callable,
+    TYPE_CHECKING,
+    Iterator,
+    Type,
+    cast,
+    List,
+    Generic,
 )
 from debian._util import T
 from debian._deb822_repro.types import TE, R, TokenOrElement
 
 _combine_parts_ret_type = Callable[
-    [Iterable[Union[TokenOrElement, TE]]],
-    Iterable[Union[TokenOrElement, R]]
+    [Iterable[Union[TokenOrElement, TE]]], Iterable[Union[TokenOrElement, R]]
 ]
 
 if TYPE_CHECKING:
@@ -22,11 +29,12 @@ if TYPE_CHECKING:
     from debian._deb822_repro.tokens import Deb822Token
 
 
-def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element']
-              *,
-              end_marker_after=5,  # type: Optional[int]
-              output_function=None  # type: Optional[Callable[[str], None]]
-              ):
+def print_ast(
+    ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element']
+    *,
+    end_marker_after=5,  # type: Optional[int]
+    output_function=None,  # type: Optional[Callable[[str], None]]
+):
     # type: (...) -> None
     """Debugging aid, which can dump a Deb822Element or a list of tokens/elements
 
@@ -46,10 +54,11 @@ def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element'
     # Avoid circular dependency
     # pylint: disable=import-outside-toplevel
     from debian._deb822_repro.parsing import Deb822Element
+
     prefix = None
     if isinstance(ast_tree, Deb822Element):
         ast_tree = [ast_tree]
-    stack = [(0, '', iter(ast_tree))]
+    stack = [(0, "", iter(ast_tree))]
     current_no = 0
     if output_function is None:
         output_function = logging.info
@@ -58,9 +67,11 @@ def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element'
         for current in current_iter:
             current_no += 1
             if prefix is None:
-                prefix = '  ' * len(stack)
+                prefix = "  " * len(stack)
             if isinstance(current, Deb822Element):
-                stack.append((current_no, current.__class__.__name__, iter(current.iter_parts())))
+                stack.append(
+                    (current_no, current.__class__.__name__, iter(current.iter_parts()))
+                )
                 output_function(prefix + current.__class__.__name__)
                 prefix = None
                 break
@@ -69,17 +80,22 @@ def print_ast(ast_tree,  # type: Union[Iterable[TokenOrElement], 'Deb822Element'
             # current_iter is depleted
             stack.pop()
             prefix = None
-            if end_marker_after is not None and start_no + end_marker_after <= current_no and name:
+            if (
+                end_marker_after is not None
+                and start_no + end_marker_after <= current_no
+                and name
+            ):
                 if prefix is None:
-                    prefix = '  ' * len(stack)
+                    prefix = "  " * len(stack)
                 output_function(prefix + "# <-- END OF " + name)
 
 
-def combine_into_replacement(source_class,  # type: Type[TE]
-                             replacement_class,  # type: Type[R]
-                             *,
-                             constructor=None  # type: Optional[Callable[[List[TE]], R]]
-                             ):
+def combine_into_replacement(
+    source_class,  # type: Type[TE]
+    replacement_class,  # type: Type[R]
+    *,
+    constructor=None,  # type: Optional[Callable[[List[TE]], R]]
+):
     # type: (...) -> _combine_parts_ret_type[TE, R]
     """Combines runs of one type into another type
 
@@ -87,7 +103,7 @@ def combine_into_replacement(source_class,  # type: Type[TE]
     the relevant element (such as the Comment element).
     """
     if constructor is None:
-        _constructor = cast('Callable[[List[TE]], R]', replacement_class)
+        _constructor = cast("Callable[[List[TE]], R]", replacement_class)
     else:
         # Force mypy to see that constructor is no longer optional
         _constructor = constructor
@@ -166,10 +182,11 @@ class BufferingIterator(_bufferingIterator_Base[T], Generic[T]):
         # type: () -> List[T]
         return list(self._buffer)
 
-    def peek_find(self,
-                  predicate,  # type: Callable[[T], bool]
-                  limit=None  # type: Optional[int]
-                  ):
+    def peek_find(
+        self,
+        predicate,  # type: Callable[[T], bool]
+        limit=None,  # type: Optional[int]
+    ):
         # type: (...) -> Optional[int]
         buffer = self._buffer
         i = 0
@@ -202,7 +219,11 @@ class BufferingIterator(_bufferingIterator_Base[T], Generic[T]):
     def peek_at(self, tokens_ahead):
         # type: (int) -> Optional[T]
         self._fill_buffer(tokens_ahead)
-        return self._buffer[tokens_ahead - 1] if len(self._buffer) >= tokens_ahead else None
+        return (
+            self._buffer[tokens_ahead - 1]
+            if len(self._buffer) >= tokens_ahead
+            else None
+        )
 
     def peek_many(self, number):
         # type: (int) -> List[T]
@@ -222,10 +243,11 @@ class BufferingIterator(_bufferingIterator_Base[T], Generic[T]):
         return ret
 
 
-def len_check_iterator(content,  # type: str
-                       stream,  # type: Iterable[TE]
-                       content_len=None  # type: Optional[int]
-                       ):
+def len_check_iterator(
+    content,  # type: str
+    stream,  # type: Iterable[TE]
+    content_len=None,  # type: Optional[int]
+):
     # type: (...) -> Iterable[TE]
     """Flatten a parser's output into tokens and verify it covers the entire line/text"""
     if content_len is None:
@@ -236,9 +258,9 @@ def len_check_iterator(content,  # type: str
         # We use the AttributeError to discriminate between elements and tokens
         # The cast()s are here to assist / workaround mypy not realizing that.
         try:
-            tokens = cast('Deb822Element', token_or_element).iter_tokens()
+            tokens = cast("Deb822Element", token_or_element).iter_tokens()
         except AttributeError:
-            token = cast('Deb822Token', token_or_element)
+            token = cast("Deb822Token", token_or_element)
             covered += len(token.text)
         else:
             for token in tokens:
@@ -246,14 +268,18 @@ def len_check_iterator(content,  # type: str
         yield token_or_element
     if covered != content_len:
         if covered < content_len:
-            msg = textwrap.dedent("""\
+            msg = textwrap.dedent(
+                """\
             Value parser did not fully cover the entire line with tokens (
             missing range {covered}..{content_len}).  Occurred when parsing "{content}"
-            """).format(covered=covered, content_len=content_len, content=content)
+            """
+            ).format(covered=covered, content_len=content_len, content=content)
             raise ValueError(msg)
-        msg = textwrap.dedent("""\
+        msg = textwrap.dedent(
+            """\
                     Value parser emitted tokens for more text than was present?  Should have
                      emitted {content_len} characters, got {covered}. Occurred when parsing
                      "{content}"
-                    """).format(covered=covered, content_len=content_len, content=content)
+                    """
+        ).format(covered=covered, content_len=content_len, content=content)
         raise ValueError(msg)

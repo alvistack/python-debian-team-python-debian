@@ -24,6 +24,7 @@ class Position:
     It consists of a line position (0-based line number) and a cursor position.  This is modelled
     after the "Position" in Language Server Protocol (LSP).
     """
+
     line_position: int
     """Describes the line position as a 0-based line number
 
@@ -92,6 +93,7 @@ class Range:
 
     This is modelled after the "Range" in Language Server Protocol (LSP).
     """
+
     start_pos: Position
     end_pos: Position
 
@@ -157,8 +159,9 @@ class Range:
         the Range constructor, you have freedom to do "inverse" ranges
         in case that is ever useful
         """
-        if a.line_position > b.line_position or \
-           (a.line_position == b.line_position and a.cursor_position > b.cursor_position):
+        if a.line_position > b.line_position or (
+            a.line_position == b.line_position and a.cursor_position > b.cursor_position
+        ):
             # Order swap, so `a` is always the earliest position
             a, b = b, a
         return cls(
@@ -217,7 +220,7 @@ class Range:
             Position(
                 line_count,
                 new_end_cursor_position,
-            )
+            ),
         )
 
     @classmethod
@@ -242,18 +245,22 @@ class Range:
             line_position += lines
             cursor_position = size_rebased.end_cursor_position
         else:
-            delta = size_rebased.end_cursor_position - size_rebased.start_cursor_position
+            delta = (
+                size_rebased.end_cursor_position - size_rebased.start_cursor_position
+            )
             cursor_position += delta
         return cls(
             base,
             Position(
                 line_position,
                 cursor_position,
-            )
+            ),
         )
 
     @classmethod
-    def from_position_and_sizes(cls, base: Position, sizes: Iterable["Range"]) -> "Self":
+    def from_position_and_sizes(
+        cls, base: Position, sizes: Iterable["Range"]
+    ) -> "Self":
         """Compute a range from a position and the size of number of ranges
 
         :param base: The desired starting position
@@ -272,14 +279,17 @@ class Range:
                 line_position += lines
                 cursor_position = size_rebased.end_cursor_position
             else:
-                delta = size_rebased.end_cursor_position - size_rebased.start_cursor_position
+                delta = (
+                    size_rebased.end_cursor_position
+                    - size_rebased.start_cursor_position
+                )
                 cursor_position += delta
         return cls(
             base,
             Position(
                 line_position,
                 cursor_position,
-            )
+            ),
         )
 
 
@@ -307,8 +317,12 @@ class Locatable:
 
         parent = self.parent_element
         if parent is None:
-            raise TypeError("Cannot determine the position since the object is detached")
-        relevant_parts = itertools.takewhile(lambda x: x is not self, parent.iter_parts())
+            raise TypeError(
+                "Cannot determine the position since the object is detached"
+            )
+        relevant_parts = itertools.takewhile(
+            lambda x: x is not self, parent.iter_parts()
+        )
         span = Range.from_position_and_sizes(
             START_POSITION,
             (x.size() for x in relevant_parts),
