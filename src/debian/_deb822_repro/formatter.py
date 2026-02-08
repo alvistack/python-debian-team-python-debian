@@ -20,7 +20,7 @@ _CONTENT_TYPE_COMMENT = "is_comment"
 _CONTENT_TYPE_SEPARATOR = "is_separator"
 
 
-class FormatterContentToken(object):
+class FormatterContentToken:
     """Typed, tagged text for use with the formatting API
 
     The FormatterContentToken is used by the formatting API and provides the
@@ -184,7 +184,7 @@ def one_value_per_line_formatter(
     integer, which determines the indentation for fields.  If it is an integer,
     then a fixed indentation is used (notably the value 1 ensures the shortest
     possible indentation).  Otherwise, if it is "FIELD_NAME_LENGTH", then the
-    indentation is set such that it aligns the values based on the field name.
+    indentation is set so that it aligns the values based on the field name.
     :param trailing_separator: If True, then the last value will have a trailing
     separator token (e.g., ",") after it.
     :param immediate_empty_line: Whether the value should always start with an
@@ -204,6 +204,7 @@ def one_value_per_line_formatter(
             indent_len = len(name) + 2
         else:
             indent_len = indentation
+            assert isinstance(indent_len, int)  # hint for PyCharm
         indent = " " * indent_len
 
         emitted_first_line = False

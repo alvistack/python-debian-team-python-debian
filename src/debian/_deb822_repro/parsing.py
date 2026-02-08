@@ -974,7 +974,7 @@ def _parse_uploaders_list_value(token, buffered_iterator):
     # type: (Deb822Token, BufferingIterator[Deb822Token]) -> Deb822ParsedValueElement
 
     # This is similar to _parse_comma_list_value *except* that there is an extra special
-    # case.  Namely comma only counts as a true separator if it follows ">"
+    # case.  Namely, comma only counts as a true separator if it follows ">"
     value_parts = [token]
     comma_offset = -1  # type: Optional[int]
     while comma_offset is not None:

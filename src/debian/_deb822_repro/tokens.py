@@ -40,7 +40,7 @@ _RE_WHITESPACE_SEPARATED_WORD_LIST = re.compile(
 _RE_COMMA_SEPARATED_WORD_LIST = re.compile(
     r"""
     # This regex is slightly complicated by the fact that it should work with
-    # finditer and comsume the entire value.
+    # finditer and consume the entire value.
     #
     # To do this, we structure the regex so it always starts on a comma (except
     # for the first iteration, where we permit the absence of a comma)
@@ -60,7 +60,7 @@ _RE_COMMA_SEPARATED_WORD_LIST = re.compile(
     # From here it is "optional space, maybe a word and then optional space" again.  One reason why
     # all of it is optional is to gracefully cope with trailing commas.
     (?P<space_before_word>\s*)
-    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma separated list.
+    (?P<word> [^,\s] (?: [^,]*[^,\s])? )?    # "Words" can contain spaces for comma-separated list.
                                              # But surrounding whitespace is ignored
     (?P<space_after_word>\s*)
 """,
