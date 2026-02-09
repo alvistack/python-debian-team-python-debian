@@ -16,7 +16,7 @@ dynamic = [
 description = "Modules to read and manipulate many file formats related to Debian packages and repositories"
 readme = "README.rst"
 requires-python = ">=3.7"
-license = { text = "GPL-2.0-or-later" }
+license = "GPL-2.0-or-later"
 authors = [
     {name = "Debian python-debian Maintainers", email = "pkg-python-debian-maint@lists.alioth.debian.org"},
 ]
@@ -24,8 +24,6 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python",
   "Intended Audience :: Developers",
-  "License :: DFSG approved",
-  "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
   "Operating System :: POSIX",
 ]
 keywords = ["debian", "linux", "metadata", "packages", "packaging"]
