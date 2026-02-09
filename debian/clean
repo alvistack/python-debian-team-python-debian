@@ -1,5 +1,4 @@
 README.debtags
-src/debian/_version.py
 docs/api/
 docs/_static/
 src/debian/__pycache__/
