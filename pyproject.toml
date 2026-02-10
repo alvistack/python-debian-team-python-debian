@@ -73,6 +73,7 @@ namespaces = false
 write_to = "src/debian/_version.py"
 # needs setuptools_scm > 8
 # version_file = "debian/_version.py"
+tag_regex = "^(?:[\\w-]+[/-])?(?P<version>[vV]?\\d+(?:\\.\\d+){0,2}[^\\+]*)(?:\\+.*)?$"
 
 
 # https://docs.pytest.org/en/6.2.x/customize.html
