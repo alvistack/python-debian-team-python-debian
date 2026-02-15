@@ -1,5 +1,4 @@
 README.debtags
-src/debian/_version.py
 docs/api/
 docs/_static/
 src/debian/__pycache__/
@@ -7,4 +6,3 @@ build/sphinx/
 .mypy_cache/
 src/debian/.mypy_cache/
 .coverage
-src/python_debian.egg-info/
