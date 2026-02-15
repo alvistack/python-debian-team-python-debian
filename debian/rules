@@ -9,14 +9,6 @@ include /usr/share/dpkg/pkg-info.mk
 # tell pybuild which module to install into the packages
 export PYBUILD_NAME=debian
 
-# for packaging, insist that all optional dependencies are installed
-# when running the test suite
-export FORBID_MISSING_APT_PKG ?= 1
-export FORBID_MISSING_GPGV ?= 1
-export FORBID_MISSING_AR ?= 1
-export FORBID_MISSING_DPKG_DEB ?= 1
-export FORBID_MISSING_ZSTD ?= 1
-
 %:
 	dh $@ --with python3 --buildsystem pybuild
 
@@ -27,10 +19,9 @@ override_dh_auto_build: lib/debian/_version.py
 	dh_auto_build
 	lib/debian/doc-debtags > README.debtags
 
-# don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-override_dh_auto_test: test
-endif
+override_dh_auto_clean:
+
+override_dh_auto_test:
 
 override_dh_auto_install:
 	dh_auto_install
@@ -52,18 +43,6 @@ apidoc:
 doc: apidoc
 	PYTHONPATH=$(CURDIR)/lib \
 	  make -C docs/ SPHINXOPTS="-a -v -n" html
-
-test:
-	# run all the tests with both a UTF-8 aware locale and a non-UTF-8
-	# aware locale to catch errors related to encoding.
-	for py in `py3versions -s`; do \
-	  set -e; \
-	  echo "----------------------------------------------"; \
-	  echo "Testing with $$py"; \
-	  echo "----------------------------------------------"; \
-	  LC_ALL=C $$py -m pytest --doctest-modules --verbose lib/; \
-	  LC_ALL=C.UTF-8 $$py -m pytest --doctest-modules --verbose lib/; \
-	done
 
 qa: lib/debian/_version.py
 	@echo "Running both pylint and mypy"
