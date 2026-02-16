@@ -391,7 +391,10 @@ class DpkgArchTable:
                 verdict_if_matched = False
                 arch_restriction_positive = arch_restriction[1:]
 
-            dpkg_wildcard = self._dpkg_wildcard_to_tuple(arch_restriction_positive)
+            try:
+                dpkg_wildcard = self._dpkg_wildcard_to_tuple(arch_restriction_positive)
+            except KeyError:
+                continue
 
             # Inlined version of self.matches_architecture to reduce the number of lookups
             if dpkg_arch in dpkg_wildcard:
