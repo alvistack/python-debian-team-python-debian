@@ -1754,15 +1754,33 @@ class _multivalued(Deb822):
             except KeyError:
                 continue
 
-            if self.is_multi_line(contents):
-                self[field] = []    # type: ignore
-                updater_method = self[field].append
-            else:
-                self[field] = Deb822Dict()    # type: ignore
-                updater_method = self[field].update
+            if isinstance(contents, str):
+                # parsing raw data
+                if self.is_multi_line(contents):
+                    self[field] = []    # type: ignore
+                    updater_method = self[field].append
+                else:
+                    self[field] = Deb822Dict()    # type: ignore
+                    updater_method = self[field].update
 
-            for line in filter(None, contents.splitlines()):   # type: str
-                updater_method(Deb822Dict(zip(fields, line.split(maxsplit=len(fields) - 1))))
+                for line in filter(None, contents.splitlines()):
+                    updater_method(Deb822Dict(zip(fields, line.split(maxsplit=len(fields) - 1))))
+
+            # receiving already parsed data from a copy() function
+            elif isinstance(contents, list):
+                # receiving a list of Deb822Dict objects
+                self[field] = []    # type: ignore
+                for item in contents:
+                    self[field].append(item.copy())
+
+            elif isinstance(contents, (Deb822Dict, dict)):
+                # receiving a single Deb822Dict object
+                self[field] = contents.copy()  # type: ignore
+
+            else:
+                raise TypeError(
+                    f"Received unexpected data type for multivalued field: {type(contents)}"
+                )
 
     def validate_input(self, key: str, value: list[dict[str, str]] | str) -> None:
         if key.lower() in self._multivalued_fields:

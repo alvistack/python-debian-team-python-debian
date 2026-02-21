@@ -1276,6 +1276,24 @@ Description: python modules to work with Debian-related data formats
         assert d["Package-List"] == [{"package": "pkg", "package-type": "deb", "section": "section", "priority": "priority", "_other": "arch=all essential=yes"}]
         assert str(d) == text
 
+    def test_multivalued_copy(self) -> None:
+        """Ensure multivalued items can be copied"""
+
+        d = deb822.Dsc()
+        d['Files'] = [{'md5sum': 'deadbeef', 'size': '9605', 'name': 'bad\n'}]   # type: ignore
+
+        c = d.copy()
+        self.assertWellParsed(c, d)
+
+        # the code has the ability to have non-multiline items too
+        # a Dsc does not have a Files entry that looks like this
+        # but we can use it to test
+        d = deb822.Dsc()
+        d['Files'] = {'md5sum': 'deadbeef', 'size': '9605', 'name': 'bad\n'}   # type: ignore
+
+        c = d.copy()
+        self.assertWellParsed(c, d)
+
     def _test_iter_paragraphs_comments(self, paragraphs: list[deb822.Deb822]) -> None:
         assert len(paragraphs) == len(PARSED_PARAGRAPHS_WITH_COMMENTS)
         for i in range(len(paragraphs)):
