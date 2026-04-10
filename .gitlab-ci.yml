@@ -240,3 +240,34 @@ pages:
     - public
   only:
   - master
+
+### Build distribution tarball
+
+build-dist:
+  extends: .depends-debian-minimal
+  script:
+  - python3 -m pip install build
+  - python3 -m build
+  variables:
+    JOB_DEPS: python3-pip git
+    PIP_BREAK_SYSTEM_PACKAGES: 1
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+### PyPI upload on releases
+
+pypi-upload:
+  extends: .depends-debian-minimal
+  stage: deploy
+  script:
+  - python3 -m pip install twine
+  - python3 -m twine upload dist/*
+  variables:
+    JOB_DEPS: python3-pip
+    PIP_BREAK_SYSTEM_PACKAGES: 1
+  dependencies:
+    - build-dist
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+(\.\d+)?$/'
