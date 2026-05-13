@@ -1503,7 +1503,8 @@ class TestPkgRelations:
                             [rel({'name': 'html2ps'})],
                             [rel({'name': 't1-cyrillic'})],
                             [rel({'name': 'texlive-base-bin'})],
-                        ]
+                        ],
+                    'static-built-using': [],
                     }
             self.assertPkgDictEqual(rel1, pkg1.relations)
             pkg2 = next(pkgs)
@@ -1524,27 +1525,44 @@ class TestPkgRelations:
                     'provides': [],
                     'recommends': [],
                     'replaces': [],
-                    'suggests': []
+                    'suggests': [],
+                    'static-built-using': [],
                     }
             self.assertPkgDictEqual(rel2, pkg2.relations)
             pkg3 = next(pkgs)
-            dep3 = [
-                    [rel({'name': 'dcoprss', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kdenetwork-kfile-plugins', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kdict', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kdnssd', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kget', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'knewsticker', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kopete', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kpf', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kppp', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'krdc', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'krfb', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'ksirc', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'kwifimanager', 'version': ('>=', '4:3.5.9-2')})],
-                    [rel({'name': 'librss1', 'version': ('>=', '4:3.5.9-2')})],
-                ]
-            assert dep3 == pkg3.relations['depends']
+            dep3 = {'breaks': [],
+                    'built-using': [
+                            [rel({'name': 'rustc', 'version': ('=', '1.85.0+dfsg3-1')})],
+                        ],
+                    'conflicts': [],
+                    'depends': [
+                        [rel({'name': 'dcoprss', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kdenetwork-kfile-plugins', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kdict', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kdnssd', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kget', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'knewsticker', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kopete', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kpf', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kppp', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'krdc', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'krfb', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'ksirc', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'kwifimanager', 'version': ('>=', '4:3.5.9-2')})],
+                        [rel({'name': 'librss1', 'version': ('>=', '4:3.5.9-2')})],
+                    ],
+                    'enhances': [],
+                    'pre-depends': [],
+                    'provides': [],
+                    'recommends': [],
+                    'replaces': [],
+                    'suggests': [],
+                    'static-built-using': [
+                            [rel({'name': 'rust-ring', 'version': ('=', '0.17.14-2')})],
+                            [rel({'name': 'rustc', 'version': ('=', '1.85.0+dfsg3-1')})],
+                        ],
+                    }
+            assert dep3 == pkg3.relations
             f.close()
         if FORBID_MISSING_APT_PKG:
             # Don't permit this test to succeed if warnings about apt_pkg
