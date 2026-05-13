@@ -68,6 +68,8 @@ Maintainer: Stefano Zacchiroli <zack@debian.org>
 Architecture: i386
 Version: 1.0
 Depends: dcoprss (>= 4:3.5.9-2), kdenetwork-kfile-plugins (>= 4:3.5.9-2), kdict (>= 4:3.5.9-2), kdnssd (>= 4:3.5.9-2), kget (>= 4:3.5.9-2), knewsticker (>= 4:3.5.9-2), kopete (>= 4:3.5.9-2), kpf (>= 4:3.5.9-2), kppp (>= 4:3.5.9-2), krdc (>= 4:3.5.9-2), krfb (>= 4:3.5.9-2), ksirc (>= 4:3.5.9-2), kwifimanager (>= 4:3.5.9-2), librss1 (>= 4:3.5.9-2)
+Built-Using: rustc (= 1.85.0+dfsg3-1)
+Static-Built-Using: rust-ring (= 0.17.14-2), rustc (= 1.85.0+dfsg3-1)
 Filename: pool/main/d/dummy-package/dummy-package_1.0_i386.deb
 Size: 424242
 MD5sum: 21e4ac1bbdd405873aa969918e78b95c
