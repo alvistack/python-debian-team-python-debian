@@ -834,7 +834,6 @@ with open("test_deb822.pickle", "wb") as fh:
                               cls: type[deb822.Deb822],
                               **kwargs: Any) -> None:
         """Ensure iter_paragraphs consistency"""
-        
         with open(filename, 'rb') as fh:
             packages_content = fh.read()
 
@@ -869,10 +868,12 @@ with open("test_deb822.pickle", "wb") as fh:
         self._test_iter_paragraphs(find_test_file("test_Packages"),
                                    deb822.Packages,
                                    use_apt_pkg=True, shared_storage=True)
+
     def test_iter_paragraphs_apt_no_shared_storage_packages(self) -> None:
         self._test_iter_paragraphs(find_test_file("test_Packages"),
                                    deb822.Packages,
                                    use_apt_pkg=True, shared_storage=False)
+
     def test_iter_paragraphs_no_apt_no_shared_storage_packages(self) -> None:
         self._test_iter_paragraphs(find_test_file("test_Packages"),
                                    deb822.Packages,
@@ -882,10 +883,12 @@ with open("test_deb822.pickle", "wb") as fh:
         self._test_iter_paragraphs(find_test_file("test_Sources"),
                                    deb822.Sources,
                                    use_apt_pkg=True, shared_storage=True)
+
     def test_iter_paragraphs_apt_no_shared_storage_sources(self) -> None:
         self._test_iter_paragraphs(find_test_file("test_Sources"),
                                    deb822.Sources,
                                    use_apt_pkg=True, shared_storage=False)
+
     def test_iter_paragraphs_no_apt_no_shared_storage_sources(self) -> None:
         self._test_iter_paragraphs(find_test_file("test_Sources"),
                                    deb822.Sources,
@@ -900,7 +903,7 @@ with open("test_deb822.pickle", "wb") as fh:
             next(generator)
 
     def test_parser_limit_fields(self) -> None:
-        wanted_fields = [ 'Package', 'MD5sum', 'Filename', 'Description' ]
+        wanted_fields = ['Package', 'MD5sum', 'Filename', 'Description']
         deb822_ = deb822.Deb822(UNPARSED_PACKAGE.splitlines(), wanted_fields)
 
         assert sorted(wanted_fields) == sorted(deb822_.keys())
@@ -909,7 +912,7 @@ with open("test_deb822.pickle", "wb") as fh:
             assert PARSED_PACKAGE[key] == deb822_[key]
 
     def test_iter_paragraphs_limit_fields(self) -> None:
-        wanted_fields = [ 'Package', 'MD5sum', 'Filename', 'Tag' ]
+        wanted_fields = ['Package', 'MD5sum', 'Filename', 'Tag']
 
         for deb822_ in deb822.Deb822.iter_paragraphs(
                 UNPARSED_PACKAGE.splitlines(), wanted_fields):
@@ -1275,6 +1278,24 @@ Description: python modules to work with Debian-related data formats
         d = deb822.Dsc(text)
         assert d["Package-List"] == [{"package": "pkg", "package-type": "deb", "section": "section", "priority": "priority", "_other": "arch=all essential=yes"}]
         assert str(d) == text
+
+    def test_multivalued_copy(self) -> None:
+        """Ensure multivalued items can be copied"""
+
+        d = deb822.Dsc()
+        d['Files'] = [{'md5sum': 'deadbeef', 'size': '9605', 'name': 'bad\n'}]   # type: ignore
+
+        c = d.copy()
+        self.assertWellParsed(c, d)
+
+        # the code has the ability to have non-multiline items too
+        # a Dsc does not have a Files entry that looks like this
+        # but we can use it to test
+        d = deb822.Dsc()
+        d['Files'] = {'md5sum': 'deadbeef', 'size': '9605', 'name': 'bad\n'}   # type: ignore
+
+        c = d.copy()
+        self.assertWellParsed(c, d)
 
     def _test_iter_paragraphs_comments(self, paragraphs: list[deb822.Deb822]) -> None:
         assert len(paragraphs) == len(PARSED_PARAGRAPHS_WITH_COMMENTS)
