@@ -1,3 +1,23 @@
+python-debian (1.1.1) unstable; urgency=medium
+
+  [ Stuart Prescott ]
+  * Move charset-normaliser to an optional dep group
+  * Annotate additional deps with nocheck
+  * Have dh_python3 add optional deps to Suggests
+  * Update licence metadata format in pyproject.toml
+  * Tweak tag_regex for tag2upload vs setuptools_scm compatibility
+  * Don't raise exceptions on invalid arch specifications (Closes: #1125014)
+  * Fix crash in copying multivalued Deb822 objects (Closes: #1109030)
+  * Minor whitespace fixes
+
+  [ Jelmer Vernooĳ ]
+  * Always build distribution tarball in CI
+
+  [ Christoph Steiger ]
+  * Add Static-Built-Using to relations
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 07 Jun 2026 11:14:32 +0100
+
 python-debian (1.1.0) unstable; urgency=medium
 
   [ Colin Watson ]
