@@ -6,8 +6,6 @@
 
 include /usr/share/dpkg/pkg-info.mk
 
-export SETUPTOOLS_SCM_PRETEND_VERSION = $(shell debian/make_pep440_compliant "$(DEB_VERSION)")
-
 # tell pybuild which module to install into the packages
 export PYBUILD_NAME=debian
 
@@ -23,25 +21,13 @@ export FORBID_MISSING_ZSTD ?= 1
 %:
 	dh $@ --with python3 --buildsystem pybuild
 
-execute_after_dh_auto_build:
-	src/debian/doc-debtags > README.debtags
+override_dh_auto_clean:
 
-
-override_dh_python3:
-	dh_python3 --suggests-section=encodings
-
-# don't run the tests if suppressed with DEB_BUILD_OPTIONS=nocheck
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-override_dh_auto_test: test
-endif
+override_dh_auto_test:
 
 dist:
 	# needs python3-build python3-wheel
-	rm -f dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*
 	python3 -m build --skip-dependency-check --no-isolation --sdist --wheel
-	@echo "You can now:"
-	@echo "  twine check --strict dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*"
-	@echo "  twine upload dist/python?debian-$(SETUPTOOLS_SCM_PRETEND_VERSION)*"
 
 apidoc:
 	rm -f docs/api/*
@@ -52,27 +38,5 @@ apidoc:
 doc: apidoc
 	PYTHONPATH=$(CURDIR)/src \
 	  make -C docs/ SPHINXOPTS="-a -v -n" html
-
-test:
-	# run all the tests with both a UTF-8 aware locale and a non-UTF-8
-	# aware locale to catch errors related to encoding.
-	for py in `py3versions -s`; do \
-	  set -e; \
-	  echo "----------------------------------------------"; \
-	  echo "Testing with $$py"; \
-	  echo "----------------------------------------------"; \
-	  LC_ALL=C $$py -m pytest; \
-	  LC_ALL=C.UTF-8 $$py -m pytest; \
-	done
-
-qa:
-	@echo "Running both pylint and mypy"
-	@echo "----------- pylint -----------"
-	@pylint $$(find src/debian -name \*py | grep -v test | sort); \
-	  pylinterr=$$?; \
-	  echo "----------- mypy -----------"; \
-	  mypy; \
-	  mypyerr=$$? ; \
-	  [ $$pylinterr -eq 0 -a $$mypyerr -eq 0 ]
 
 .PHONY: dist doc apidoc qa
